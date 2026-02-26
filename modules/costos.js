@@ -1,4 +1,4 @@
-// modules/costos.js - VERSIÓN CON TOTAL AL FINAL
+// modules/costos.js - VERSIÓN PANTALLA COMPLETA
 
 // ============================================
 // RENDERIZAR MÓDULO DE COSTOS FIJOS
@@ -7,73 +7,93 @@ function renderCostos() {
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroMes = AppState.filtros?.mes || new Date().toISOString().slice(0,7);
     
-    // Calcular el GRAN TOTAL de todos los costos fijos
-    const granTotal = calcularTotalCostos();
-    
     const costosHTML = `
-        <!-- BARRA SUPERIOR: TÍTULO Y BOTÓN (SIN TOTAL) -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1 class="module-title">Costos Fijos</h1>
-            <button class="btn btn-primary" onclick="mostrarModalCosto()">
-                <i class="fas fa-plus"></i> Nuevo Costo Fijo
-            </button>
-        </div>
-
-        <!-- FILTROS RÁPIDOS -->
-        <div style="display: flex; gap: 15px; margin-bottom: 25px; background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div class="filter-group">
-                <i class="fas fa-store filter-icon"></i>
-                <select id="filtroLocalCostos" class="filter-select" onchange="cambiarFiltroLocalCostos(this.value)">
-                    <option value="Todos">Todos los locales</option>
-                    ${AppState.locales.map(l => `<option value="${l.nombre}" ${filtroLocal === l.nombre ? 'selected' : ''}>${l.nombre}</option>`).join('')}
-                </select>
-            </div>
-            <div class="filter-group">
-                <i class="fas fa-calendar filter-icon"></i>
-                <input type="month" id="filtroMesCostos" class="filter-input" value="${filtroMes}" onchange="cambiarFiltroMesCostos(this.value)">
-            </div>
-        </div>
-
-        <!-- TABS DE CATEGORÍAS -->
-        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; overflow-x: auto;">
-            <button class="tab-btn active" onclick="cambiarCategoriaCostos('restaurante', event)" style="padding: 8px 16px; border: none; background: #2563eb; color: white; border-radius: 20px; white-space: nowrap;">
-                <i class="fas fa-store"></i> Restaurante
-            </button>
-            <button class="tab-btn" onclick="cambiarCategoriaCostos('planta', event)" style="padding: 8px 16px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 20px; white-space: nowrap;">
-                <i class="fas fa-industry"></i> Planta
-            </button>
-            <button class="tab-btn" onclick="cambiarCategoriaCostos('oficinas', event)" style="padding: 8px 16px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 20px; white-space: nowrap;">
-                <i class="fas fa-building"></i> Oficinas
-            </button>
-            <button class="tab-btn" onclick="cambiarCategoriaCostos('transporte', event)" style="padding: 8px 16px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 20px; white-space: nowrap;">
-                <i class="fas fa-truck"></i> Transporte
-            </button>
-            <button class="tab-btn" onclick="cambiarCategoriaCostos('planilla', event)" style="padding: 8px 16px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 20px; white-space: nowrap;">
-                <i class="fas fa-users"></i> Planilla
-            </button>
-        </div>
-
-        <!-- CONTENEDOR DE COSTOS POR CATEGORÍA -->
-        <div id="costosCategoriaContainer">
-            ${renderCategoriaTransporte(filtroLocal)}
-        </div>
-
-        <!-- GRAN TOTAL AL FINAL DE TODO -->
-        <div style="margin-top: 30px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 24px; border-radius: 16px; color: white;">
+        <!-- HEADER FIJO EN LA PARTE SUPERIOR -->
+        <div style="position: sticky; top: 0; background: white; z-index: 10; padding: 16px 0; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 0.9rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">TOTAL COSTOS FIJOS MENSUALES</div>
-                    <div style="font-size: 2.5rem; font-weight: 700; line-height: 1.2;">₡${granTotal.toLocaleString()}</div>
-                    <div style="font-size: 1rem; opacity: 0.8; margin-top: 5px;">₡${Math.round(granTotal / 30).toLocaleString()} por día</div>
-                </div>
-                <i class="fas fa-chart-pie" style="font-size: 4rem; opacity: 0.3;"></i>
+                <h1 class="module-title" style="font-size: 2rem; margin: 0;">Costos Fijos</h1>
+                <button class="btn btn-primary" onclick="mostrarModalCosto()" style="padding: 12px 32px;">
+                    <i class="fas fa-plus"></i> Nuevo Costo Fijo
+                </button>
             </div>
-            <div style="display: flex; gap: 30px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-                <div><span style="opacity: 0.7;">Restaurante:</span> ₡${calcularSubtotal('restaurante').toLocaleString()}</div>
-                <div><span style="opacity: 0.7;">Planta:</span> ₡${calcularSubtotal('planta').toLocaleString()}</div>
-                <div><span style="opacity: 0.7;">Oficinas:</span> ₡${calcularSubtotal('oficinas').toLocaleString()}</div>
-                <div><span style="opacity: 0.7;">Transporte:</span> ₡${calcularSubtotal('transporte').toLocaleString()}</div>
-                <div><span style="opacity: 0.7;">Planilla:</span> ₡${calcularSubtotal('planilla').toLocaleString()}</div>
+
+            <!-- FILTROS -->
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <div class="filter-group" style="flex: 1;">
+                    <i class="fas fa-store filter-icon"></i>
+                    <select id="filtroLocalCostos" class="filter-select" onchange="cambiarFiltroLocalCostos(this.value)" style="width: 100%; padding-left: 40px;">
+                        <option value="Todos">Todos los locales</option>
+                        ${AppState.locales.map(l => `<option value="${l.nombre}" ${filtroLocal === l.nombre ? 'selected' : ''}>${l.nombre}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="filter-group" style="flex: 1;">
+                    <i class="fas fa-calendar filter-icon"></i>
+                    <input type="month" id="filtroMesCostos" class="filter-input" value="${filtroMes}" onchange="cambiarFiltroMesCostos(this.value)" style="width: 100%; padding-left: 40px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- TABS DE CATEGORÍAS (STICKY) -->
+        <div style="position: sticky; top: 140px; background: white; z-index: 9; padding: 10px 0; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;">
+                <button class="tab-btn active" onclick="cambiarCategoriaCostos('restaurante', event)" style="padding: 10px 24px; border: none; background: #2563eb; color: white; border-radius: 30px; white-space: nowrap; font-weight: 500;">
+                    <i class="fas fa-store"></i> Restaurante
+                </button>
+                <button class="tab-btn" onclick="cambiarCategoriaCostos('planta', event)" style="padding: 10px 24px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 30px; white-space: nowrap; font-weight: 500;">
+                    <i class="fas fa-industry"></i> Planta Producción
+                </button>
+                <button class="tab-btn" onclick="cambiarCategoriaCostos('oficinas', event)" style="padding: 10px 24px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 30px; white-space: nowrap; font-weight: 500;">
+                    <i class="fas fa-building"></i> Oficinas
+                </button>
+                <button class="tab-btn" onclick="cambiarCategoriaCostos('transporte', event)" style="padding: 10px 24px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 30px; white-space: nowrap; font-weight: 500;">
+                    <i class="fas fa-truck"></i> Transporte
+                </button>
+                <button class="tab-btn" onclick="cambiarCategoriaCostos('planilla', event)" style="padding: 10px 24px; border: none; background: #f3f4f6; color: #4b5563; border-radius: 30px; white-space: nowrap; font-weight: 500;">
+                    <i class="fas fa-users"></i> Planilla Logística
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR PRINCIPAL (SCROLL) -->
+        <div style="min-height: calc(100vh - 300px);">
+            <div id="costosCategoriaContainer">
+                ${renderCategoriaTransporte(filtroLocal)}
+            </div>
+
+            <!-- GRAN TOTAL -->
+            <div style="margin-top: 30px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 30px; border-radius: 20px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <div style="font-size: 1rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px;">TOTAL COSTOS FIJOS</div>
+                        <div style="font-size: 3rem; font-weight: 700; line-height: 1.2;">₡${calcularTotalCostos().toLocaleString()}</div>
+                        <div style="font-size: 1.2rem; opacity: 0.8; margin-top: 5px;">₡${Math.round(calcularTotalCostos() / 30).toLocaleString()} por día</div>
+                    </div>
+                    <i class="fas fa-chart-pie" style="font-size: 5rem; opacity: 0.3;"></i>
+                </div>
+                
+                <!-- SUBTOTALES POR CATEGORÍA -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-top: 30px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.7;">Restaurante</div>
+                        <div style="font-size: 1.3rem; font-weight: 600;">₡${calcularSubtotal('restaurante').toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.7;">Planta</div>
+                        <div style="font-size: 1.3rem; font-weight: 600;">₡${calcularSubtotal('planta').toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.7;">Oficinas</div>
+                        <div style="font-size: 1.3rem; font-weight: 600;">₡${calcularSubtotal('oficinas').toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.7;">Transporte</div>
+                        <div style="font-size: 1.3rem; font-weight: 600;">₡${calcularSubtotal('transporte').toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.7;">Planilla</div>
+                        <div style="font-size: 1.3rem; font-weight: 600;">₡${calcularSubtotal('planilla').toLocaleString()}</div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -82,10 +102,9 @@ function renderCostos() {
 }
 
 // ============================================
-// RENDERIZAR CATEGORÍA: TRANSPORTE (según tu imagen)
+// RENDERIZAR CATEGORÍA: TRANSPORTE
 // ============================================
 function renderCategoriaTransporte(local) {
-    // Datos exactos de tu imagen
     const costosTransporte = [
         { concepto: 'Combustible Logística', monto: 552025 },
         { concepto: 'Electricidad Bodegas Lavacar', monto: 20800 },
@@ -101,40 +120,51 @@ function renderCategoriaTransporte(local) {
     const totalDiario = totalMensual / 30;
     
     return `
-        <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-truck" style="color: #2563eb;"></i> Costos Fijos - Transporte
-                </h3>
-                <div style="display: flex; gap: 30px;">
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Mensual:</span> <strong style="font-size: 1.2rem;">₡${totalMensual.toLocaleString()}</strong></div>
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Diario:</span> <strong style="font-size: 1.2rem;">₡${Math.round(totalDiario).toLocaleString()}</strong></div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- HEADER DE LA TABLA -->
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px 24px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-truck" style="font-size: 1.8rem;"></i>
+                        <h3 style="font-size: 1.4rem; font-weight: 600; margin: 0;">Costos Fijos - Transporte</h3>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Mensual</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalMensual).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Diario</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalDiario).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="table">
+
+            <!-- TABLA -->
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Concepto</th>
-                            <th style="text-align: right;">Monto Mensual</th>
-                            <th style="text-align: right;">Monto Diario</th>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 16px; text-align: left; color: #4b5563; font-weight: 600;">Concepto</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Mensual</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Diario</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${costosTransporte.map(c => `
-                            <tr>
-                                <td><strong>${c.concepto}</strong></td>
-                                <td style="text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
-                                <td style="text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 16px;"><strong>${c.concepto}</strong></td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 600;">
-                        <tr>
-                            <td>TOTAL TRANSPORTE</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalMensual).toLocaleString()}</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalDiario).toLocaleString()}</td>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding: 16px;">TOTAL TRANSPORTE</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalMensual).toLocaleString()}</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalDiario).toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -158,8 +188,6 @@ function renderCategoriaRestaurante(local) {
         { concepto: 'Póliza RT', monto: 58845 },
         { concepto: 'Depreciación de Activos', monto: 156886 },
         { concepto: 'Patente Comercial', monto: 28978 },
-        { concepto: 'Patente de Licores', monto: 0 },
-        { concepto: 'Basura Municipal', monto: 0 },
         { concepto: 'Permiso Ministerio de Salud', monto: 43900 },
         { concepto: 'Mantenimiento', monto: 145633 },
         { concepto: 'Hacienda IVA', monto: 276143 },
@@ -172,40 +200,51 @@ function renderCategoriaRestaurante(local) {
     const totalDiario = totalMensual / 30;
     
     return `
-        <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-store" style="color: #2563eb;"></i> Costos Fijos - Restaurante
-                </h3>
-                <div style="display: flex; gap: 30px;">
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Mensual:</span> <strong style="font-size: 1.2rem;">₡${totalMensual.toLocaleString()}</strong></div>
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Diario:</span> <strong style="font-size: 1.2rem;">₡${Math.round(totalDiario).toLocaleString()}</strong></div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- HEADER DE LA TABLA -->
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px 24px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-store" style="font-size: 1.8rem;"></i>
+                        <h3 style="font-size: 1.4rem; font-weight: 600; margin: 0;">Costos Fijos - Restaurante</h3>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Mensual</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalMensual).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Diario</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalDiario).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="table">
+
+            <!-- TABLA -->
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Concepto</th>
-                            <th style="text-align: right;">Monto Mensual</th>
-                            <th style="text-align: right;">Monto Diario</th>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 16px; text-align: left; color: #4b5563; font-weight: 600;">Concepto</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Mensual</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Diario</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${costosRestaurante.map(c => `
-                            <tr>
-                                <td><strong>${c.concepto}</strong></td>
-                                <td style="text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
-                                <td style="text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 16px;"><strong>${c.concepto}</strong></td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 600;">
-                        <tr>
-                            <td>TOTAL RESTAURANTE</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalMensual).toLocaleString()}</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalDiario).toLocaleString()}</td>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding: 16px;">TOTAL RESTAURANTE</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalMensual).toLocaleString()}</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalDiario).toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -232,40 +271,51 @@ function renderCategoriaPlanta(local) {
     const totalDiario = totalMensual / 30;
     
     return `
-        <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-industry" style="color: #2563eb;"></i> Costos Fijos - Planta Producción
-                </h3>
-                <div style="display: flex; gap: 30px;">
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Mensual:</span> <strong style="font-size: 1.2rem;">₡${totalMensual.toLocaleString()}</strong></div>
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Diario:</span> <strong style="font-size: 1.2rem;">₡${Math.round(totalDiario).toLocaleString()}</strong></div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- HEADER DE LA TABLA -->
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px 24px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-industry" style="font-size: 1.8rem;"></i>
+                        <h3 style="font-size: 1.4rem; font-weight: 600; margin: 0;">Costos Fijos - Planta Producción</h3>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Mensual</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalMensual).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Diario</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalDiario).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="table">
+
+            <!-- TABLA -->
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Concepto</th>
-                            <th style="text-align: right;">Monto Mensual</th>
-                            <th style="text-align: right;">Monto Diario</th>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 16px; text-align: left; color: #4b5563; font-weight: 600;">Concepto</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Mensual</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Diario</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${costosPlanta.map(c => `
-                            <tr>
-                                <td><strong>${c.concepto}</strong></td>
-                                <td style="text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
-                                <td style="text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 16px;"><strong>${c.concepto}</strong></td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 600;">
-                        <tr>
-                            <td>TOTAL PLANTA</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalMensual).toLocaleString()}</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalDiario).toLocaleString()}</td>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding: 16px;">TOTAL PLANTA</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalMensual).toLocaleString()}</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalDiario).toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -292,40 +342,51 @@ function renderCategoriaOficinas(local) {
     const totalDiario = totalMensual / 30;
     
     return `
-        <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-building" style="color: #2563eb;"></i> Costos Fijos - Oficinas
-                </h3>
-                <div style="display: flex; gap: 30px;">
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Mensual:</span> <strong style="font-size: 1.2rem;">₡${totalMensual.toLocaleString()}</strong></div>
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Diario:</span> <strong style="font-size: 1.2rem;">₡${Math.round(totalDiario).toLocaleString()}</strong></div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- HEADER DE LA TABLA -->
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px 24px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-building" style="font-size: 1.8rem;"></i>
+                        <h3 style="font-size: 1.4rem; font-weight: 600; margin: 0;">Costos Fijos - Oficinas</h3>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Mensual</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalMensual).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Diario</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalDiario).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="table">
+
+            <!-- TABLA -->
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Concepto</th>
-                            <th style="text-align: right;">Monto Mensual</th>
-                            <th style="text-align: right;">Monto Diario</th>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 16px; text-align: left; color: #4b5563; font-weight: 600;">Concepto</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Mensual</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Diario</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${costosOficinas.map(c => `
-                            <tr>
-                                <td><strong>${c.concepto}</strong></td>
-                                <td style="text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
-                                <td style="text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 16px;"><strong>${c.concepto}</strong></td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 600;">
-                        <tr>
-                            <td>TOTAL OFICINAS</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalMensual).toLocaleString()}</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalDiario).toLocaleString()}</td>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding: 16px;">TOTAL OFICINAS</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalMensual).toLocaleString()}</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalDiario).toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -350,40 +411,51 @@ function renderCategoriaPlanilla(local) {
     const totalDiario = totalMensual / 30;
     
     return `
-        <div class="card">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-users" style="color: #2563eb;"></i> Planilla - Bodega y Oficinas
-                </h3>
-                <div style="display: flex; gap: 30px;">
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Mensual:</span> <strong style="font-size: 1.2rem;">₡${totalMensual.toLocaleString()}</strong></div>
-                    <div><span style="color: #64748b; font-size: 0.9rem;">Total Diario:</span> <strong style="font-size: 1.2rem;">₡${Math.round(totalDiario).toLocaleString()}</strong></div>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- HEADER DE LA TABLA -->
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px 24px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-users" style="font-size: 1.8rem;"></i>
+                        <h3 style="font-size: 1.4rem; font-weight: 600; margin: 0;">Planilla - Bodega y Oficinas</h3>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Mensual</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalMensual).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Diario</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(totalDiario).toLocaleString()}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="table">
+
+            <!-- TABLA -->
+            <div style="padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Concepto</th>
-                            <th style="text-align: right;">Monto Mensual</th>
-                            <th style="text-align: right;">Monto Diario</th>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 16px; text-align: left; color: #4b5563; font-weight: 600;">Concepto</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Mensual</th>
+                            <th style="padding: 16px; text-align: right; color: #4b5563; font-weight: 600;">Monto Diario</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${costosPlanilla.map(c => `
-                            <tr>
-                                <td><strong>${c.concepto}</strong></td>
-                                <td style="text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
-                                <td style="text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 16px;"><strong>${c.concepto}</strong></td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto).toLocaleString()}</td>
+                                <td style="padding: 16px; text-align: right;">₡${Math.round(c.monto / 30).toLocaleString()}</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 600;">
-                        <tr>
-                            <td>TOTAL PLANILLA LOGÍSTICA</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalMensual).toLocaleString()}</td>
-                            <td style="text-align: right; color: #2563eb;">₡${Math.round(totalDiario).toLocaleString()}</td>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding: 16px;">TOTAL PLANILLA LOGÍSTICA</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalMensual).toLocaleString()}</td>
+                            <td style="padding: 16px; text-align: right; color: #2563eb; font-size: 1.1rem;">₡${Math.round(totalDiario).toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -432,6 +504,7 @@ function cambiarCategoriaCostos(categoria, event) {
 // FUNCIÓN: Cambiar filtro de local
 // ============================================
 function cambiarFiltroLocalCostos(local) {
+    if (!AppState.filtros) AppState.filtros = {};
     AppState.filtros.local = local;
     
     // Actualizar el tab activo
@@ -458,8 +531,8 @@ function cambiarFiltroLocalCostos(local) {
 // FUNCIÓN: Cambiar filtro de mes
 // ============================================
 function cambiarFiltroMesCostos(mes) {
+    if (!AppState.filtros) AppState.filtros = {};
     AppState.filtros.mes = mes;
-    // Aquí podrías recargar datos según el mes
 }
 
 // ============================================
