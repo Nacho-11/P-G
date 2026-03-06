@@ -1,0 +1,61 @@
+{
+  "usuarios": [
+    {
+      "id": "user1",
+      "nombre": "Gerente",
+      "rol": "gerencia",
+      "email": "gerente@parrillita.com"
+    },
+    {
+      "id": "user2",
+      "nombre": "Encargado Alajuela",
+      "rol": "encargado",
+      "local": "Parrillita Alajuela",
+      "email": "encargado@alajuela.com"
+    }
+  ],
+  "ventas": [
+    {
+      "id": "venta_1700000000000",
+      "fecha": "2026-02-25",
+      "local": "Parrillita Alajuela",
+      "efectivo": 0,
+      "bac": 0,
+      "personal": 0,
+      "pedidosYa": 0,
+      "didi": 0,
+      "uber": 0,
+      "comisiones": {
+        "pedidosYa": 0,
+        "didi": 0,
+        "uber": 0,
+        "total": 0
+      },
+      "gastos": 0,
+      "ventasBrutas": 0,
+      "total": 0,
+      "createdAt": "2026-02-25T10:30:00.000Z"
+    }
+  ],
+  "costosFijos": [
+    {
+      "id": "costo_1",
+      "categoria": "transporte",
+      "concepto": "Combustible Logística",
+      "monto": 0,
+      "local": "Parrillita Alajuela"
+    }
+  ],
+  "configuracion": {
+    "locales": [
+      "Parrillita Alajuela",
+      "Los Años Locos Heredia",
+      "Los Años Locos San Joaquin",
+      "Parrillita Empanadazo",
+      "Parrillita Garita",
+      "Parrillita Pirro",
+      "Parrillita Sabana",
+      "Parrillita San Joaquin"
+    ]
+  }
+}
