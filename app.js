@@ -32,6 +32,124 @@ const AppState = {
     }
 };
 
+// ===== VERIFICAR AUTENTICACIÓN =====
+function verificarAcceso() {
+    const usuarioGuardado = localStorage.getItem('parrillitaUser');
+    
+    if (usuarioGuardado) {
+        try {
+            AppState.usuario = JSON.parse(usuarioGuardado);
+            actualizarUIUsuario();
+            configurarPermisos();
+        } catch (e) {
+            console.error('Error parsing usuario:', e);
+            AppState.usuario = null;
+        }
+    }
+    
+    // Si no hay usuario, mostrar overlay de login
+    if (!AppState.usuario) {
+        mostrarPantallaLogin();
+    }
+}
+
+// ===== MOSTRAR PANTALLA DE LOGIN (NO MODAL) =====
+function mostrarPantallaLogin() {
+    // Ocultar todo el contenido principal
+    document.querySelector('.main-content').style.display = 'none';
+    document.querySelector('.sidebar').style.display = 'none';
+    
+    // Mostrar pantalla de login
+    let loginScreen = document.getElementById('loginScreen');
+    if (!loginScreen) {
+        loginScreen = document.createElement('div');
+        loginScreen.id = 'loginScreen';
+        loginScreen.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="background: white; padding: 40px; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <i class="fas fa-utensils" style="font-size: 3rem; color: #667eea;"></i>
+                        <h1 style="margin: 10px 0 5px; color: #333;">Parrillita de Pepe</h1>
+                        <p style="color: #666;">Sistema Administrativo</p>
+                    </div>
+                    
+                    <form onsubmit="event.preventDefault(); procesarLoginPantalla();">
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; color: #555;">Correo Electrónico</label>
+                            <input type="email" id="loginEmailScreen" class="form-control" placeholder="ej: gerencia@parrillita.com" required style="width: 100%; padding: 12px;">
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; color: #555;">Contraseña</label>
+                            <input type="password" id="loginPasswordScreen" class="form-control" placeholder="••••••••" required style="width: 100%; padding: 12px;">
+                        </div>
+                        
+                        <div id="loginErrorScreen" style="display: none; color: #dc2626; margin-bottom: 15px; padding: 10px; background: #fee2e2; border-radius: 8px;"></div>
+                        
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.1rem;">
+                            <i class="fas fa-sign-in-alt"></i> Ingresar
+                        </button>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 10px; font-size: 0.9rem;">
+                            <p style="margin: 0 0 10px; font-weight: 600;">Usuarios de prueba:</p>
+                            <p style="margin: 5px 0;">📧 sistemas@laparrillitadepepe.cr</p>
+                            <p style="margin: 5px 0;">🔑 Monitoreo3127</p>
+                            <p style="margin: 5px 0;">📧 administrador@laparrillitadepe.cr</p>
+                            <p style="margin: 5px 0;">🔑 Monitoreo3127</p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(loginScreen);
+    } else {
+        loginScreen.style.display = 'block';
+    }
+}
+
+// ===== PROCESAR LOGIN DESDE PANTALLA =====
+async function procesarLoginPantalla() {
+    const email = document.getElementById('loginEmailScreen').value;
+    const password = document.getElementById('loginPasswordScreen').value;
+    const errorDiv = document.getElementById('loginErrorScreen');
+    
+    try {
+        // Usar Firebase Auth
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        
+        // Cargar datos del usuario
+        const snapshot = await firebase.database().ref(`usuarios/${user.uid}`).once('value');
+        const userData = snapshot.val();
+        
+        if (userData) {
+            AppState.usuario = {
+                uid: user.uid,
+                email: userData.email,
+                rol: userData.rol,
+                nombre: userData.nombre,
+                local: userData.local
+            };
+            
+            localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
+            
+            // Ocultar pantalla de login y mostrar la app
+            document.getElementById('loginScreen').style.display = 'none';
+            document.querySelector('.main-content').style.display = 'block';
+            document.querySelector('.sidebar').style.display = 'flex';
+            
+            actualizarUIUsuario();
+            configurarPermisos();
+            cambiarModulo('dashboard');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        errorDiv.textContent = 'Credenciales incorrectas';
+        errorDiv.style.display = 'block';
+    }
+}
+
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {
     cargarDatosIniciales();
@@ -172,7 +290,7 @@ function procesarLogin() {
     const local = document.getElementById('loginLocal').value;
     
     AppState.usuario = {
-        rol,
+        rol,  // <-- ESTO ES IMPORTANTE
         local: rol === 'encargado' ? local : null,
         nombre: rol === 'gerencia' ? 'Gerente General' : `Encargado - ${local}`,
         loginTime: new Date().toISOString()
@@ -736,12 +854,65 @@ function eliminarVenta(id) {
 
 // ===== COSTOS =====
 function renderCostos() {
-    // Implementar similar a ventas
-    document.getElementById('costosContent').innerHTML = `
-        <div class="card">
-            <p>Módulo de costos en desarrollo...</p>
-        </div>
-    `;
+    console.log('Intentando cargar módulo de costos...');
+    const costosContent = document.getElementById('costosContent');
+    
+    if (!costosContent) {
+        console.error('Elemento costosContent no encontrado');
+        return;
+    }
+    
+    if (typeof window.renderCostosModule === 'function') {
+        console.log('Ejecutando renderCostosModule');
+        window.renderCostosModule();
+    } else {
+        console.warn('window.renderCostosModule no está definido');
+        costosContent.innerHTML = `
+            <div class="card" style="padding: 40px; text-align: center;">
+                <i class="fas fa-coins" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+                <h3 style="color: #4b5563; margin-bottom: 15px;">Cargando módulo de costos...</h3>
+                <p style="color: #6b7280; margin-bottom: 20px;">Espere un momento</p>
+            </div>
+        `;
+        
+        // Intentar cargar el script nuevamente
+        setTimeout(() => {
+            if (typeof window.renderCostosModule !== 'function') {
+                console.log('Reintentando carga de costos.js');
+                const script = document.createElement('script');
+                script.src = 'modules/costos.js?v=' + Date.now();
+                document.body.appendChild(script);
+                
+                script.onload = function() {
+                    console.log('Script cargado, esperando 500ms...');
+                    setTimeout(() => {
+                        if (typeof window.renderCostosModule === 'function') {
+                            window.renderCostosModule();
+                        }
+                    }, 500);
+                };
+            }
+        }, 1000);
+    }
+}
+
+// Función auxiliar para recargar
+function recargarModuloCostos() {
+    // Forzar recarga del script
+    const script = document.createElement('script');
+    script.src = 'modules/costos.js?v=' + Date.now();
+    document.body.appendChild(script);
+    
+    script.onload = function() {
+        console.log('Script recargado, intentando de nuevo...');
+        setTimeout(() => {
+            if (typeof window.renderCostosModule === 'function') {
+                window.renderCostosModule();
+            } else {
+                alert('Error: No se pudo cargar el módulo');
+            }
+        }, 500);
+    };
 }
 
 // ===== PLANILLA =====

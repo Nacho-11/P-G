@@ -279,48 +279,60 @@
         </main>
     </div>
 
-    <!-- Modal de Login -->
-    <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()" aria-hidden="true"></div>
-    
-    <div class="modal" id="loginModal" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
-        <div class="modal-header">
-            <h2 id="loginModalTitle"><i class="fas fa-lock" aria-hidden="true"></i> Iniciar Sesión</h2>
-            <button class="modal-close" onclick="cerrarModal()" aria-label="Cerrar">
-                <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
-                <div class="form-group">
-                    <label for="loginRol">
-                        <i class="fas fa-user-tag" aria-hidden="true"></i> Rol
-                    </label>
-                    <select id="loginRol" class="form-control" required aria-required="true">
-                        <option value="gerencia">Gerencia</option>
-                        <option value="encargado" selected>Encargado</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="loginLocalGroup">
-                    <label for="loginLocal">
-                        <i class="fas fa-store" aria-hidden="true"></i> Local
-                    </label>
-                    <select id="loginLocal" class="form-control">
-                        <option value="">Seleccionar local...</option>
-                    </select>
-                </div>
-
-                <div class="form-info" role="status" aria-live="polite">
-                    <i class="fas fa-info-circle" aria-hidden="true"></i>
-                    <span>Demo: cualquier combinación funciona</span>
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-block">
-                    <i class="fas fa-sign-in-alt" aria-hidden="true"></i> Ingresar
-                </button>
-            </form>
-        </div>
+    <!-- Modal de Login Mejorado -->
+<div class="modal" id="loginModal" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
+    <div class="modal-header">
+        <h2 id="loginModalTitle"><i class="fas fa-lock"></i> Iniciar Sesión</h2>
+        <button class="modal-close" onclick="cerrarModal('loginModal')" aria-label="Cerrar">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
+    <div class="modal-body">
+        <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
+            
+            <div class="form-group">
+                <label for="loginEmail">
+                    <i class="fas fa-envelope"></i> Correo Electrónico
+                </label>
+                <input type="email" 
+                       id="loginEmail" 
+                       class="form-control" 
+                       placeholder="ej: gerencia@parrillita.com"
+                       required
+                       autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="loginPassword">
+                    <i class="fas fa-lock"></i> Contraseña
+                </label>
+                <input type="password" 
+                       id="loginPassword" 
+                       class="form-control" 
+                       placeholder="••••••••"
+                       required
+                       autocomplete="current-password">
+            </div>
+            
+            <div id="loginError" class="form-error" style="display: none; color: #dc2626; margin-bottom: 15px; padding: 10px; background: #fee2e2; border-radius: 8px;">
+                <i class="fas fa-exclamation-circle"></i> <span></span>
+            </div>
+            
+            <div class="form-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Usuarios de prueba:</span>
+                <ul style="margin-top: 10px; font-size: 0.9rem;">
+                    <li>sistemas@laparrillitadepepe.cr / Monitoreo3127</li>
+                    <li>administrador@laparrillitadepepe.cr / Monitoreo3127</li>
+                </ul>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-sign-in-alt"></i> Ingresar
+            </button>
+        </form>
+    </div>
+</div>
 
     <!-- Modal para agregar venta (UNO SOLO, bien definido) -->
     <!-- Modal para agregar venta - VERSIÓN CORREGIDA -->
@@ -467,9 +479,18 @@
     </div>
 </div>
 
-    <!-- Scripts - ORDEN CORRECTO: app.js primero, luego ventas.js -->
-    <script src="app.js"></script>
-    <script src="modules/ventas.js"></script>
-    <script src="modules/costos.js"></script>
+<!-- Firebase SDKs PRIMERO -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+
+<!-- Tu configuración de Firebase SEGUNDO -->
+<script src="firebase-config.js"></script>
+
+<!-- Tus scripts DESPUÉS -->
+<script src="app.js"></script>
+<script src="login.js"></script>
+<script src="modules/ventas.js"></script>
+<script src="modules/costos.js"></script>
 </body>
 </html>

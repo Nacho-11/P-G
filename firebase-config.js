@@ -1,24 +1,6 @@
-// firebase-config.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { 
-    getDatabase, 
-    ref, 
-    set, 
-    push, 
-    onValue, 
-    remove, 
-    update,
-    get,
-    child
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
-import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+// firebase-config.js - Versión sin imports
 
-// ✅ TU CONFIGURACIÓN ESTÁ BIEN
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyByocOj5lgFkECZu7B4hdzqCzczqmtisRQ",
   authDomain: "perdidas-y-ganancias.firebaseapp.com",
@@ -29,22 +11,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-const auth = getAuth(app);
+firebase.initializeApp(firebaseConfig);
 
-export { 
-    database, 
-    ref, 
-    set, 
-    push, 
-    onValue, 
-    remove, 
-    update,
-    get,
-    child,
-    auth, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-};
+// Hacer disponibles las referencias globalmente
+window.database = firebase.database();
+window.auth = firebase.auth();
+
+console.log('✅ Firebase inicializado correctamente');
