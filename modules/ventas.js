@@ -1,46 +1,79 @@
-// modules/ventas.js - VERSIÓN FINAL (1 SOLO BOTÓN)
+// modules/ventas.js
 
 const COMISIONES = {
     PEDIDOS_YA: 0.18,
     DIDI: 0.18,
-    UBER: 0.10
+    UBER: 0.44,
 };
 
+// ============================================
+// CARGAR VENTAS DESDE FIREBASE
+// ============================================
+function cargarVentasDesdeFirebase() {
+    const ventasRef = firebase.database().ref('ventas');
+    
+    ventasRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        const ventasData = [];
+        
+        if (data) {
+            for (const id in data) {
+                ventasData.push({
+                    id: id,
+                    ...data[id]
+                });
+            }
+        }
+        
+        // Guardar en variable global
+        window.ventasData = ventasData;
+        
+        // Si estamos en la vista de ventas, recargar
+        if (document.getElementById('ventas').classList.contains('active')) {
+            renderVentas();
+        }
+        
+        // Si el dashboard está activo, actualizarlo
+        if (document.getElementById('dashboard').classList.contains('active') && typeof window.renderDashboard === 'function') {
+            window.renderDashboard();
+        }
+    });
+}
+
+// ============================================
+// RENDERIZAR VISTA DE VENTAS
+// ============================================
 function renderVentas() {
+    console.log('Renderizando ventas...');
+    const ventasContent = document.getElementById('ventasContent');
+    
+    if (!ventasContent) return;
+    
     const filtroLocal = AppState.filtros?.local || 'Todos';
+    const ventasData = window.ventasData || [];
     
-    if (!AppState.data.ventas) {
-        AppState.data.ventas = [];
-    }
-    
-    const ventasFiltradas = AppState.data.ventas
+    // Filtrar ventas por local
+    const ventasFiltradas = ventasData
         .filter(v => filtroLocal === 'Todos' || v.local === filtroLocal)
         .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-        .slice(0, 10);
-    
-    // Si no hay ventas, mostrar datos de ejemplo (como en tu imagen)
-    const ventasEjemplo = ventasFiltradas.length > 0 ? ventasFiltradas : [
-        { fecha: '2026-02-25', local: 'Parrillita Alajuela', total: 602881 },
-        { fecha: '2026-02-25', local: 'Los Años Locos Heredia', total: 686311 },
-        { fecha: '2026-02-25', local: 'Los Años Locos San Joaquin', total: 819888 },
-        { fecha: '2026-02-25', local: 'Parrillita Empanadazo', total: 677619 },
-        { fecha: '2026-02-25', local: 'Parrillita Garita', total: 668629 },
-        { fecha: '2026-02-25', local: 'Parrillita Pirro', total: 377740 },
-        { fecha: '2026-02-25', local: 'Parrillita Sabana', total: 854814 },
-        { fecha: '2026-02-25', local: 'Parrillita San Joaquin', total: 684353 }
-    ];
+        .slice(0, 50);
     
     // Calcular totales
-    const totales = {
-        brutas: 6779387,
-        comisiones: 0,
-        netas: 6779387
-    };
+    const totales = ventasFiltradas.reduce((acc, v) => {
+        const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
+        const comisiones = (v.pedidosYa || 0) * 0.18 + (v.didi || 0) * 0.18 + (v.uber || 0) * 0.44;
+        
+        return {
+            brutas: acc.brutas + (v.total || 0),
+            comisiones: acc.comisiones + comisiones,
+            netas: acc.netas + ((v.total || 0) - comisiones - (v.gastos || 0))
+        };
+    }, { brutas: 0, comisiones: 0, netas: 0 });
     
     const ventasHTML = `
-        <!-- BARRA SUPERIOR: ÚNICO BOTÓN -->
+        <!-- BARRA SUPERIOR -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="display: flex; gap: 40px;">
+            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
                 <div>
                     <div style="font-size: 0.8rem; color: #64748b;">Ventas Brutas</div>
                     <div style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">₡${Math.round(totales.brutas).toLocaleString()}</div>
@@ -54,7 +87,6 @@ function renderVentas() {
                     <div style="font-size: 1.8rem; font-weight: 700; color: #10b981;">₡${Math.round(totales.netas).toLocaleString()}</div>
                 </div>
             </div>
-            <!-- SOLO UN BOTÓN AQUÍ -->
             <button class="btn btn-primary" onclick="mostrarModalVenta()" style="padding: 12px 32px;">
                 <i class="fas fa-plus"></i> Nueva Venta
             </button>
@@ -71,35 +103,53 @@ function renderVentas() {
                         <tr>
                             <th>Fecha</th>
                             <th>Local</th>
-                            <th>Monto</th>
+                            <th>Efectivo</th>
+                            <th>Tarjeta</th>
+                            <th>Delivery</th>
+                            <th>Total</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${ventasEjemplo.map(v => `
+                        ${ventasFiltradas.length > 0 ? ventasFiltradas.map(v => {
+                            const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
+                            return `
                             <tr>
                                 <td>${new Date(v.fecha).toLocaleDateString('es-CR')}</td>
                                 <td><strong>${v.local}</strong></td>
-                                <td>₡${(v.total || 0).toLocaleString()}</td>
+                                <td>₡${(v.efectivo || 0).toLocaleString()}</td>
+                                <td>₡${(v.bac || 0).toLocaleString()}</td>
+                                <td>₡${delivery.toLocaleString()}</td>
+                                <td><strong>₡${(v.total || 0).toLocaleString()}</strong></td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id || 'temp'}')" title="Ver detalle">
+                                    <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id || 'temp'}')" title="Eliminar venta">
+                                    <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')" title="Eliminar venta">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `}).join('') : `
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px;">
+                                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
+                                    No hay ventas registradas
+                                </td>
+                            </tr>
+                        `}
                     </tbody>
                 </table>
             </div>
         </div>
     `;
     
-    document.getElementById('ventasContent').innerHTML = ventasHTML;
+    ventasContent.innerHTML = ventasHTML;
 }
 
+// ============================================
+// MOSTRAR MODAL DE VENTA
+// ============================================
 function mostrarModalVenta() {
     const modal = document.getElementById('ventaModal');
     const overlay = document.getElementById('modalOverlay');
@@ -119,13 +169,8 @@ function mostrarModalVenta() {
     const selectLocal = document.getElementById('ventaLocal');
     if (selectLocal) {
         selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
-        const locales = [
-            'Parrillita Alajuela', 'Los Años Locos Heredia', 'Los Años Locos San Joaquin',
-            'Parrillita Empanadazo', 'Parrillita Garita', 'Parrillita Pirro',
-            'Parrillita Sabana', 'Parrillita San Joaquin'
-        ];
-        locales.forEach(local => {
-            selectLocal.innerHTML += `<option value="${local}">${local}</option>`;
+        AppState.locales.forEach(local => {
+            selectLocal.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
         });
     }
     
@@ -134,6 +179,9 @@ function mostrarModalVenta() {
     overlay.classList.add('active');
 }
 
+// ============================================
+// CALCULAR TOTALES DE VENTA
+// ============================================
 function calcularTotalesVenta() {
     const efectivo = parseFloat(document.getElementById('ventaEfectivo')?.value) || 0;
     const bac = parseFloat(document.getElementById('ventaBAC')?.value) || 0;
@@ -166,7 +214,10 @@ function calcularTotalesVenta() {
     }
 }
 
-function guardarVenta() {
+// ============================================
+// GUARDAR VENTA EN FIREBASE
+// ============================================
+async function guardarVenta() {
     const fecha = document.getElementById('ventaFecha')?.value;
     const local = document.getElementById('ventaLocal')?.value;
     
@@ -175,21 +226,122 @@ function guardarVenta() {
         return;
     }
     
-    cerrarModal('ventaModal');
-    alert('✅ Venta registrada con éxito');
-}
-
-function eliminarVenta(id) {
-    if (confirm('¿Está seguro de eliminar esta venta?')) {
-        alert('Venta eliminada');
+    // Obtener valores
+    const efectivo = parseFloat(document.getElementById('ventaEfectivo')?.value) || 0;
+    const bac = parseFloat(document.getElementById('ventaBAC')?.value) || 0;
+    const personal = parseFloat(document.getElementById('ventaPersonal')?.value) || 0;
+    const gastos = parseFloat(document.getElementById('ventaGastos')?.value) || 0;
+    const pedidosYa = parseFloat(document.getElementById('ventaPedidosYa')?.value) || 0;
+    const didi = parseFloat(document.getElementById('ventaDidi')?.value) || 0;
+    const uber = parseFloat(document.getElementById('ventaUber')?.value) || 0;
+    
+    // Calcular total
+    const total = efectivo + bac + personal + pedidosYa + didi + uber;
+    
+    const ventaData = {
+        fecha,
+        local,
+        efectivo,
+        bac,
+        personal,
+        gastos,
+        pedidosYa,
+        didi,
+        uber,
+        total,
+        comisiones: {
+            pedidosYa: pedidosYa * COMISIONES.PEDIDOS_YA,
+            didi: didi * COMISIONES.DIDI,
+            uber: uber * COMISIONES.UBER,
+            total: (pedidosYa * COMISIONES.PEDIDOS_YA) + (didi * COMISIONES.DIDI) + (uber * COMISIONES.UBER)
+        },
+        creadoPor: AppState.usuario?.email || 'sistema',
+        creadorUid: AppState.usuario?.uid || null,
+        fechaCreacion: new Date().toISOString()
+    };
+    
+    try {
+        // Guardar en Firebase
+        const ventasRef = firebase.database().ref('ventas');
+        await ventasRef.push(ventaData);
+        
+        alert('✅ Venta registrada con éxito');
+        cerrarModal('ventaModal');
+        
+    } catch (error) {
+        console.error('Error guardando venta:', error);
+        alert('Error al guardar la venta: ' + error.message);
     }
 }
 
-function verDetalleVenta(id) {
-    alert('Ver detalle de venta');
+// ============================================
+// ELIMINAR VENTA
+// ============================================
+async function eliminarVenta(id) {
+    if (!confirm('¿Está seguro de eliminar esta venta?')) return;
+    
+    try {
+        await firebase.database().ref(`ventas/${id}`).remove();
+        alert('✅ Venta eliminada');
+        
+    } catch (error) {
+        console.error('Error eliminando venta:', error);
+        alert('Error al eliminar la venta');
+    }
 }
 
-function cerrarModal(modalId) {
-    document.getElementById(modalId)?.classList.remove('active');
-    document.getElementById('modalOverlay')?.classList.remove('active');
+// ============================================
+// VER DETALLE DE VENTA
+// ============================================
+async function verDetalleVenta(id) {
+    try {
+        const snapshot = await firebase.database().ref(`ventas/${id}`).once('value');
+        const venta = snapshot.val();
+        
+        if (!venta) {
+            alert('Venta no encontrada');
+            return;
+        }
+        
+        const mensaje = `
+            Fecha: ${new Date(venta.fecha).toLocaleDateString('es-CR')}
+            Local: ${venta.local}
+            
+            Efectivo: ₡${(venta.efectivo || 0).toLocaleString()}
+            Tarjeta: ₡${(venta.bac || 0).toLocaleString()}
+            Delivery: ₡${((venta.pedidosYa || 0) + (venta.didi || 0) + (venta.uber || 0)).toLocaleString()}
+            Personal: ₡${(venta.personal || 0).toLocaleString()}
+            
+            Total: ₡${(venta.total || 0).toLocaleString()}
+            
+            Comisiones: ₡${(venta.comisiones?.total || 0).toLocaleString()}
+            Gastos: ₡${(venta.gastos || 0).toLocaleString()}
+        `;
+        
+        alert(mensaje);
+        
+    } catch (error) {
+        console.error('Error cargando venta:', error);
+        alert('Error al cargar el detalle');
+    }
 }
+
+// ============================================
+// INICIALIZAR
+// ============================================
+function initVentas() {
+    console.log('Inicializando ventas...');
+    cargarVentasDesdeFirebase();
+}
+
+// ============================================
+// HACER FUNCIONES GLOBALES
+// ============================================
+window.renderVentas = renderVentas;
+window.mostrarModalVenta = mostrarModalVenta;
+window.calcularTotalesVenta = calcularTotalesVenta;
+window.guardarVenta = guardarVenta;
+window.eliminarVenta = eliminarVenta;
+window.verDetalleVenta = verDetalleVenta;
+window.initVentas = initVentas;
+window.cargarVentasDesdeFirebase = cargarVentasDesdeFirebase;
