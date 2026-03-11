@@ -1,4 +1,13 @@
-// login.js - VERSIÓN CORREGIDA
+// login.js - VERSIÓN CORREGIDA Y OPTIMIZADA
+
+// ============================================
+// VERIFICAR FIREBASE
+// ============================================
+if (!firebase.apps.length) {
+    console.error('❌ Firebase no está inicializado');
+} else {
+    console.log('✅ Firebase inicializado correctamente');
+}
 
 // ============================================
 // INICIALIZAR AUTH
@@ -18,128 +27,141 @@ function initAuth() {
 }
 
 // ============================================
-// CARGAR DATOS DEL USUARIO (MEJORADO)
+// CARGAR DATOS DEL USUARIO
 // ============================================
 async function cargarDatosUsuario(uid) {
     try {
         console.log('🔍 Buscando usuario con UID:', uid);
+        
+        if (typeof inicializarFiltros === 'function') {
+            inicializarFiltros();
+        }
+
+        // VERIFICAR FIREBASE DATABASE
+        if (!firebase.database) {
+            throw new Error('Firebase Database no está disponible');
+        }
+        
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
-        const userData = snapshot.val();
+        let userData = snapshot.val();
         
         console.log('📁 Datos encontrados:', userData);
         
-        if (userData) {
-            AppState.usuario = {
-                uid: uid,
-                email: userData.email,
-                rol: userData.rol,
-                nombre: userData.nombre,
-                local: userData.local
+        // SI NO HAY DATOS, CREAR PERFIL
+        if (!userData) {
+            console.log('⚠️ Usuario sin perfil. Creando...');
+            const user = firebase.auth().currentUser;
+            
+            if (!user) {
+                throw new Error('No hay usuario autenticado');
+            }
+            
+            const email = user.email || '';
+            userData = {
+                email: email,
+                nombre: email.split('@')[0] || 'Usuario',
+                rol: "gerencia",
+                local: null,
+                activo: true,
+                fechaCreacion: new Date().toISOString()
             };
             
-            localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
-            
-            // Actualizar UI
-            actualizarUIUsuario();
-            configurarPermisos();
-            
-            // Inicializar módulos
-            if (typeof initDashboardListeners === 'function') initDashboardListeners();
-            if (typeof initVentas === 'function') initVentas();
-            if (typeof initCostos === 'function') initCostos();
-            if (typeof initUsuarios === 'function') initUsuarios();
-            
-           // MOSTRAR LA APP
-            document.querySelector('.main-content').style.display = 'block';
-            document.querySelector('.sidebar').style.display = 'flex';
-            initSidebar();
-
-            // FORZAR VISIBILIDAD DEL BOTÓN
-            const menuToggle = document.getElementById('menuToggle');
-            if (menuToggle) {
-                menuToggle.style.display = 'flex';
-                menuToggle.style.visibility = 'visible';
-                menuToggle.style.opacity = '1';
-            }
-
-            // Inicializar sidebar
-            if (typeof initSidebar === 'function') {
-                setTimeout(initSidebar, 100);
-            }
-
-            // Restaurar estado del sidebar
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.querySelector('.main-content');
-            const sidebarState = localStorage.getItem('sidebarCollapsed');
-
-            if (sidebarState === 'true') {
-                sidebar.classList.add('collapsed');
-                mainContent.style.marginLeft = '70px';
-            } else {
-                sidebar.classList.remove('collapsed');
-                mainContent.style.marginLeft = 'var(--sidebar-width)';
-            }
-            
-            // OCULTAR MODAL
-            const modal = document.getElementById('loginModal');
-            const overlay = document.getElementById('modalOverlay');
-            
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-            }
-            if (overlay) {
-                overlay.style.display = 'none';
-                overlay.classList.remove('active');
-            }
-            
-            // Cargar dashboard
-            if (typeof cambiarModulo === 'function') {
-                cambiarModulo('dashboard');
-            }
-            
-            console.log('🎉 Bienvenido', AppState.usuario.nombre);
-            return true; // Éxito
-        } else {
-            console.error('❌ No se encontraron datos para el UID:', uid);
-            
-            // Intentar crear perfil automático
-            const user = firebase.auth().currentUser;
-            if (user) {
-                console.log('🆕 Creando perfil automático...');
-                const nuevoPerfil = {
-                    email: user.email,
-                    nombre: user.email.split('@')[0],
-                    rol: "gerencia",
-                    local: null,
-                    activo: true,
-                    fechaCreacion: new Date().toISOString()
-                };
-                
-                await firebase.database().ref(`usuarios/${user.uid}`).set(nuevoPerfil);
-                console.log('✅ Perfil creado automáticamente');
-                
-                // Reintentar cargar datos
-                return cargarDatosUsuario(user.uid);
-            }
-            
-            alert('Error: Usuario no configurado. Por favor contacte al administrador.');
-            logout();
-            return false;
+            await firebase.database().ref(`usuarios/${uid}`).set(userData);
+            console.log('✅ Perfil creado');
         }
+        
+        // CONFIGURAR AppState
+        AppState.usuario = {
+            uid: uid,
+            email: userData.email || firebase.auth().currentUser?.email || '',
+            rol: userData.rol || 'gerencia',
+            nombre: userData.nombre || userData.email?.split('@')[0] || 'Usuario',
+            local: userData.local || null
+        };
+
+        localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
+        if (typeof window.inicializarFiltros === 'function') {
+            window.inicializarFiltros();
+        }
+
+        // Cargar locales en los filtros y selects
+        if (typeof cargarLocalesEnFiltro === 'function') {
+            cargarLocalesEnFiltro();
+        }
+        if (typeof cargarLocalesEnUsuarios === 'function') {
+            cargarLocalesEnUsuarios();
+        }
+
+        // ACTUALIZAR UI
+        actualizarUIUsuario();
+        configurarPermisos();
+        
+        // MOSTRAR APP
+        const mainContent = document.querySelector('.main-content');
+        const sidebar = document.querySelector('.sidebar');
+        const menuToggle = document.getElementById('menuToggle');
+        
+        if (mainContent) {
+            mainContent.style.display = 'block';
+            mainContent.style.visibility = 'visible';
+            mainContent.style.opacity = '1';
+        }
+        
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+            sidebar.style.visibility = 'visible';
+            sidebar.style.opacity = '1';
+        }
+        
+        if (menuToggle) {
+            menuToggle.style.display = 'flex';
+            menuToggle.style.visibility = 'visible';
+            menuToggle.style.opacity = '1';
+        }
+        
+        // INICIALIZAR SIDEBAR
+        if (typeof initSidebar === 'function') {
+            setTimeout(initSidebar, 200);
+        }
+        
+        // OCULTAR MODAL
+        const modal = document.getElementById('loginModal');
+        const overlay = document.getElementById('modalOverlay');
+        
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.classList.remove('active');
+        }
+        
+        // CARGAR DASHBOARD
+        if (typeof cambiarModulo === 'function') {
+            setTimeout(() => cambiarModulo('dashboard'), 300);
+        }
+        
+        console.log('🎉 Bienvenido', AppState.usuario.nombre);
+        return true;
+        
     } catch (error) {
-        console.error('Error cargando usuario:', error);
-        alert('Error al cargar datos del usuario');
+        console.error('❌ Error:', error);
+        
+        const errorDiv = document.getElementById('loginError');
+        if (errorDiv) {
+            errorDiv.innerHTML = 'Error: ' + error.message;
+            errorDiv.style.display = 'block';
+        }
+        
+        const btn = document.getElementById('loginButton');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Ingresar';
+        }
+        
         return false;
     }
-
-                // Forzar visibilidad del botón de menú
-                const menuToggle = document.getElementById('menuToggle');
-                if (menuToggle) {
-                    menuToggle.style.display = 'flex';
-                    menuToggle.style.visibility = 'visible';
-                    menuToggle.style.opacity = '1';
-                }
 }
 
 // ============================================
@@ -148,11 +170,12 @@ async function cargarDatosUsuario(uid) {
 function mostrarLogin() {
     console.log('Mostrando login modal');
     
-    // Ocultar app
-    document.querySelector('.main-content').style.display = 'none';
-    document.querySelector('.sidebar').style.display = 'none';
+    const mainContent = document.querySelector('.main-content');
+    const sidebar = document.querySelector('.sidebar');
     
-    // Mostrar modal
+    if (mainContent) mainContent.style.display = 'none';
+    if (sidebar) sidebar.style.display = 'none';
+    
     const modal = document.getElementById('loginModal');
     const overlay = document.getElementById('modalOverlay');
     
@@ -162,10 +185,13 @@ function mostrarLogin() {
         modal.classList.add('active');
         overlay.classList.add('active');
         
-        // Limpiar campos
-        document.getElementById('loginEmail').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('loginError').style.display = 'none';
+        const emailInput = document.getElementById('loginEmail');
+        const passInput = document.getElementById('loginPassword');
+        const errorDiv = document.getElementById('loginError');
+        
+        if (emailInput) emailInput.value = '';
+        if (passInput) passInput.value = '';
+        if (errorDiv) errorDiv.style.display = 'none';
     }
 }
 
@@ -178,13 +204,15 @@ async function procesarLogin() {
     const errorDiv = document.getElementById('loginError');
     
     if (!email || !password) {
-        errorDiv.innerHTML = 'Por favor complete todos los campos';
-        errorDiv.style.display = 'block';
+        if (errorDiv) {
+            errorDiv.innerHTML = 'Complete todos los campos';
+            errorDiv.style.display = 'block';
+        }
         return;
     }
 
     try {
-        console.log('🔑 Intentando login con:', email);
+        console.log('🔑 Login:', email);
         
         const btn = document.querySelector('#loginForm button');
         if (btn) {
@@ -192,26 +220,33 @@ async function procesarLogin() {
             btn.innerHTML = 'Ingresando...';
         }
         
-        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-        console.log('✅ Login exitoso en Firebase');
-        console.log('📧 Email:', user.email);
-        console.log('🆔 UID:', user.uid);
+        if (errorDiv) {
+            errorDiv.innerHTML = 'Iniciando sesión...';
+            errorDiv.style.color = '#2563eb';
+            errorDiv.style.display = 'block';
+        }
         
-        await cargarDatosUsuario(user.uid);
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        console.log('✅ Login exitoso');
+        
+        await cargarDatosUsuario(userCredential.user.uid);
         
     } catch (error) {
-        console.error('❌ Error en login:', error);
+        console.error('❌ Error:', error.code);
         
         let mensaje = 'Error al iniciar sesión';
         if (error.code === 'auth/user-not-found') mensaje = 'Usuario no encontrado';
         if (error.code === 'auth/wrong-password') mensaje = 'Contraseña incorrecta';
         if (error.code === 'auth/invalid-email') mensaje = 'Correo inválido';
+        if (error.code === 'auth/too-many-requests') mensaje = 'Demasiados intentos';
         
-        errorDiv.innerHTML = mensaje;
-        errorDiv.style.display = 'block';
+        if (errorDiv) {
+            errorDiv.innerHTML = mensaje;
+            errorDiv.style.color = '#ef4444';
+            errorDiv.style.display = 'block';
+        }
         
-        const btn = document.querySelector('#loginForm button');
+        const btn = document.getElementById('loginButton');
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = 'Ingresar';
@@ -220,49 +255,29 @@ async function procesarLogin() {
 }
 
 // ============================================
-// LOGOUT MEJORADO
+// LOGOUT
 // ============================================
 async function logout() {
     try {
-        console.log('🚪 Cerrando sesión...');
+        console.log('Cerrando sesión...');
         
-        // Limpiar localStorage
         localStorage.removeItem('parrillitaUser');
-        
-        // Limpiar estado global
         AppState.usuario = null;
-        AppState.data = {
-            ventas: [],
-            costos: [],
-            planillas: [],
-            servicios: { agua: [], luz: [], gas: [] },
-            mermas: [],
-            logistica: []
-        };
         
-        // Limpiar variables globales
-        window.ventasData = [];
-        window.costosData = {};
-        
-        // Actualizar UI
         actualizarUIUsuario();
         configurarPermisos();
         
-        // Ocultar app
-        document.querySelector('.main-content').style.display = 'none';
-        document.querySelector('.sidebar').style.display = 'none';
+        const mainContent = document.querySelector('.main-content');
+        const sidebar = document.querySelector('.sidebar');
         
-        // Cerrar sesión en Firebase
+        if (mainContent) mainContent.style.display = 'none';
+        if (sidebar) sidebar.style.display = 'none';
+        
         await firebase.auth().signOut();
-        
-        // Mostrar login
         mostrarLogin();
         
-        console.log('👋 Sesión cerrada correctamente');
-        
     } catch (error) {
-        console.error('Error al cerrar sesión:', error);
-        // Forzar mostrar login aunque haya error
+        console.error('Error logout:', error);
         mostrarLogin();
     }
 }
@@ -305,8 +320,7 @@ function configurarPermisos() {
         filtroLocal.value = 'Todos';
         adminItems.forEach(el => el.style.display = 'block');
     } else if (AppState.usuario?.rol === 'encargado' && AppState.usuario.local) {
-        const optionExists = Array.from(filtroLocal.options).some(opt => opt.value === AppState.usuario.local);
-        if (optionExists) filtroLocal.value = AppState.usuario.local;
+        filtroLocal.value = AppState.usuario.local;
         filtroLocal.disabled = true;
         adminItems.forEach(el => el.style.display = 'none');
     } else {
@@ -316,11 +330,208 @@ function configurarPermisos() {
 }
 
 // ============================================
+// FUNCIÓN PARA SINCRONIZAR USUARIO
+// ============================================
+async function sincronizarUsuario() {
+    try {
+        const email = 'ig_cal94@hotmail.com';
+        const password = 'iGNACIO1234'; // Puedes cambiarla
+        
+        console.log('🔄 Iniciando sincronización...');
+        
+        // PASO 1: Buscar el usuario en la base de datos
+        console.log('🔍 Buscando usuario en la base de datos...');
+        const usuariosRef = firebase.database().ref('usuarios');
+        const snapshot = await usuariosRef.orderByChild('email').equalTo(email).once('value');
+        
+        let userData = null;
+        let uid = null;
+        
+        snapshot.forEach(childSnapshot => {
+            userData = childSnapshot.val();
+            uid = childSnapshot.key;
+        });
+        
+        if (!userData || !uid) {
+            console.error('❌ Usuario no encontrado en la base de datos');
+            alert('Usuario no encontrado en la base de datos');
+            return;
+        }
+        
+        console.log('✅ Usuario encontrado en DB:', { uid, userData });
+        
+        // PASO 2: Intentar crear en Authentication
+        try {
+            console.log('🔐 Creando usuario en Authentication...');
+            const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            const authUid = userCredential.user.uid;
+            console.log('✅ Usuario creado en Authentication con UID:', authUid);
+            
+            // PASO 3: Si el UID es diferente, actualizar la base de datos
+            if (authUid !== uid) {
+                console.log('📝 Actualizando UID en la base de datos...');
+                
+                // Guardar el usuario con el nuevo UID
+                await firebase.database().ref(`usuarios/${authUid}`).set({
+                    ...userData,
+                    authUid: authUid,
+                    fechaSincronizacion: new Date().toISOString()
+                });
+                
+                // Eliminar el registro antiguo si existe
+                await firebase.database().ref(`usuarios/${uid}`).remove();
+                
+                console.log('✅ Base de datos actualizada con nuevo UID:', authUid);
+                uid = authUid;
+            }
+            
+            alert(`✅ Usuario sincronizado exitosamente!\nEmail: ${email}\nContraseña: ${password}\nUID: ${uid}`);
+            
+        } catch (authError) {
+            if (authError.code === 'auth/email-already-in-use') {
+                console.log('⚠️ El email ya existe en Authentication');
+                
+                // Intentar obtener el UID de Authentication
+                try {
+                    const methods = await firebase.auth().fetchSignInMethodsForEmail(email);
+                    console.log('Métodos disponibles:', methods);
+                    
+                    alert('El email ya existe en Authentication. Por favor inicia sesión con tu contraseña existente.');
+                    
+                } catch (e) {
+                    console.error('Error al verificar métodos:', e);
+                }
+            } else {
+                throw authError;
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// ============================================
+// FUNCIÓN DE DIAGNÓSTICO COMPLETO
+// ============================================
+async function diagnosticarLogin() {
+    console.log('🔍 INICIANDO DIAGNÓSTICO COMPLETO');
+    
+    // 1. Verificar Firebase
+    console.log('1️⃣ Verificando Firebase:');
+    console.log('- Firebase apps:', firebase.apps.length);
+    console.log('- Auth disponible:', !!firebase.auth);
+    console.log('- Database disponible:', !!firebase.database);
+    
+    // 2. Verificar configuración
+    try {
+        const config = firebase.app().options;
+        console.log('- Project ID:', config.projectId);
+        console.log('- Auth Domain:', config.authDomain);
+        console.log('- Database URL:', config.databaseURL);
+    } catch (e) {
+        console.error('- Error obteniendo config:', e);
+    }
+    
+    // 3. Probar conexión a Database
+    try {
+        console.log('2️⃣ Probando conexión a Database...');
+        const testRef = firebase.database().ref('.info/connected');
+        testRef.once('value').then(snap => {
+            console.log('- Conexión Database:', snap.val());
+        });
+    } catch (e) {
+        console.error('- Error Database:', e);
+    }
+    
+    // 4. Buscar usuario en Database
+    try {
+        console.log('3️⃣ Buscando usuario en Database...');
+        const email = 'ig_cal94@hotmail.com';
+        const snapshot = await firebase.database().ref('usuarios')
+            .orderByChild('email')
+            .equalTo(email)
+            .once('value');
+        
+        const users = [];
+        snapshot.forEach(child => {
+            users.push({
+                uid: child.key,
+                data: child.val()
+            });
+        });
+        
+        console.log('- Usuarios encontrados:', users.length);
+        if (users.length > 0) {
+            console.log('- Primer usuario:', users[0]);
+        } else {
+            console.log('- No se encontró el usuario en Database');
+        }
+        
+    } catch (e) {
+        console.error('- Error buscando usuario:', e);
+    }
+    
+    // 5. Intentar crear usuario específicamente
+    console.log('4️⃣ Intentando crear usuario en Authentication...');
+    try {
+        const email = 'ig_cal94@hotmail.com';
+        const password = '123456789';
+        
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        console.log('✅ USUARIO CREADO EXITOSAMENTE!');
+        console.log('- UID:', userCredential.user.uid);
+        console.log('- Email:', userCredential.user.email);
+        
+        // Crear perfil en Database
+        await firebase.database().ref(`usuarios/${userCredential.user.uid}`).set({
+            email: email,
+            nombre: 'Ignacio Calderón Vargas',
+            rol: 'gerencia',
+            local: null,
+            activo: true,
+            superAdmin: true,
+            fechaCreacion: new Date().toISOString()
+        });
+        console.log('✅ Perfil creado en Database');
+        
+        alert('✅ USUARIO CREADO! Ahora intenta hacer login');
+        
+    } catch (error) {
+        console.error('❌ Error creando usuario:', error.code, error.message);
+        
+        if (error.code === 'auth/email-already-in-use') {
+            console.log('⚠️ El email ya está en uso. Intentando login...');
+            
+            // Intentar hacer login
+            try {
+                const result = await firebase.auth().signInWithEmailAndPassword(email, '123456789');
+                console.log('✅ LOGIN EXITOSO!', result.user.uid);
+                alert('✅ Login exitoso! Revisa la consola');
+            } catch (loginError) {
+                console.error('❌ Error en login:', loginError.code, loginError.message);
+                
+                if (loginError.code === 'auth/wrong-password') {
+                    alert('❌ Contraseña incorrecta. Prueba con otra contraseña');
+                }
+            }
+        }
+    }
+}
+
+// Hacer la función global
+window.diagnosticarLogin = diagnosticarLogin;
+
+// Hacer la función global
+window.sincronizarUsuario = sincronizarUsuario;
+
+// ============================================
 // INICIAR
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM cargado');
-    initAuth();
+    setTimeout(initAuth, 500); // Pequeño delay para asegurar Firebase
 });
 
 // Hacer funciones globales

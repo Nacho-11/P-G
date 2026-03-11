@@ -115,7 +115,6 @@
         <!-- Main Content -->
         <main class="main-content" id="mainContent">
             <header class="top-bar">
-                <!-- ÚNICO BOTÓN -->
                 <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
@@ -130,15 +129,16 @@
                     <div class="filter-group">
                         <i class="fas fa-calendar filter-icon"></i>
                         <select id="filtroTiempo" class="filter-select">
-                            <option value="todos">Todo</option>
-                            <option value="dia">Hoy</option>
+                            <option value="todos" selected>Todo</option>
+                            <option value="todos">Hoy</option>
                             <option value="mes">Este mes</option>
                             <option value="anio">Este año</option>
+                            <option value="personalizado">Personalizado</option>
                         </select>
                     </div>
-                    <div class="filter-group">
+                    <div class="filter-group" id="grupoFechaPersonalizado" style="display: none;">
                         <i class="fas fa-calendar-alt filter-icon"></i>
-                        <input type="text" id="filtroMes" class="filter-input" placeholder="YYYY-MM">
+                        <input type="date" id="filtroFechaPersonalizado" class="filter-input" placeholder="YYYY-MM-DD">
                     </div>
                 </div>
 
@@ -157,7 +157,6 @@
             </header>
 
             <div class="modules">
-                <!-- Todos los módulos -->
                 <section id="dashboard" class="module active">
                     <div class="module-content" id="dashboardContent"></div>
                 </section>
@@ -194,43 +193,51 @@
                     <div class="module-content" id="usuariosContent"></div>
                 </section>
             </div>
+
+            <footer class="app-footer">
+                <span>
+                    <i class="fas fa-copyright"></i> 2026 Perdidas y Ganancias
+                </span>
+                <span>
+                    <i class="fas fa-user"></i> <span id="footerUserName">Ignacio Calderón Vargas</span> | 
+                    <i class="fas fa-tag"></i> <span id="footerUserRole">Gerencia</span> |
+                    <i class="fas fa-clock"></i> <span id="footerDate"></span>
+                </span>
+            </footer>
         </main>
     </div>
 
     <!-- Modales -->
     <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()"></div>
     
-    <!-- Modal de Login - VERSIÓN CORREGIDA -->
-<div class="modal" id="loginModal">
-    <div class="modal-header">
-        <h2><i class="fas fa-lock"></i> Iniciar Sesión</h2>
-        <button class="modal-close" onclick="cerrarModal('loginModal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="modal-body">
-        <div class="login-logo">
-            <img src="img/Logo.png" alt="Perdidas y Ganancias" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 15px; display: block;">
-            <h3 style="text-align: center; margin-bottom: 5px; color: var(--gray-800);">Perdidas y Ganancias</h3>
-            <p style="text-align: center; color: var(--gray-500); margin-bottom: 20px;">Sistema Administrativo</p>
+    <!-- Modal de Login -->
+    <div class="modal" id="loginModal">
+        <div class="modal-body">
+            <h2 class="login-title"><i class="fas fa-lock"></i> Iniciar Sesión</h2>
+            <div class="login-logo">
+                <img src="img/Logo.png" alt="Perdidas y Ganancias">
+                <h3>Perdidas y Ganancias</h3>
+                <p>Sistema Administrativo</p>
+            </div>
+            <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Correo Electrónico</label>
+                    <input type="email" id="loginEmail" placeholder="ej: gerencia@perdidas.com" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="**********" required>
+                </div>
+                <div id="loginError" class="form-error"></div>
+                <button type="submit" class="btn btn-primary" id="loginButton">
+                    <i class="fas fa-sign-in-alt"></i> Ingresar
+                </button>
+                <div class="security-info">
+                    <i class="fas fa-shield-alt"></i> Acceso seguro
+                </div>
+            </form>
         </div>
-        <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
-            <div class="form-group">
-                <label><i class="fas fa-envelope"></i> Correo Electrónico</label>
-                <input type="email" id="loginEmail" placeholder="ej: gerencia@perdidas.com" required>
-            </div>
-            <div class="form-group">
-                <label><i class="fas fa-lock"></i> Contraseña</label>
-                <input type="password" id="loginPassword" placeholder="••••••••" required>
-            </div>
-            <div id="loginError" class="form-error" style="color: var(--danger); margin-bottom: 15px; display: none;"></div>
-            <button type="submit" class="btn btn-primary btn-block" style="padding: 14px;">
-                <i class="fas fa-sign-in-alt"></i> Ingresar
-            </button>
-            <div class="security-info" style="text-align: center; margin-top: 20px; color: var(--gray-500); font-size: 0.9rem;">
-                <i class="fas fa-shield-alt"></i> Acceso seguro
-            </div>
-        </form>
     </div>
-</div>
 
     <!-- Modal Usuarios -->
     <div class="modal" id="usuarioModal">
@@ -271,6 +278,110 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" onclick="cerrarModal('usuarioModal')">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Venta -->
+    <div class="modal" id="ventaModal">
+        <div class="modal-header">
+            <h2><i class="fas fa-shopping-cart"></i> Registrar Venta</h2>
+            <button class="modal-close" onclick="cerrarModal('ventaModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="ventaForm" onsubmit="event.preventDefault(); guardarVenta();">
+                <div class="form-group">
+                    <label for="ventaFecha">Fecha</label>
+                    <input type="date" id="ventaFecha" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ventaLocal">Local</label>
+                    <select id="ventaLocal" required>
+                        <option value="">Seleccionar local...</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="ventaEfectivo">Efectivo ₡</label>
+                        <input type="number" id="ventaEfectivo" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                    <div class="form-group">
+                        <label for="ventaBAC">BAC ₡</label>
+                        <input type="number" id="ventaBAC" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="ventaPersonal">Personal ₡</label>
+                        <input type="number" id="ventaPersonal" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                    <div class="form-group">
+                        <label for="ventaGastos">Gastos ₡</label>
+                        <input type="number" id="ventaGastos" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px; font-size: 1.1rem;">Delivery</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="ventaPedidosYa">PedidosYa ₡</label>
+                        <input type="number" id="ventaPedidosYa" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                    <div class="form-group">
+                        <label for="ventaDidi">Didi ₡</label>
+                        <input type="number" id="ventaDidi" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="ventaUber">Uber ₡</label>
+                        <input type="number" id="ventaUber" value="0" min="0" oninput="calcularTotalesVenta()">
+                    </div>
+                </div>
+
+                <!-- Totales -->
+                <div style="background: #f8fafc; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <div style="display: none;">
+                        <span id="comisionPedidosYa"></span>
+                        <span id="comisionDidi"></span>
+                        <span id="comisionUber"></span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Ventas Brutas:</span>
+                        <span id="ventasBrutas" style="font-weight: 600;">₡0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Comisión BAC (2.25%):</span>
+                        <span id="comisionBac" style="font-weight: 600; color: #ef4444;">₡0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Total Comisiones:</span>
+                        <span id="totalComisiones" style="font-weight: 600; color: #ef4444;">₡0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span>Gastos:</span>
+                        <span id="totalGastos" style="font-weight: 600;">₡0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1rem; border-top: 1px solid #ddd; padding-top: 8px;">
+                        <span>Ventas Netas:</span>
+                        <span id="ventasNetas" style="font-weight: 700; color: #10b981;">₡0</span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('ventaModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Venta</button>
                 </div>
             </form>
         </div>

@@ -121,17 +121,30 @@ body {
 
 /* ===== SIDEBAR HEADER ===== */
 .sidebar-header {
-    padding: 30px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 15px;
+    text-align: center;
+    padding: 30px 20px 20px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar-logo {
-    width: 50px;
-    height: 50px;
+    width: 170px;  /* Mismo tamaño que el login */
+    height: 170px;
     object-fit: contain;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease; /* Efecto hover */
+}
+
+.sidebar-logo:hover {
+    transform: scale(1.05); /* Mismo efecto que el login */
+}
+
+.sidebar-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .sidebar-title {
@@ -145,7 +158,6 @@ body {
     font-size: 0.85rem;
     color: var(--gray-400);
     display: block;
-    margin-top: 4px;
 }
 
 /* ===== USER PROFILE ===== */
@@ -548,26 +560,101 @@ body {
     }
 }
 
-/* ===== LOGIN MODAL FIX ===== */
+/* ===== LOGIN MODAL - CON ICONOS ===== */
 #loginModal {
     max-width: 400px;
+    width: 90%;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    z-index: 1000;
+    display: none;
+}
+
+#loginModal.active {
+    display: block;
 }
 
 #loginModal .modal-body {
-    padding: 30px;
+    padding: 30px 30px 35px 30px;
+    text-align: center;
+}
+
+#loginModal .login-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #000;
+    text-align: center;
+    margin: 0 0 15px 0;
+}
+
+#loginModal .login-title i {
+    color: var(--primary);
+    margin-right: 10px;
+}
+
+#loginModal .login-logo {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#loginModal .login-logo img {
+    width: 170px;
+    height: auto;
+    margin: 0 auto 10px auto;
+    display: block;
+    transition: transform 0.2s ease; /* Añade esta línea para una transición suave */
+}
+
+#loginModal .login-logo img:hover {
+    transform: scale(1.05); /* Añade este bloque para el efecto de aumento */
+}
+
+#loginModal .login-logo h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #000;
+    margin: 0 0 5px 0;
+}
+
+#loginModal .login-logo p {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
 }
 
 #loginModal .form-group {
     margin-bottom: 20px;
+    text-align: left;
+}
+
+#loginModal .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+#loginModal .form-group label i {
+    color: var(--primary);
+    width: 20px;
+    margin-right: 8px;
 }
 
 #loginModal input {
     width: 100%;
-    padding: 14px 16px;
-    border: 2px solid var(--gray-200);
-    border-radius: 10px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+    box-sizing: border-box;
 }
 
 #loginModal input:focus {
@@ -575,26 +662,57 @@ body {
     outline: none;
 }
 
+#loginModal input::placeholder {
+    color: #999;
+}
+
 #loginModal .btn-primary {
     background: var(--primary);
     color: white;
     border: none;
     padding: 14px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
     width: 100%;
     cursor: pointer;
-    transition: background 0.2s;
+    margin: 10px 0 15px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 #loginModal .btn-primary:hover {
     background: var(--primary-dark);
 }
 
-#loginModal .btn-primary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+#loginModal .btn-primary i {
+    font-size: 1rem;
+}
+
+#loginModal .form-error {
+    color: #dc2626;
+    margin: 10px 0;
+    font-size: 0.9rem;
+    text-align: center;
+    display: none;
+}
+
+#loginModal .security-info {
+    text-align: center;
+    color: #666;
+    font-size: 0.85rem;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+#loginModal .security-info i {
+    color: var(--primary);
 }
 
 /* Asegurar que el modal se muestre correctamente */

@@ -4,39 +4,58 @@ const COMISIONES = {
     PEDIDOS_YA: 0.18,
     DIDI: 0.18,
     UBER: 0.44,
+    Bac: 0.0225,
 };
+
+console.log('📦 ventas.js cargado');
 
 // ============================================
 // CARGAR VENTAS DESDE FIREBASE
 // ============================================
 function cargarVentasDesdeFirebase() {
+    console.log('🔄 Intentando cargar ventas desde Firebase...');
+    
     const ventasRef = firebase.database().ref('ventas');
     
     ventasRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        const ventasData = [];
+        let ventasData = [];
         
         if (data) {
             for (const id in data) {
-                ventasData.push({
-                    id: id,
-                    ...data[id]
+                const venta = data[id];
+                // Limpiar la fecha si viene con hora
+                let fecha = venta.fecha;
+                if (fecha && fecha.includes('T')) {
+                    fecha = fecha.split('T')[0];
+                }
+                
+                ventasData.push({ 
+                    id: id, 
+                    ...venta,
+                    fecha: fecha
                 });
             }
+            console.log(`✅ ${ventasData.length} ventas cargadas desde Firebase`);
+            console.log('📦 Ventas procesadas:', ventasData);
+        } else {
+            console.log('📭 No hay ventas en Firebase');
+            ventasData = [];
         }
         
-        // Guardar en variable global
         window.ventasData = ventasData;
         
-        // Si estamos en la vista de ventas, recargar
+        // Forzar renderizado
         if (document.getElementById('ventas').classList.contains('active')) {
             renderVentas();
         }
-        
-        // Si el dashboard está activo, actualizarlo
-        if (document.getElementById('dashboard').classList.contains('active') && typeof window.renderDashboard === 'function') {
+        if (document.getElementById('dashboard').classList.contains('active') && window.renderDashboard) {
             window.renderDashboard();
         }
+        
+    }, (error) => {
+        console.error('❌ Error cargando ventas:', error);
+        window.ventasData = [];
     });
 }
 
@@ -46,23 +65,57 @@ function cargarVentasDesdeFirebase() {
 function renderVentas() {
     console.log('Renderizando ventas...');
     const ventasContent = document.getElementById('ventasContent');
-    
     if (!ventasContent) return;
+    
+    // Verificar que AppState existe
+    if (!AppState || !AppState.locales) {
+        console.error('❌ AppState no está disponible');
+        return;
+    }
+    
+    // Determinar locales permitidos
+    let localesPermitidos = [];
+    if (AppState.usuario?.rol === 'gerencia') {
+        localesPermitidos = AppState.locales.map(l => l.nombre);
+    } else if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) {
+        localesPermitidos = [AppState.usuario.local];
+    } else {
+        localesPermitidos = AppState.locales.map(l => l.nombre);
+    }
     
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const ventasData = window.ventasData || [];
     
-    // Filtrar ventas por local
-    const ventasFiltradas = ventasData
-        .filter(v => filtroLocal === 'Todos' || v.local === filtroLocal)
-        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-        .slice(0, 50);
+    console.log('📍 Filtro local:', filtroLocal);
+    console.log('📊 Total ventas en memoria:', ventasData.length);
+    console.log('🏷️ Locales permitidos:', localesPermitidos);
+    
+    // Filtrar ventas - VERSIÓN SIMPLE QUE FUNCIONA
+    let ventasFiltradas = [];
+    
+    if (ventasData.length > 0) {
+        ventasFiltradas = ventasData.filter(v => {
+            // Si no hay local, excluir
+            if (!v.local) return false;
+            
+            // Verificar si el local está permitido
+            if (!localesPermitidos.includes(v.local)) return false;
+            
+            // Aplicar filtro local
+            if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
+            
+            return true;
+        });
+    }
+    
+    console.log('🎯 Ventas filtradas:', ventasFiltradas.length);
     
     // Calcular totales
     const totales = ventasFiltradas.reduce((acc, v) => {
-        const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
-        const comisiones = (v.pedidosYa || 0) * 0.18 + (v.didi || 0) * 0.18 + (v.uber || 0) * 0.44;
-        
+        const comisiones = (v.pedidosYa || 0) * COMISIONES.PEDIDOS_YA + 
+                          (v.didi || 0) * COMISIONES.DIDI + 
+                          (v.uber || 0) * COMISIONES.UBER + 
+                          (v.bac || 0) * COMISIONES.Bac;
         return {
             brutas: acc.brutas + (v.total || 0),
             comisiones: acc.comisiones + comisiones,
@@ -70,8 +123,8 @@ function renderVentas() {
         };
     }, { brutas: 0, comisiones: 0, netas: 0 });
     
-    const ventasHTML = `
-        <!-- BARRA SUPERIOR -->
+    // Generar HTML
+    let ventasHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
             <div style="display: flex; gap: 40px; flex-wrap: wrap;">
                 <div>
@@ -92,7 +145,6 @@ function renderVentas() {
             </button>
         </div>
 
-        <!-- TABLA DE VENTAS RECIENTES -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-clock"></i> Ventas Recientes</h3>
@@ -111,33 +163,44 @@ function renderVentas() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${ventasFiltradas.length > 0 ? ventasFiltradas.map(v => {
-                            const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
-                            return `
-                            <tr>
-                                <td>${new Date(v.fecha).toLocaleDateString('es-CR')}</td>
-                                <td><strong>${v.local}</strong></td>
-                                <td>₡${(v.efectivo || 0).toLocaleString()}</td>
-                                <td>₡${(v.bac || 0).toLocaleString()}</td>
-                                <td>₡${delivery.toLocaleString()}</td>
-                                <td><strong>₡${(v.total || 0).toLocaleString()}</strong></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')" title="Eliminar venta">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `}).join('') : `
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 40px;">
-                                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
-                                    No hay ventas registradas
-                                </td>
-                            </tr>
-                        `}
+    `;
+    
+    if (ventasFiltradas.length > 0) {
+        ventasFiltradas.forEach(v => {
+            const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
+            const fecha = v.fecha ? v.fecha.split('T')[0] : 'Fecha no disponible';
+            ventasHTML += `
+                <tr>
+                    <td>${fecha}</td>
+                    <td><strong>${v.local || 'N/A'}</strong></td>
+                    <td>₡${(v.efectivo || 0).toLocaleString()}</td>
+                    <td>₡${(v.bac || 0).toLocaleString()}</td>
+                    <td>₡${delivery.toLocaleString()}</td>
+                    <td><strong>₡${(v.total || 0).toLocaleString()}</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')" title="Eliminar venta">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    } else {
+        ventasHTML += `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
+                    No hay ventas registradas
+                    <br><small>Total en memoria: ${ventasData.length}, Filtro: ${filtroLocal}</small>
+                </td>
+            </tr>
+        `;
+    }
+    
+    ventasHTML += `
                     </tbody>
                 </table>
             </div>
@@ -153,10 +216,16 @@ function renderVentas() {
 function mostrarModalVenta() {
     const modal = document.getElementById('ventaModal');
     const overlay = document.getElementById('modalOverlay');
-    
     if (!modal || !overlay) return;
     
-    document.getElementById('ventaFecha').value = new Date().toISOString().split('T')[0];
+    // Fecha actual en formato YYYY-MM-DD
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    const fechaActual = `${año}-${mes}-${dia}`;
+    
+    document.getElementById('ventaFecha').value = fechaActual;
     
     // Resetear campos
     ['ventaEfectivo', 'ventaBAC', 'ventaPersonal', 'ventaGastos', 
@@ -165,13 +234,23 @@ function mostrarModalVenta() {
         if (campo) campo.value = '0';
     });
     
-    // Cargar locales
     const selectLocal = document.getElementById('ventaLocal');
     if (selectLocal) {
         selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
-        AppState.locales.forEach(local => {
+        let localesAMostrar = AppState.usuario?.rol === 'gerencia' ? AppState.locales :
+                             (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) ? 
+                             AppState.locales.filter(l => l.nombre === AppState.usuario.local) : AppState.locales;
+        
+        localesAMostrar.forEach(local => {
             selectLocal.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
         });
+        
+        if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) {
+            selectLocal.value = AppState.usuario.local;
+            selectLocal.disabled = true;
+        } else {
+            selectLocal.disabled = false;
+        }
     }
     
     calcularTotalesVenta();
@@ -194,18 +273,20 @@ function calcularTotalesVenta() {
     const comisionPedidosYa = pedidosYa * COMISIONES.PEDIDOS_YA;
     const comisionDidi = didi * COMISIONES.DIDI;
     const comisionUber = uber * COMISIONES.UBER;
-    const totalComisiones = comisionPedidosYa + comisionDidi + comisionUber;
+    const comisionBac = bac * COMISIONES.Bac;
+    const totalComisiones = comisionPedidosYa + comisionDidi + comisionUber + comisionBac;
     const ventasBrutas = efectivo + bac + personal + pedidosYa + didi + uber;
     const ventasNetas = ventasBrutas - totalComisiones - gastos;
     
     const elementos = {
-        'comisionPedidosYa': comisionPedidosYa,
-        'comisionDidi': comisionDidi,
-        'comisionUber': comisionUber,
         'ventasBrutas': ventasBrutas,
+        'comisionBac': comisionBac,
         'totalComisiones': totalComisiones,
         'totalGastos': gastos,
-        'ventasNetas': ventasNetas
+        'ventasNetas': ventasNetas,
+        'comisionPedidosYa': comisionPedidosYa,
+        'comisionDidi': comisionDidi,
+        'comisionUber': comisionUber
     };
     
     for (const [id, valor] of Object.entries(elementos)) {
@@ -215,18 +296,19 @@ function calcularTotalesVenta() {
 }
 
 // ============================================
-// GUARDAR VENTA EN FIREBASE
+// GUARDAR VENTA EN FIREBASE (VERSIÓN CORREGIDA)
 // ============================================
 async function guardarVenta() {
-    const fecha = document.getElementById('ventaFecha')?.value;
-    const local = document.getElementById('ventaLocal')?.value;
+    const fechaInput = document.getElementById('ventaFecha')?.value; // YYYY-MM-DD
+    let local = document.getElementById('ventaLocal')?.value;
     
-    if (!fecha || !local) {
+    if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) local = AppState.usuario.local;
+    
+    if (!fechaInput || !local) {
         alert('Por favor seleccione fecha y local');
         return;
     }
     
-    // Obtener valores
     const efectivo = parseFloat(document.getElementById('ventaEfectivo')?.value) || 0;
     const bac = parseFloat(document.getElementById('ventaBAC')?.value) || 0;
     const personal = parseFloat(document.getElementById('ventaPersonal')?.value) || 0;
@@ -234,43 +316,46 @@ async function guardarVenta() {
     const pedidosYa = parseFloat(document.getElementById('ventaPedidosYa')?.value) || 0;
     const didi = parseFloat(document.getElementById('ventaDidi')?.value) || 0;
     const uber = parseFloat(document.getElementById('ventaUber')?.value) || 0;
-    
-    // Calcular total
     const total = efectivo + bac + personal + pedidosYa + didi + uber;
     
     const ventaData = {
-        fecha,
-        local,
-        efectivo,
-        bac,
-        personal,
-        gastos,
-        pedidosYa,
-        didi,
-        uber,
+        fecha: fechaInput, // ← ESTO ES LO IMPORTANTE: SOLO "2026-03-11"
+        local, 
+        efectivo, 
+        bac, 
+        personal, 
+        gastos, 
+        pedidosYa, 
+        didi, 
+        uber, 
         total,
         comisiones: {
             pedidosYa: pedidosYa * COMISIONES.PEDIDOS_YA,
             didi: didi * COMISIONES.DIDI,
             uber: uber * COMISIONES.UBER,
-            total: (pedidosYa * COMISIONES.PEDIDOS_YA) + (didi * COMISIONES.DIDI) + (uber * COMISIONES.UBER)
+            bac: bac * COMISIONES.Bac,
+            total: (pedidosYa * COMISIONES.PEDIDOS_YA) + (didi * COMISIONES.DIDI) + (uber * COMISIONES.UBER) + (bac * COMISIONES.Bac)
         },
         creadoPor: AppState.usuario?.email || 'sistema',
-        creadorUid: AppState.usuario?.uid || null,
-        fechaCreacion: new Date().toISOString()
+        creadorUid: AppState.usuario?.uid || null
     };
     
+    console.log('📝 Guardando venta:', ventaData); // Para verificar
+    
     try {
-        // Guardar en Firebase
-        const ventasRef = firebase.database().ref('ventas');
-        await ventasRef.push(ventaData);
+        const btn = document.querySelector('#ventaModal .btn-primary');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
         
-        alert('✅ Venta registrada con éxito');
+        await firebase.database().ref('ventas').push(ventaData);
         cerrarModal('ventaModal');
+        alert('✅ Venta registrada con éxito');
         
     } catch (error) {
         console.error('Error guardando venta:', error);
         alert('Error al guardar la venta: ' + error.message);
+    } finally {
+        const btn = document.querySelector('#ventaModal .btn-primary');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar Venta'; }
     }
 }
 
@@ -279,11 +364,9 @@ async function guardarVenta() {
 // ============================================
 async function eliminarVenta(id) {
     if (!confirm('¿Está seguro de eliminar esta venta?')) return;
-    
     try {
         await firebase.database().ref(`ventas/${id}`).remove();
         alert('✅ Venta eliminada');
-        
     } catch (error) {
         console.error('Error eliminando venta:', error);
         alert('Error al eliminar la venta');
@@ -297,29 +380,9 @@ async function verDetalleVenta(id) {
     try {
         const snapshot = await firebase.database().ref(`ventas/${id}`).once('value');
         const venta = snapshot.val();
+        if (!venta) { alert('Venta no encontrada'); return; }
         
-        if (!venta) {
-            alert('Venta no encontrada');
-            return;
-        }
-        
-        const mensaje = `
-            Fecha: ${new Date(venta.fecha).toLocaleDateString('es-CR')}
-            Local: ${venta.local}
-            
-            Efectivo: ₡${(venta.efectivo || 0).toLocaleString()}
-            Tarjeta: ₡${(venta.bac || 0).toLocaleString()}
-            Delivery: ₡${((venta.pedidosYa || 0) + (venta.didi || 0) + (venta.uber || 0)).toLocaleString()}
-            Personal: ₡${(venta.personal || 0).toLocaleString()}
-            
-            Total: ₡${(venta.total || 0).toLocaleString()}
-            
-            Comisiones: ₡${(venta.comisiones?.total || 0).toLocaleString()}
-            Gastos: ₡${(venta.gastos || 0).toLocaleString()}
-        `;
-        
-        alert(mensaje);
-        
+        alert(`Fecha: ${venta.fecha}\nLocal: ${venta.local}\nEfectivo: ₡${(venta.efectivo || 0).toLocaleString()}\nTarjeta: ₡${(venta.bac || 0).toLocaleString()}\nDelivery: ₡${((venta.pedidosYa || 0) + (venta.didi || 0) + (venta.uber || 0)).toLocaleString()}\nPersonal: ₡${(venta.personal || 0).toLocaleString()}\nTotal: ₡${(venta.total || 0).toLocaleString()}\nComisiones: ₡${(venta.comisiones?.total || 0).toLocaleString()}\nGastos: ₡${(venta.gastos || 0).toLocaleString()}`);
     } catch (error) {
         console.error('Error cargando venta:', error);
         alert('Error al cargar el detalle');
@@ -331,7 +394,17 @@ async function verDetalleVenta(id) {
 // ============================================
 function initVentas() {
     console.log('Inicializando ventas...');
-    cargarVentasDesdeFirebase();
+    
+    // Esperar a que AppState esté listo
+    setTimeout(() => {
+        if (AppState && AppState.usuario) {
+            console.log('👤 Usuario autenticado, cargando ventas...');
+            cargarVentasDesdeFirebase();
+        } else {
+            console.log('⏳ Esperando autenticación...');
+            setTimeout(initVentas, 1000);
+        }
+    }, 500);
 }
 
 // ============================================
@@ -345,3 +418,10 @@ window.eliminarVenta = eliminarVenta;
 window.verDetalleVenta = verDetalleVenta;
 window.initVentas = initVentas;
 window.cargarVentasDesdeFirebase = cargarVentasDesdeFirebase;
+
+// Auto-ejecutar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVentas);
+} else {
+    initVentas();
+}

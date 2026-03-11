@@ -6,7 +6,8 @@
     "axe/forms": [
       "default",
       {
-        "select-name": "off"
+        "select-name": "off",
+        "label": "off"
       }
     ],
     "no-inline-styles": "off",
@@ -15,7 +16,8 @@
       {
         "ignore": [
           "backdrop-filter",
-          "min-height: auto"
+          "min-height: auto",
+          "-webkit-overflow-scrolling"
         ]
       }
     ],
@@ -23,6 +25,14 @@
       "default",
       {
         "button-name": "off"
+      }
+    ],
+    "compat-api/html": [
+      "default",
+      {
+        "ignore": [
+          "input[type=month]"
+        ]
       }
     ]
   }

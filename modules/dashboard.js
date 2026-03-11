@@ -1,6 +1,15 @@
 // modules/dashboard.js
 
 // ============================================
+// FUNCIÓN AUXILIAR PARA LIMPIAR FECHAS
+// ============================================
+function limpiarFecha(fecha) {
+    if (!fecha) return '';
+    // Si viene con hora (YYYY-MM-DDTHH:MM:SS), tomar solo la fecha
+    return fecha.split('T')[0];
+}
+
+// ============================================
 // RENDERIZAR DASHBOARD
 // ============================================
 function renderDashboard() {
@@ -26,18 +35,50 @@ function renderDashboard() {
     const mesActual = fechaHoy.substring(0, 7);
     const anioActual = fechaHoy.substring(0, 4);
     
-    // FILTRAR VENTAS
+    console.log('📅 Fecha hoy:', fechaHoy);
+    console.log('📅 Mes actual:', mesActual);
+    console.log('📅 Año actual:', anioActual);
+    
+    // FILTRAR VENTAS - VERSIÓN CORREGIDA (CON TODOS LOS FILTROS)
     const ventasFiltradas = ventasData.filter(v => {
         // Filtro por local
         if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
         
-        // Filtro por tiempo
-        if (filtroTiempo === 'dia' && v.fecha !== fechaHoy) return false;
-        if (filtroTiempo === 'mes' && v.fecha?.substring(0, 7) !== mesActual) return false;
-        if (filtroTiempo === 'anio' && v.fecha?.substring(0, 4) !== anioActual) return false;
+        // Limpiar fecha
+        const fechaVenta = limpiarFecha(v.fecha);
+        if (!fechaVenta) return false;
         
-        return true;
+        console.log('🔍 Comparando:', {
+            venta: fechaVenta,
+            filtro: filtroTiempo,
+            valor: filtroTiempo === 'personalizado' ? AppState.filtros?.fechaPersonalizada : 'N/A'
+        });
+        
+        // APLICAR FILTRO DE TIEMPO
+        if (filtroTiempo === 'dia') {
+            return fechaVenta === fechaHoy;
+        }
+        
+        if (filtroTiempo === 'mes') {
+            return fechaVenta.substring(0, 7) === mesActual;
+        }
+        
+        if (filtroTiempo === 'anio') {
+            return fechaVenta.substring(0, 4) === anioActual;
+        }
+        
+        if (filtroTiempo === 'personalizado') {
+            const fechaPersonalizada = AppState.filtros?.fechaPersonalizada;
+            if (!fechaPersonalizada) return false;
+            
+            // Comparar fecha exacta
+            return fechaVenta === fechaPersonalizada;
+        }
+        
+        return true; // 'todos'
     });
+    
+    console.log('📊 Ventas filtradas:', ventasFiltradas.length);
     
     // FILTRAR COSTOS
     let costosFiltrados = [];
@@ -82,7 +123,8 @@ function renderDashboard() {
     const ventasMensuales = {};
     ventasFiltradas.forEach(v => {
         if (v.fecha) {
-            const mes = v.fecha.substring(0, 7);
+            const fechaLimpia = limpiarFecha(v.fecha);
+            const mes = fechaLimpia.substring(0, 7);
             ventasMensuales[mes] = (ventasMensuales[mes] || 0) + (v.total || 0);
         }
     });
@@ -210,10 +252,12 @@ function renderDashboard() {
                                     </tr>
                                 `)
                                 : (ventasFiltradas.length > 0 ? ventasFiltradas.slice(0, 10).map(v => {
+                                    const fechaLimpia = limpiarFecha(v.fecha);
+                                    const fechaObj = fechaLimpia ? new Date(fechaLimpia + 'T12:00:00') : new Date();
                                     const porcentaje = totalVentas > 0 ? ((v.total / totalVentas) * 100).toFixed(1) : 0;
                                     return `
                                     <tr>
-                                        <td>${new Date(v.fecha).toLocaleDateString('es-CR')}</td>
+                                        <td>${fechaLimpia ? fechaObj.toLocaleDateString('es-CR') : 'Fecha no disponible'}</td>
                                         <td>₡${Math.round(v.total || 0).toLocaleString()}</td>
                                         <td>${porcentaje}%</td>
                                     </tr>
@@ -230,7 +274,7 @@ function renderDashboard() {
                 </div>
             </div>
             
-            <!-- Información de usuario (opcional) -->
+            <!-- Información de usuario -->
             <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 0.9rem; color: #64748b;">
                 <i class="fas fa-user" style="margin-right: 8px;"></i>
                 ${AppState.usuario?.nombre || 'Usuario'} | 
@@ -262,10 +306,17 @@ function crearGraficoVentasMensuales(meses, valores) {
         window.ventasChart.destroy();
     }
     
+    // Formatear meses para mostrar
+    const mesesFormateados = meses.map(m => {
+        const [año, mes] = m.split('-');
+        const mesesNombre = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        return `${mesesNombre[parseInt(mes)-1]} ${año}`;
+    });
+    
     window.ventasChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: meses,
+            labels: mesesFormateados,
             datasets: [{
                 label: 'Ventas',
                 data: valores,
