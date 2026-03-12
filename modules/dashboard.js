@@ -39,46 +39,33 @@ function renderDashboard() {
     console.log('📅 Mes actual:', mesActual);
     console.log('📅 Año actual:', anioActual);
     
-    // FILTRAR VENTAS - VERSIÓN CORREGIDA (CON TODOS LOS FILTROS)
+    // FILTRAR VENTAS - VERSIÓN CORREGIDA
     const ventasFiltradas = ventasData.filter(v => {
         // Filtro por local
         if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
         
-        // Limpiar fecha
         const fechaVenta = limpiarFecha(v.fecha);
         if (!fechaVenta) return false;
         
-        console.log('🔍 Comparando:', {
-            venta: fechaVenta,
-            filtro: filtroTiempo,
-            valor: filtroTiempo === 'personalizado' ? AppState.filtros?.fechaPersonalizada : 'N/A'
-        });
-        
         // APLICAR FILTRO DE TIEMPO
         if (filtroTiempo === 'dia') {
+            // Solo ventas de HOY (2026-03-12)
             return fechaVenta === fechaHoy;
         }
-        
         if (filtroTiempo === 'mes') {
             return fechaVenta.substring(0, 7) === mesActual;
         }
-        
         if (filtroTiempo === 'anio') {
             return fechaVenta.substring(0, 4) === anioActual;
         }
-        
         if (filtroTiempo === 'personalizado') {
-            const fechaPersonalizada = AppState.filtros?.fechaPersonalizada;
-            if (!fechaPersonalizada) return false;
-            
-            // Comparar fecha exacta
-            return fechaVenta === fechaPersonalizada;
+            return fechaVenta === AppState.filtros?.fechaPersonalizada;
         }
         
         return true; // 'todos'
     });
-    
-    console.log('📊 Ventas filtradas:', ventasFiltradas.length);
+
+    console.log('📊 Ventas filtradas por', filtroTiempo, ':', ventasFiltradas.length);
     
     // FILTRAR COSTOS
     let costosFiltrados = [];
@@ -404,6 +391,14 @@ function initDashboardListeners() {
             renderDashboard();
         }
     });
+}
+
+// ===== FUNCIÓN PARA OBTENER FECHA ACTUAL EN COSTA RICA =====
+function obtenerFechaCR() {
+    const ahora = new Date();
+    // Ajustar a UTC-6 (Costa Rica)
+    const crTime = new Date(ahora.getTime() - (360 * 60000)); // Ajuste manual
+    return crTime.toISOString().split('T')[0];
 }
 
 // ============================================

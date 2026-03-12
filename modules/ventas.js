@@ -60,7 +60,7 @@ function cargarVentasDesdeFirebase() {
 }
 
 // ============================================
-// RENDERIZAR VISTA DE VENTAS
+// RENDERIZAR VISTA DE VENTAS (CON FILTRO DE TIEMPO)
 // ============================================
 function renderVentas() {
     console.log('Renderizando ventas...');
@@ -83,32 +83,53 @@ function renderVentas() {
         localesPermitidos = AppState.locales.map(l => l.nombre);
     }
     
+    // Obtener filtros
     const filtroLocal = AppState.filtros?.local || 'Todos';
+    const filtroTiempo = AppState.filtros?.tiempo || 'todos';
+    const filtroFecha = AppState.filtros?.fechaPersonalizada || new Date().toISOString().split('T')[0];
     const ventasData = window.ventasData || [];
     
-    console.log('📍 Filtro local:', filtroLocal);
+    console.log('📍 Filtros:', { filtroLocal, filtroTiempo, filtroFecha });
     console.log('📊 Total ventas en memoria:', ventasData.length);
-    console.log('🏷️ Locales permitidos:', localesPermitidos);
     
-    // Filtrar ventas - VERSIÓN SIMPLE QUE FUNCIONA
+    // Fechas para comparar
+    const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const mesActual = hoy.substring(0, 7);
+    const anioActual = hoy.substring(0, 4);
+    
+    // Filtrar ventas por LOCAL Y TIEMPO
     let ventasFiltradas = [];
     
     if (ventasData.length > 0) {
         ventasFiltradas = ventasData.filter(v => {
-            // Si no hay local, excluir
+            // Filtro por local
             if (!v.local) return false;
-            
-            // Verificar si el local está permitido
             if (!localesPermitidos.includes(v.local)) return false;
-            
-            // Aplicar filtro local
             if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
             
-            return true;
+            // Limpiar fecha de la venta
+            const fechaVenta = v.fecha ? v.fecha.split('T')[0] : '';
+            if (!fechaVenta) return false;
+            
+            // APLICAR FILTRO DE TIEMPO
+            if (filtroTiempo === 'dia') {
+                return fechaVenta === hoy;
+            }
+            if (filtroTiempo === 'mes') {
+                return fechaVenta.substring(0, 7) === mesActual;
+            }
+            if (filtroTiempo === 'anio') {
+                return fechaVenta.substring(0, 4) === anioActual;
+            }
+            if (filtroTiempo === 'personalizado') {
+                return fechaVenta === filtroFecha;
+            }
+            
+            return true; // 'todos'
         });
     }
     
-    console.log('🎯 Ventas filtradas:', ventasFiltradas.length);
+    console.log('🎯 Ventas filtradas por', filtroTiempo, ':', ventasFiltradas.length);
     
     // Calcular totales
     const totales = ventasFiltradas.reduce((acc, v) => {
@@ -189,12 +210,16 @@ function renderVentas() {
             `;
         });
     } else {
+        let mensajeFiltro = filtroTiempo === 'dia' ? 'hoy' :
+                           filtroTiempo === 'mes' ? 'este mes' :
+                           filtroTiempo === 'anio' ? 'este año' :
+                           filtroTiempo === 'personalizado' ? `la fecha ${filtroFecha}` : '';
+        
         ventasHTML += `
             <tr>
                 <td colspan="7" style="text-align: center; padding: 40px;">
                     <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
-                    No hay ventas registradas
-                    <br><small>Total en memoria: ${ventasData.length}, Filtro: ${filtroLocal}</small>
+                    No hay ventas para ${mensajeFiltro} en ${filtroLocal === 'Todos' ? 'todos los locales' : filtroLocal}
                 </td>
             </tr>
         `;

@@ -724,3 +724,57 @@ body {
 .modal-overlay.active {
     display: block !important;
 }
+
+/* Estilos para el modal de ventas */
+#ventaModal .form-group input:focus,
+#ventaModal .form-group select:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+    outline: none;
+}
+
+#ventaModal .modal-close:hover {
+    background: rgba(255,255,255,0.3) !important;
+    transform: rotate(90deg);
+}
+
+#ventaModal .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+#ventaModal .btn-outline:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* Animación de entrada */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#ventaModal.active {
+    animation: slideIn 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    #ventaModal {
+        max-width: 95% !important;
+    }
+    
+    #ventaModal .modal-body > div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    #ventaModal .modal-body > div[style*="grid-template-columns: repeat(3, 1fr)"] {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+}
