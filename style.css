@@ -821,3 +821,33 @@ body {
 #costoModal.active {
     animation: slideUp 0.3s ease;
 }
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+/* Para los botones pequeños */
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+.btn-sm i {
+    font-size: 1rem;
+}

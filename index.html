@@ -547,6 +547,269 @@
         </div>
     </div>
 
+    <!-- Modal de Empleado - VERSIÓN ÚNICA CORREGIDA (SIN X DUPLICADA) -->
+    <div class="modal" id="empleadoModal" style="max-width: 950px; width: 95%; border-radius: 32px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                <!-- Header dinámico con badge que no parece X -->
+        <div class="modal-header" id="empleadoModalHeader" style="background: linear-gradient(145deg, #0B5E42 0%, #1A8F6E 100%); color: white; padding: 0;">
+            <div style="display: flex; align-items: stretch; min-height: 120px;">
+                <!-- Lado izquierdo con icono -->
+                <div style="background: rgba(0,0,0,0.1); padding: 30px; display: flex; align-items: center; justify-content: center; width: 160px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 40px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas" id="empleadoModalIcon" style="font-size: 3rem;"></i>
+                    </div>
+                </div>
+                <!-- Lado derecho con título -->
+                <div style="padding: 30px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                        <span style="padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 5px;" id="empleadoModalBadge">
+                            <i class="fas fa-plus-circle"></i> NUEVO
+                        </span>
+                    </div>
+                    <h2 style="margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.5px;" id="empleadoModalTitle">Incorporar Empleado</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.9;" id="empleadoModalSubtitle">Complete los datos para agregar un nuevo colaborador</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-body" style="padding: 35px; background: #f5f7fb; max-height: 70vh; overflow-y: auto;">
+            <form id="empleadoForm" onsubmit="event.preventDefault(); guardarEmpleado();">
+                
+                <!-- Campo LOCAL editable (solo en nuevo) -->
+                <div id="campoLocalEditable" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-store" style="color: #0B5E42;"></i> Local
+                    </label>
+                    <select id="empleadoLocal" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; background: white; font-size: 1rem;">
+                        <option value="">Seleccionar local...</option>
+                    </select>
+                </div>
+                
+                <!-- Campo LOCAL solo lectura (solo en edición) -->
+                <div id="campoLocalSoloLectura" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #E2E8F0; display: none;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #F1F5F9; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-store" style="color: #475569;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="color: #64748B; font-size: 0.8rem;">LOCAL</div>
+                            <div style="font-weight: 600; font-size: 1.1rem;" id="empleadoLocalDisplay">-</div>
+                        </div>
+                        <div style="color: #94A3B8;">
+                            <i class="fas fa-lock" title="No editable"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid de 2 columnas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-user" style="color: #0B5E42;"></i> Nombre completo
+                        </label>
+                        <input type="text" id="empleadoNombre" placeholder="Ej: Juan Pérez" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-briefcase" style="color: #0B5E42;"></i> Puesto
+                        </label>
+                        <input type="text" id="empleadoPuesto" placeholder="Ej: Cocinero" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                    </div>
+                </div>
+                
+                <!-- Salario -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-dollar-sign" style="color: #0B5E42;"></i> Salario mensual (₡)
+                    </label>
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 14px; top: 14px; color: #0B5E42; font-weight: 600;">₡</span>
+                        <input type="text" id="empleadoSalario" placeholder="399,204.10" required style="width: 100%; padding: 14px 14px 14px 40px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                    </div>
+                    <small style="color: #64748B; display: block; margin-top: 8px;">
+                        <i class="fas fa-info-circle" style="color: #0B5E42;"></i> Use punto o coma para decimales
+                    </small>
+                </div>
+                
+                <!-- Fecha ingreso -->
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-calendar-alt" style="color: #0B5E42;"></i> Fecha de ingreso
+                    </label>
+                    <input type="date" id="empleadoFechaIngreso" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                </div>
+                
+                <!-- Opciones adicionales -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px;">
+                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                        
+                        <!-- Horas nocturnas - SOLO EN NUEVO -->
+                        <div id="campoNocturnoNuevo" style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; background: #E8F4F0; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-moon" style="color: #0B5E42;"></i>
+                            </div>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="empleadoNocturno" style="width: 20px; height: 20px;">
+                                <span>Aplica horas nocturnas</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Estado activo - SOLO EN EDICIÓN (en nuevo siempre activo) -->
+                        <div id="campoActivoEdicion" style="display: flex; align-items: center; gap: 12px; display: none;">
+                            <div style="width: 44px; height: 44px; background: #F3E8FF; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-toggle-on" style="color: #9333ea;"></i>
+                            </div>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="empleadoActivo" style="width: 20px; height: 20px;">
+                                <span>Empleado activo</span>
+                            </label>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Mensaje para nuevo empleado (activo por defecto) -->
+                    <div id="mensajeActivoNuevo" style="margin-top: 15px; padding: 10px; background: #E8F4F0; border-radius: 10px; color: #0B5E42; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>El empleado se creará como <strong>ACTIVO</strong> por defecto</span>
+                    </div>
+                    
+                    <!-- Mensaje para edición (nocturnas no editables) -->
+                    <div id="mensajeNocturnoEdicion" style="margin-top: 15px; padding: 10px; background: #F3E8FF; border-radius: 10px; color: #9333ea; display: flex; align-items: center; gap: 10px; display: none;">
+                        <i class="fas fa-lock"></i>
+                        <span>La configuración de horas nocturnas no se puede modificar</span>
+                    </div>
+                </div>
+                
+                <!-- Botones - SIN X, SOLO CANCELAR Y GUARDAR -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; padding-top: 10px; border-top: 2px solid #e2e8f0;">
+                    <button type="button" onclick="cerrarModal('empleadoModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="empleadoSubmitBtn" style="padding: 14px 40px; color: white; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(11, 94, 66, 0.3); font-size: 1.1rem;">
+                        <i class="fas fa-check-circle"></i> CONFIRMAR NUEVO EMPLEADO
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Registro de Horas - VERSIÓN CORREGIDA -->
+    <div class="modal" id="horasModal" style="max-width: 900px; width: 95%; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <!-- Header -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem;">Registrar Horas</h2>
+                    <p style="margin: 2px 0 0; opacity: 0.9;">Ingrese las horas trabajadas</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-body" style="padding: 25px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+            <form id="horasForm" onsubmit="event.preventDefault(); guardarHoras();">
+                
+                <!-- Info del empleado -->
+                <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-user" style="color: white; font-size: 1.4rem;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.2rem;" id="horasEmpleadoNombre">Nombre</h3>
+                            <p style="margin: 4px 0 0; color: #64748b;">
+                                <i class="fas fa-store"></i> <span id="horasEmpleadoLocal">—</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid Fecha + Atajos -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <!-- Fecha -->
+                    <div style="background: white; border-radius: 16px; padding: 18px;">
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                            <i class="fas fa-calendar-alt" style="color: #11998e;"></i> Fecha
+                        </label>
+                        <input type="date" id="horasFecha" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                    </div>
+                    
+                    <!-- Atajos -->
+                    <div style="background: white; border-radius: 16px; padding: 18px;">
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Atajos rápidos</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="setFechaRapida('ayer')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Ayer</button>
+                            <button type="button" onclick="setFechaRapida('hoy')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Hoy</button>
+                            <button type="button" onclick="setFechaRapida('manana')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Mañana</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid de 2 columnas para horas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Columna 1: Ordinarias y Extra -->
+                    <div>
+                        <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px;">
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                                <i class="fas fa-sun" style="color: #11998e;"></i> Horas ordinarias
+                            </label>
+                            <input type="number" id="horasOrdinarias" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
+                        </div>
+                        
+                        <div style="background: white; border-radius: 16px; padding: 18px;">
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                                <i class="fas fa-star" style="color: #f59e0b;"></i> Horas extra (x1.5)
+                            </label>
+                            <input type="number" id="horasExtras" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
+                        </div>
+                    </div>
+                    
+                    <!-- Columna 2: Nocturnas (visible solo para Los Años Locos) -->
+                    <div id="nocturnoField">
+                        <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px;">
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                                <i class="fas fa-moon" style="color: #3b82f6;"></i> Horas nocturnas (x1.2)
+                            </label>
+                            <input type="number" id="horasNocturnas" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
+                        </div>
+                        
+                        <div style="background: white; border-radius: 16px; padding: 18px;">
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                                <i class="fas fa-bolt" style="color: #ef4444;"></i> Horas extra nocturnas (x1.8)
+                            </label>
+                            <input type="number" id="horasExtrasNocturnas" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resumen -->
+                <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; padding: 20px; margin: 20px 0; color: white;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div>
+                            <div>Total horas</div>
+                            <div style="font-size: 2rem; font-weight:700;" id="resumenTotalHoras">0.0</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div>Pago estimado</div>
+                            <div style="font-size: 2rem; font-weight:700;" id="resumenPago">₡0.00</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button type="button" onclick="cerrarModal('horasModal')" style="padding:12px 28px; border:2px solid #e2e8f0; background:white; border-radius:14px; cursor:pointer;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" style="padding:12px 32px; background:linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color:white; border:none; border-radius:14px; cursor:pointer; box-shadow:0 4px 6px rgba(17,153,142,0.3);">
+                        <i class="fas fa-save"></i> Guardar Horas
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
@@ -558,5 +821,6 @@
     <script src="modules/ventas.js"></script>
     <script src="modules/costos.js"></script>
     <script src="modules/usuarios.js"></script>
+    <script src="modules/planilla.js"></script>
 </body>
 </html>

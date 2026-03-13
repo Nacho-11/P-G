@@ -95,6 +95,7 @@ function cambiarModulo(moduleId) {
         else if (moduleId === 'ventas' && window.renderVentas) window.renderVentas();
         else if (moduleId === 'costos' && window.renderCostos) window.renderCostos();
         else if (moduleId === 'usuarios' && window.renderUsuarios) window.renderUsuarios();
+        else if (moduleId === 'planilla' && window.renderPlanilla) window.renderPlanilla();
     }, 100);
 }
 
@@ -187,6 +188,7 @@ function inicializarFiltros() {
     if (filtroTiempo) {
         filtroTiempo.value = 'todos';  // "Todo" por defecto
         
+        // SOLO UN EVENT LISTENER
         filtroTiempo.addEventListener('change', function(e) {
             AppState.filtros.tiempo = e.target.value;
             
@@ -231,6 +233,10 @@ function actualizarVistasPorFiltro() {
         window.renderDashboard();
     } else if (moduloActivo === 'costos' && window.renderCostos) {
         window.renderCostos();
+    } else if (moduloActivo === 'usuarios' && window.renderUsuarios) {
+        window.renderUsuarios();
+    } else if (moduloActivo === 'planilla' && window.renderPlanilla) {
+        window.renderPlanilla();
     }
 }
 

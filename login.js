@@ -27,17 +27,18 @@ function initAuth() {
 }
 
 // ============================================
-// CARGAR DATOS DEL USUARIO
+// CARGAR DATOS DEL USUARIO (VERSIÓN CORREGIDA)
 // ============================================
 async function cargarDatosUsuario(uid) {
     try {
-        if (typeof initVentas === 'function') initVentas();
-        if (typeof initCostos === 'function') initCostos();
-        if (typeof initDashboardListeners === 'function') initDashboardListeners();
-
-        // Cargar locales en filtros
-        if (typeof cargarLocalesEnFiltro === 'function') cargarLocalesEnFiltro();
+        console.log('🔍 Buscando usuario con UID:', uid);
         
+        // VERIFICAR FIREBASE DATABASE
+        if (!firebase.database) {
+            throw new Error('Firebase Database no está disponible');
+        }
+        
+        // PRIMERO: Cargar datos del usuario
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
         let userData = snapshot.val();
         
@@ -66,7 +67,7 @@ async function cargarDatosUsuario(uid) {
             console.log('✅ Perfil creado');
         }
         
-        // CONFIGURAR AppState
+        // SEGUNDO: Configurar AppState con los datos del usuario
         AppState.usuario = {
             uid: uid,
             email: userData.email || firebase.auth().currentUser?.email || '',
@@ -74,23 +75,31 @@ async function cargarDatosUsuario(uid) {
             nombre: userData.nombre || userData.email?.split('@')[0] || 'Usuario',
             local: userData.local || null
         };
-
+        
         localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
-        if (typeof window.inicializarFiltros === 'function') {
-            window.inicializarFiltros();
-        }
-
-        // Cargar locales en los filtros y selects
+        console.log('👤 Usuario configurado:', AppState.usuario);
+        
+        // TERCERO: Actualizar UI
+        actualizarUIUsuario();
+        configurarPermisos();
+        
+        // CUARTO: Inicializar filtros de locales
         if (typeof cargarLocalesEnFiltro === 'function') {
             cargarLocalesEnFiltro();
         }
         if (typeof cargarLocalesEnUsuarios === 'function') {
             cargarLocalesEnUsuarios();
         }
-
-        // ACTUALIZAR UI
-        actualizarUIUsuario();
-        configurarPermisos();
+        if (typeof window.inicializarFiltros === 'function') {
+            window.inicializarFiltros();
+        }
+        
+        // QUINTO: Inicializar TODOS los módulos (AHORA SÍ, con usuario autenticado)
+        console.log('🚀 Inicializando módulos...');
+        if (typeof initVentas === 'function') setTimeout(() => initVentas(), 100);
+        if (typeof initCostos === 'function') setTimeout(() => initCostos(), 200);
+        if (typeof initDashboardListeners === 'function') setTimeout(() => initDashboardListeners(), 300);
+        if (typeof initPlanilla === 'function') setTimeout(() => initPlanilla(), 400);
         
         // MOSTRAR APP
         const mainContent = document.querySelector('.main-content');
@@ -135,7 +144,7 @@ async function cargarDatosUsuario(uid) {
         
         // CARGAR DASHBOARD
         if (typeof cambiarModulo === 'function') {
-            setTimeout(() => cambiarModulo('dashboard'), 300);
+            setTimeout(() => cambiarModulo('dashboard'), 500);
         }
         
         console.log('🎉 Bienvenido', AppState.usuario.nombre);
@@ -251,29 +260,47 @@ async function procesarLogin() {
 }
 
 // ============================================
-// LOGOUT
+// LOGOUT MEJORADO (SIN ERRORES)
 // ============================================
 async function logout() {
     try {
-        console.log('Cerrando sesión...');
+        console.log('🚪 Cerrando sesión...');
         
-        localStorage.removeItem('parrillitaUser');
+        // Remover listeners ANTES de cerrar sesión
+        firebase.database().ref('ventas').off();
+        firebase.database().ref('costos').off();
+        firebase.database().ref('planilla').off();
+        
+        // 2. Limpiar variables globales
+        window.ventasData = [];
+        window.costosData = {};
+        window.planillaData = {};
+        
+        // 3. Limpiar estado global
         AppState.usuario = null;
+        localStorage.removeItem('parrillitaUser');
         
+        // 4. Actualizar UI
         actualizarUIUsuario();
         configurarPermisos();
         
+        // 5. Ocultar app
         const mainContent = document.querySelector('.main-content');
         const sidebar = document.querySelector('.sidebar');
         
         if (mainContent) mainContent.style.display = 'none';
         if (sidebar) sidebar.style.display = 'none';
         
+        // 6. Cerrar sesión en Firebase
         await firebase.auth().signOut();
+        
+        // 7. Mostrar login (sin errores)
         mostrarLogin();
         
+        console.log('👋 Sesión cerrada correctamente (sin errores)');
+        
     } catch (error) {
-        console.error('Error logout:', error);
+        console.error('Error en logout:', error);
         mostrarLogin();
     }
 }
