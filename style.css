@@ -778,3 +778,46 @@ body {
         gap: 10px;
     }
 }
+
+/* Estilos para el modal de costos */
+#costoModal select:hover,
+#costoModal input:hover {
+    border-color: #2563eb !important;
+}
+
+#costoModal select:focus,
+#costoModal input:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+}
+
+#costoModal .modal-close:hover {
+    background: rgba(255,255,255,0.3) !important;
+    transform: scale(1.1);
+}
+
+#costoModal button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(37, 99, 235, 0.4) !important;
+}
+
+#costoModal button[type="button"]:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
+/* Animación de entrada */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#costoModal.active {
+    animation: slideUp 0.3s ease;
+}

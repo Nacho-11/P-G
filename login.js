@@ -31,16 +31,12 @@ function initAuth() {
 // ============================================
 async function cargarDatosUsuario(uid) {
     try {
-        console.log('🔍 Buscando usuario con UID:', uid);
-        
-        if (typeof inicializarFiltros === 'function') {
-            inicializarFiltros();
-        }
+        if (typeof initVentas === 'function') initVentas();
+        if (typeof initCostos === 'function') initCostos();
+        if (typeof initDashboardListeners === 'function') initDashboardListeners();
 
-        // VERIFICAR FIREBASE DATABASE
-        if (!firebase.database) {
-            throw new Error('Firebase Database no está disponible');
-        }
+        // Cargar locales en filtros
+        if (typeof cargarLocalesEnFiltro === 'function') cargarLocalesEnFiltro();
         
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
         let userData = snapshot.val();

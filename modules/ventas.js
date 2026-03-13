@@ -60,7 +60,7 @@ function cargarVentasDesdeFirebase() {
 }
 
 // ============================================
-// RENDERIZAR VISTA DE VENTAS (CON FILTRO DE TIEMPO)
+// RENDERIZAR VISTA DE VENTAS (VERSIÓN CORREGIDA)
 // ============================================
 function renderVentas() {
     console.log('Renderizando ventas...');
@@ -73,70 +73,81 @@ function renderVentas() {
         return;
     }
     
-    // Determinar locales permitidos
-    let localesPermitidos = [];
-    if (AppState.usuario?.rol === 'gerencia') {
-        localesPermitidos = AppState.locales.map(l => l.nombre);
-    } else if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) {
-        localesPermitidos = [AppState.usuario.local];
-    } else {
-        localesPermitidos = AppState.locales.map(l => l.nombre);
-    }
-    
-    // Obtener filtros
-    const filtroLocal = AppState.filtros?.local || 'Todos';
-    const filtroTiempo = AppState.filtros?.tiempo || 'todos';
-    const filtroFecha = AppState.filtros?.fechaPersonalizada || new Date().toISOString().split('T')[0];
+    // Obtener ventasData con valor por defecto
     const ventasData = window.ventasData || [];
     
-    console.log('📍 Filtros:', { filtroLocal, filtroTiempo, filtroFecha });
     console.log('📊 Total ventas en memoria:', ventasData.length);
     
-    // Fechas para comparar
-    const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-    const mesActual = hoy.substring(0, 7);
-    const anioActual = hoy.substring(0, 4);
-    
-    // Filtrar ventas por LOCAL Y TIEMPO
-    let ventasFiltradas = [];
-    
-    if (ventasData.length > 0) {
-        ventasFiltradas = ventasData.filter(v => {
-            // Filtro por local
-            if (!v.local) return false;
-            if (!localesPermitidos.includes(v.local)) return false;
-            if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
-            
-            // Limpiar fecha de la venta
-            const fechaVenta = v.fecha ? v.fecha.split('T')[0] : '';
-            if (!fechaVenta) return false;
-            
-            // APLICAR FILTRO DE TIEMPO
-            if (filtroTiempo === 'dia') {
-                return fechaVenta === hoy;
-            }
-            if (filtroTiempo === 'mes') {
-                return fechaVenta.substring(0, 7) === mesActual;
-            }
-            if (filtroTiempo === 'anio') {
-                return fechaVenta.substring(0, 4) === anioActual;
-            }
-            if (filtroTiempo === 'personalizado') {
-                return fechaVenta === filtroFecha;
-            }
-            
-            return true; // 'todos'
-        });
+    // Si no hay ventas, mostrar mensaje
+    if (ventasData.length === 0) {
+        ventasContent.innerHTML = `
+            <div class="card" style="padding: 40px; text-align: center;">
+                <i class="fas fa-shopping-cart" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+                <h3 style="color: #4b5563;">No hay ventas registradas</h3>
+                <p style="color: #6b7280;">Haga clic en "Nueva Venta" para agregar una.</p>
+            </div>
+        `;
+        return;
     }
     
-    console.log('🎯 Ventas filtradas por', filtroTiempo, ':', ventasFiltradas.length);
+    // Determinar locales permitidos
+    let localesPermitidos = AppState.usuario?.rol === 'gerencia' 
+        ? AppState.locales.map(l => l.nombre)
+        : (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) 
+            ? [AppState.usuario.local]
+            : AppState.locales.map(l => l.nombre);
+    
+    // Obtener filtros actuales
+const filtroLocal = AppState.filtros?.local || 'Todos';
+const filtroTiempo = AppState.filtros?.tiempo || 'todos';
+
+// Calcular fecha de HOY (para referencia)
+const hoy = new Date();
+const hoyStr = hoy.toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+// Calcular fecha de AYER (para el filtro)
+const ayer = new Date(hoy);
+ayer.setDate(hoy.getDate() - 1);
+const ayerStr = ayer.toLocaleDateString('en-CA');
+
+const mesActual = ayerStr.substring(0, 7);
+const anioActual = ayerStr.substring(0, 4);
+
+console.log('📅 Ayer:', ayerStr);
+console.log('📅 Mes actual:', mesActual);
+console.log('📅 Año actual:', anioActual);
+
+// FILTRAR VENTAS
+const ventasFiltradas = ventasData.filter(v => {
+    if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
+    
+    const fechaVenta = limpiarFecha(v.fecha);
+    if (!fechaVenta) return false;
+    
+    if (filtroTiempo === 'ayer') {
+        return fechaVenta === ayerStr;
+    }
+    if (filtroTiempo === 'mes') {
+        return fechaVenta.substring(0, 7) === mesActual;
+    }
+    if (filtroTiempo === 'anio') {
+        return fechaVenta.substring(0, 4) === anioActual;
+    }
+    if (filtroTiempo === 'personalizado') {
+        return fechaVenta === AppState.filtros?.fechaPersonalizada;
+    }
+    
+    return true; // 'todos'
+});
+    
+    console.log('🎯 Ventas filtradas:', ventasFiltradas.length);
     
     // Calcular totales
     const totales = ventasFiltradas.reduce((acc, v) => {
-        const comisiones = (v.pedidosYa || 0) * COMISIONES.PEDIDOS_YA + 
-                          (v.didi || 0) * COMISIONES.DIDI + 
-                          (v.uber || 0) * COMISIONES.UBER + 
-                          (v.bac || 0) * COMISIONES.Bac;
+        const comisiones = (v.pedidosYa || 0) * 0.18 + 
+                          (v.didi || 0) * 0.18 + 
+                          (v.uber || 0) * 0.44 + 
+                          (v.bac || 0) * 0.0225;
         return {
             brutas: acc.brutas + (v.total || 0),
             comisiones: acc.comisiones + comisiones,
@@ -165,7 +176,7 @@ function renderVentas() {
                 <i class="fas fa-plus"></i> Nueva Venta
             </button>
         </div>
-
+        
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-clock"></i> Ventas Recientes</h3>
@@ -199,10 +210,10 @@ function renderVentas() {
                     <td>₡${delivery.toLocaleString()}</td>
                     <td><strong>₡${(v.total || 0).toLocaleString()}</strong></td>
                     <td>
-                        <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">
+                        <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')" title="Eliminar venta">
+                        <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -210,16 +221,11 @@ function renderVentas() {
             `;
         });
     } else {
-        let mensajeFiltro = filtroTiempo === 'dia' ? 'hoy' :
-                           filtroTiempo === 'mes' ? 'este mes' :
-                           filtroTiempo === 'anio' ? 'este año' :
-                           filtroTiempo === 'personalizado' ? `la fecha ${filtroFecha}` : '';
-        
         ventasHTML += `
             <tr>
                 <td colspan="7" style="text-align: center; padding: 40px;">
-                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
-                    No hay ventas para ${mensajeFiltro} en ${filtroLocal === 'Todos' ? 'todos los locales' : filtroLocal}
+                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px;"></i>
+                    No hay ventas para mostrar
                 </td>
             </tr>
         `;
@@ -443,10 +449,3 @@ window.eliminarVenta = eliminarVenta;
 window.verDetalleVenta = verDetalleVenta;
 window.initVentas = initVentas;
 window.cargarVentasDesdeFirebase = cargarVentasDesdeFirebase;
-
-// Auto-ejecutar
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initVentas);
-} else {
-    initVentas();
-}

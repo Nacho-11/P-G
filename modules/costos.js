@@ -4,11 +4,15 @@
 // CARGAR COSTOS DESDE FIREBASE
 // ============================================
 function cargarCostosDesdeFirebase() {
+    console.log('🔄 Cargando costos desde Firebase...');
+    
     const costosRef = firebase.database().ref('costos');
     
     costosRef.on('value', (snapshot) => {
         const data = snapshot.val();
         const costosData = {};
+        
+        console.log('📦 Datos de Firebase:', data);
         
         if (data) {
             for (const local in data) {
@@ -23,20 +27,22 @@ function cargarCostosDesdeFirebase() {
                     }
                 }
             }
+            console.log('✅ Costos procesados:', costosData);
+        } else {
+            console.log('📭 No hay costos en Firebase');
         }
         
-        // Guardar en variable global
         window.costosData = costosData;
         
-        // Si estamos en la vista de costos, recargar
         if (document.getElementById('costos').classList.contains('active')) {
             renderCostos();
         }
         
-        // Si el dashboard está activo, actualizarlo
         if (document.getElementById('dashboard').classList.contains('active') && typeof window.renderDashboard === 'function') {
             window.renderDashboard();
         }
+    }, (error) => {
+        console.error('❌ Error cargando costos:', error);
     });
 }
 
@@ -46,14 +52,13 @@ function cargarCostosDesdeFirebase() {
 function renderCostos() {
     console.log('Renderizando costos...');
     const costosContent = document.getElementById('costosContent');
-    
-    if (!costosContent) {
-        console.error('Elemento costosContent no encontrado');
-        return;
-    }
+    if (!costosContent) return;
     
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const costosData = window.costosData || {};
+    
+    console.log('📍 Filtro:', filtroLocal);
+    console.log('📦 Datos a renderizar:', costosData);
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -64,52 +69,74 @@ function renderCostos() {
         </div>
     `;
     
-    // Filtrar costos por local
-    const localesFiltrados = filtroLocal === 'Todos' 
+    if (Object.keys(costosData).length === 0) {
+        html += `
+            <div class="card" style="padding: 40px; text-align: center;">
+                <i class="fas fa-coins" style="font-size: 4rem; color: #9ca3af;"></i>
+                <h3>No hay costos registrados</h3>
+                <p>Haga clic en "Nuevo Costo" para agregar uno.</p>
+            </div>
+        `;
+        costosContent.innerHTML = html;
+        return;
+    }
+    
+    const localesAMostrar = filtroLocal === 'Todos' 
         ? Object.keys(costosData) 
         : [filtroLocal].filter(l => costosData[l]);
     
-    // Si no hay datos, mostrar mensaje
-    if (localesFiltrados.length === 0) {
+    if (localesAMostrar.length === 0) {
         html += `
             <div class="card" style="padding: 40px; text-align: center;">
-                <i class="fas fa-coins" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
-                <h3 style="color: #4b5563; margin-bottom: 15px;">No hay costos registrados</h3>
-                <p style="color: #6b7280;">Haga clic en "Nuevo Costo" para agregar uno.</p>
+                <i class="fas fa-coins" style="font-size: 4rem; color: #9ca3af;"></i>
+                <h3>No hay costos para ${filtroLocal}</h3>
             </div>
         `;
-    } else {
-        // Mostrar costos por local y categoría
-        for (const local of localesFiltrados) {
-            html += `<div class="card" style="margin-bottom: 20px;">`;
-            html += `<h3 style="margin-bottom: 15px; color: var(--primary);">${local}</h3>`;
+        costosContent.innerHTML = html;
+        return;
+    }
+    
+    let totalGeneral = 0;
+    
+    for (const local of localesAMostrar) {
+        html += `<div class="card"><h3>${local}</h3>`;
+        
+        for (const categoria in costosData[local]) {
+            const costos = costosData[local][categoria];
+            if (costos.length === 0) continue;
             
-            for (const categoria in costosData[local]) {
-                html += `<h4 style="margin: 15px 0 10px; color: var(--gray-600);">${categoria}</h4>`;
-                html += `<div class="table-container">`;
-                html += `<table class="table">`;
-                html += `<thead><tr><th>Concepto</th><th>Monto</th><th>Descripción</th><th>Acciones</th></tr></thead>`;
-                html += `<tbody>`;
-                
-                costosData[local][categoria].forEach(costo => {
-                    html += `
-                        <tr>
-                            <td><strong>${costo.concepto || '—'}</strong></td>
-                            <td>₡${(costo.monto || 0).toLocaleString()}</td>
-                            <td>${costo.descripcion || '—'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-danger" onclick="eliminarCosto('${local}', '${categoria}', '${costo.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                html += `</tbody></table></div>`;
-            }
-            html += `</div>`;
+            const totalCategoria = costos.reduce((sum, c) => sum + (c.monto || 0), 0);
+            totalGeneral += totalCategoria;
+            
+            html += `<h4>${categoria}</h4>`;
+            html += `<table class="table"><thead><tr><th>Concepto</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>`;
+            
+            costos.forEach(c => {
+                html += `
+                    <tr>
+                        <td>${c.concepto}</td>
+                        <td>₡${c.monto.toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarCosto('${local}', '${categoria}', '${c.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `</tbody></table>`;
         }
+        
+        html += `</div>`;
+    }
+    
+    if (totalGeneral > 0) {
+        html += `
+            <div class="card" style="background: var(--primary); color: white;">
+                <h3>Total General: ₡${totalGeneral.toLocaleString()}</h3>
+            </div>
+        `;
     }
     
     costosContent.innerHTML = html;
@@ -122,17 +149,11 @@ function mostrarModalCosto() {
     const modal = document.getElementById('costoModal');
     const overlay = document.getElementById('modalOverlay');
     
-    if (!modal) {
-        alert('Error: Modal de costo no encontrado');
-        return;
-    }
-    
     // Limpiar campos
     document.getElementById('costoLocal').value = '';
     document.getElementById('costoCategoria').value = '';
-    document.getElementById('costoConcepto').value = '';
+    document.getElementById('costoConcepto').innerHTML = '<option value="">Seleccionar concepto...</option>';
     document.getElementById('costoMonto').value = '';
-    document.getElementById('costoDescripcion').value = '';
     
     // Cargar locales
     const selectLocal = document.getElementById('costoLocal');
@@ -149,19 +170,13 @@ function mostrarModalCosto() {
 // GUARDAR COSTO EN FIREBASE
 // ============================================
 async function guardarCosto() {
-    if (!puedeEditar()) {
-        alert('No tienes permisos para guardar costos');
-        return;
-    }
-    
     const local = document.getElementById('costoLocal').value;
     const categoria = document.getElementById('costoCategoria').value;
     const concepto = document.getElementById('costoConcepto').value;
     const monto = parseFloat(document.getElementById('costoMonto').value);
-    const descripcion = document.getElementById('costoDescripcion').value;
     
     if (!local || !categoria || !concepto || !monto) {
-        alert('Por favor complete todos los campos obligatorios');
+        alert('Complete todos los campos');
         return;
     }
     
@@ -169,53 +184,115 @@ async function guardarCosto() {
         const costoData = {
             concepto,
             monto,
-            descripcion: descripcion || '',
             fechaCreacion: new Date().toISOString(),
-            creadoPor: AppState.usuario?.email || 'sistema',
-            creadorUid: AppState.usuario?.uid || null
+            creadoPor: AppState.usuario?.email || 'sistema'
         };
         
-        // Guardar en Firebase
-        const costosRef = firebase.database().ref(`costos/${local}/${categoria}`);
-        const nuevoCostoRef = costosRef.push();
-        await nuevoCostoRef.set(costoData);
-        
-        alert('✅ Costo fijo guardado correctamente');
+        await firebase.database().ref(`costos/${local}/${categoria}`).push(costoData);
+        alert('✅ Costo guardado');
         cerrarModal('costoModal');
         
     } catch (error) {
-        console.error('Error guardando costo:', error);
-        alert('Error al guardar el costo: ' + error.message);
+        console.error('Error:', error);
+        alert('Error al guardar');
     }
 }
 
 // ============================================
-// ELIMINAR COSTO DE FIREBASE
+// ELIMINAR COSTO
 // ============================================
-async function eliminarCosto(local, categoria, costoId) {
-    if (!puedeEditar()) {
-        alert('No tienes permisos para eliminar costos');
-        return;
-    }
-    
-    if (!confirm('¿Está seguro de eliminar este costo fijo?')) return;
-    
+async function eliminarCosto(local, categoria, id) {
+    if (!confirm('¿Eliminar costo?')) return;
     try {
-        await firebase.database().ref(`costos/${local}/${categoria}/${costoId}`).remove();
-        alert('✅ Costo eliminado correctamente');
-        
+        await firebase.database().ref(`costos/${local}/${categoria}/${id}`).remove();
+        alert('✅ Eliminado');
     } catch (error) {
-        console.error('Error eliminando costo:', error);
-        alert('Error al eliminar el costo');
+        console.error('Error:', error);
     }
 }
 
 // ============================================
-// VERIFICAR PERMISOS
+// CARGAR CONCEPTOS POR CATEGORÍA
 // ============================================
-function puedeEditar() {
-    return AppState.usuario && (AppState.usuario.rol === 'gerencia' || AppState.usuario.rol === 'administrador');
-}
+window.cargarConceptosPorCategoria = function(categoria) {
+    const selectConcepto = document.getElementById('costoConcepto');
+    if (!selectConcepto) return;
+    
+    // Conceptos predefinidos por categoría (basado en tu Excel)
+    const conceptos = {
+        restaurante: [
+            "Alquiler de local",
+            "SECSA",
+            "Software Restaurante",
+            "Internet KOLBI",
+            "Televisión KOLBI",
+            "Alarma ADT",
+            "Fumigación",
+            "Póliza RT",
+            "Depreciación de activos",
+            "Patente comercial",
+            "Patente de licores",
+            "Basura municipal",
+            "Intereses por mora",
+            "Certificación de gas",
+            "Certificación eléctrica",
+            "Permiso Ministerio de Salud",
+            "Mantenimiento",
+            "Hacienda IVA",
+            "Asesoría legal RH",
+            "Honorarios contabilidad",
+            "Servicios profesionales publicidad",
+            "Otros servicios profesionales"
+        ],
+        planta: [
+            "Electricidad",
+            "Agua",
+            "ADT",
+            "Fumigación",
+            "Software SECSA",
+            "IVA Hacienda",
+            "Asesoría legal RH"
+        ],
+        oficinas: [
+            "Electricidad",
+            "Agua",
+            "Internet KOLBI",
+            "Teléfono y celulares",
+            "ADT",
+            "Mantenimiento y papelería",
+            "Software y hosting"
+        ],
+        transporte: [
+            "Combustible",
+            "Electricidad bodegas",
+            "Agua bodegas",
+            "Alquiler taller",
+            "GPS Navsat",
+            "Marchamos",
+            "Dekra",
+            "Mantenimiento vehículos"
+        ],
+        planilla: [
+            "Planilla bodega",
+            "Alex Duque",
+            "Póliza RT",
+            "CCSS",
+            "Planilla oficinas"
+        ]
+    };
+    
+    // Limpiar y cargar nuevas opciones
+    selectConcepto.innerHTML = '<option value="">Seleccionar concepto...</option>';
+    
+    if (conceptos[categoria]) {
+        conceptos[categoria].forEach(concepto => {
+            const option = document.createElement('option');
+            option.value = concepto;
+            option.textContent = concepto;
+            selectConcepto.appendChild(option);
+        });
+    }
+};
 
 // ============================================
 // INICIALIZAR
@@ -233,5 +310,4 @@ window.mostrarModalCosto = mostrarModalCosto;
 window.guardarCosto = guardarCosto;
 window.eliminarCosto = eliminarCosto;
 window.cargarCostosDesdeFirebase = cargarCostosDesdeFirebase;
-window.puedeEditar = puedeEditar;
 window.initCostos = initCostos;

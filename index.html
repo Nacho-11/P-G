@@ -130,7 +130,7 @@
                         <i class="fas fa-calendar filter-icon"></i>
                         <select id="filtroTiempo" class="filter-select">
                             <option value="todos">Todo</option>
-                            <option value="dia">Hoy</option>
+                            <option value="ayer">Ayer</option>
                             <option value="mes">Este mes</option>
                             <option value="anio">Este año</option>
                             <option value="personalizado">Personalizado</option>
@@ -447,6 +447,100 @@
                     </button>
                     <button type="submit" class="btn btn-primary" id="guardarVentaBtn" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
                         <i class="fas fa-save"></i> Guardar Venta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Costos - VERSIÓN PROFESIONAL -->
+    <div class="modal" id="costoModal" style="max-width: 550px; border-radius: 24px; overflow: hidden;">
+        <!-- Header con gradiente -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px 30px; border-bottom: none;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-coins" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Nuevo Costo Fijo</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem;">Ingrese los detalles del costo</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal('costoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Body con padding mejorado -->
+        <div class="modal-body" style="padding: 30px; background: #f8fafc;">
+            <form id="costoForm" onsubmit="event.preventDefault(); guardarCosto();">
+                <!-- Local - Tarjeta -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="background: #e0f2fe; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-store" style="color: #0284c7;"></i>
+                        </div>
+                        <span style="font-weight: 600; color: #1e293b;">Seleccionar Local</span>
+                    </div>
+                    <select id="costoLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                        <option value="">Seleccionar local...</option>
+                    </select>
+                </div>
+                
+                <!-- Categoría - Tarjeta -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="background: #fef9c3; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-tag" style="color: #a16207;"></i>
+                        </div>
+                        <span style="font-weight: 600; color: #1e293b;">Categoría del Costo</span>
+                    </div>
+                    <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                        <option value="">Seleccionar categoría...</option>
+                        <option value="restaurante">🍽️ Restaurante</option>
+                        <option value="planta">🏭 Planta de Producción</option>
+                        <option value="oficinas">🏢 Oficinas</option>
+                        <option value="transporte">🚚 Transporte</option>
+                        <option value="planilla">👥 Planilla</option>
+                    </select>
+                </div>
+                
+                <!-- Concepto - Tarjeta -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="background: #dcfce7; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-list" style="color: #166534;"></i>
+                        </div>
+                        <span style="font-weight: 600; color: #1e293b;">Concepto</span>
+                    </div>
+                    <select id="costoConcepto" required style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                        <option value="">Seleccionar concepto...</option>
+                    </select>
+                </div>
+                
+                <!-- Monto - Tarjeta -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="background: #fee2e2; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-dollar-sign" style="color: #991b1b;"></i>
+                        </div>
+                        <span style="font-weight: 600; color: #1e293b;">Monto</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #2563eb; color: white; padding: 14px 20px; border-radius: 14px; font-weight: 600;">₡</span>
+                        <input type="number" id="costoMonto" min="0" step="100" placeholder="0" required style="flex: 1; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; transition: all 0.2s; outline: none;">
+                    </div>
+                </div>
+                
+                <!-- Botones de acción -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 10px;">
+                    <button type="button" onclick="cerrarModal('costoModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #4b5563; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" style="padding: 14px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+                        <i class="fas fa-save"></i>
+                        Guardar Costo
                     </button>
                 </div>
             </form>

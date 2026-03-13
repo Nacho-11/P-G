@@ -31,26 +31,32 @@ function renderDashboard() {
     // Obtener filtros actuales
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
-    const fechaHoy = new Date().toISOString().split('T')[0];
-    const mesActual = fechaHoy.substring(0, 7);
-    const anioActual = fechaHoy.substring(0, 4);
-    
-    console.log('📅 Fecha hoy:', fechaHoy);
+
+    // Calcular fecha de HOY (para referencia)
+    const hoy = new Date();
+    const hoyStr = hoy.toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+    // Calcular fecha de AYER (para el filtro)
+    const ayer = new Date(hoy);
+    ayer.setDate(hoy.getDate() - 1);
+    const ayerStr = ayer.toLocaleDateString('en-CA');
+
+    const mesActual = ayerStr.substring(0, 7);
+    const anioActual = ayerStr.substring(0, 4);
+
+    console.log('📅 Ayer:', ayerStr);
     console.log('📅 Mes actual:', mesActual);
     console.log('📅 Año actual:', anioActual);
-    
-    // FILTRAR VENTAS - VERSIÓN CORREGIDA
+
+    // FILTRAR VENTAS
     const ventasFiltradas = ventasData.filter(v => {
-        // Filtro por local
         if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
         
         const fechaVenta = limpiarFecha(v.fecha);
         if (!fechaVenta) return false;
         
-        // APLICAR FILTRO DE TIEMPO
-        if (filtroTiempo === 'dia') {
-            // Solo ventas de HOY (2026-03-12)
-            return fechaVenta === fechaHoy;
+        if (filtroTiempo === 'ayer') {
+            return fechaVenta === ayerStr;
         }
         if (filtroTiempo === 'mes') {
             return fechaVenta.substring(0, 7) === mesActual;
