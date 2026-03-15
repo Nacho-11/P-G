@@ -12,13 +12,49 @@ const AppState = {
         { id: 8, nombre: 'Parrillita San Joaquin' },
         { id: 9, nombre: 'Parrillita San Pedro' }
     ],
-     data: { ventas: [], costos: [] },
+    data: { ventas: [], costos: [] },
     filtros: { 
         local: 'Todos', 
-        tiempo: 'todos',  // ← VALOR POR DEFECTO CORRECTO
+        tiempo: 'todos',
         fechaPersonalizada: new Date().toISOString().split('T')[0]
     }
 };
+
+// ===== FUNCIONES DE PERMISOS =====
+function esGerencia() {
+    return AppState.usuario?.rol === 'gerencia';
+}
+
+function esUsuario() {
+    return AppState.usuario?.rol === 'usuario';
+}
+
+function getLocalesPermitidos() {
+    if (!AppState.usuario) return [];
+    
+    // Gerencia puede ver todos los locales
+    if (esGerencia()) {
+        return AppState.locales.map(l => l.nombre);
+    }
+    
+    // Usuario solo ve su local asignado
+    if (esUsuario() && AppState.usuario?.local) {
+        return [AppState.usuario.local];
+    }
+    
+    return [];
+}
+
+function puedeVerLocal(local) {
+    const localesPermitidos = getLocalesPermitidos();
+    return localesPermitidos.includes(local) || localesPermitidos.includes('Todos');
+}
+
+// Hacerlas globales
+window.esGerencia = esGerencia;
+window.esUsuario = esUsuario;
+window.getLocalesPermitidos = getLocalesPermitidos;
+window.puedeVerLocal = puedeVerLocal;
 
 // ===== SIDEBAR =====
 function toggleSidebar() {
@@ -131,25 +167,42 @@ function getCurrentDate() {
 
 // ===== CARGAR LOCALES =====
 function cargarLocalesEnFiltro() {
+    console.log('🔍 cargarLocalesEnFiltro - Usuario:', AppState.usuario);
+    console.log('🔍 esUsuario():', esUsuario());
+    console.log('🔍 local del usuario:', AppState.usuario?.local);
+    
     const filtroLocal = document.getElementById('filtroLocal');
     if (!filtroLocal) return;
     
     const valorActual = AppState.filtros?.local || 'Todos';
+    const localesPermitidos = getLocalesPermitidos();
+    
+    console.log('🔍 localesPermitidos:', localesPermitidos);
+    
     filtroLocal.innerHTML = '<option value="Todos">Todos los locales</option>';
     
-    let localesAMostrar = AppState.usuario?.rol === 'gerencia' ? AppState.locales :
-                         (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) ? 
-                         AppState.locales.filter(l => l.nombre === AppState.usuario.local) : AppState.locales;
+    if (esUsuario() && AppState.usuario?.local) {
+        console.log('✅ Usuario con local, asignando:', AppState.usuario.local);
+        // CORRECCIÓN: Cambiar App por AppState
+        filtroLocal.innerHTML = `<option value="${AppState.usuario.local}">${AppState.usuario.local}</option>`;
+        filtroLocal.disabled = true;
+        filtroLocal.value = AppState.usuario.local;
+    } 
+    else if (esGerencia()) {
+        console.log('✅ Gerencia, cargando todos los locales');
+        AppState.locales.forEach(local => {
+            if (localesPermitidos.includes(local.nombre)) {
+                const option = document.createElement('option');
+                option.value = local.nombre;
+                option.textContent = local.nombre;
+                filtroLocal.appendChild(option);
+            }
+        });
+        filtroLocal.disabled = false;
+        filtroLocal.value = valorActual;
+    }
     
-    localesAMostrar.forEach(local => {
-        const option = document.createElement('option');
-        option.value = local.nombre;
-        option.textContent = local.nombre;
-        filtroLocal.appendChild(option);
-    });
-    
-    filtroLocal.value = valorActual;
-    filtroLocal.disabled = (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local);
+    console.log('🔍 filtroLocal final - valor:', filtroLocal.value, 'opciones:', filtroLocal.innerHTML);
 }
 
 function cargarLocalesEnUsuarios() {
@@ -176,7 +229,7 @@ function cargarLocalesEnVentas() {
     });
 }
 
-// ===== INICIALIZAR FILTROS (VERSIÓN CORREGIDA) =====
+// ===== INICIALIZAR FILTROS =====
 function inicializarFiltros() {
     cargarLocalesEnFiltro();
     
@@ -184,11 +237,9 @@ function inicializarFiltros() {
     const grupoFecha = document.getElementById('grupoFechaPersonalizado');
     const filtroFecha = document.getElementById('filtroFechaPersonalizado');
     
-    // Establecer valor por defecto en el select
     if (filtroTiempo) {
-        filtroTiempo.value = 'todos';  // "Todo" por defecto
+        filtroTiempo.value = 'todos';
         
-        // SOLO UN EVENT LISTENER
         filtroTiempo.addEventListener('change', function(e) {
             AppState.filtros.tiempo = e.target.value;
             
@@ -216,7 +267,6 @@ function inicializarFiltros() {
         });
     }
     
-    // Inicializar con fecha actual
     const fechaActual = new Date();
     const año = fechaActual.getFullYear();
     const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
@@ -259,6 +309,9 @@ function cerrarModal(id) {
 }
 
 // Hacer funciones globales
+window.esGerencia = esGerencia;
+window.getLocalesPermitidos = getLocalesPermitidos;
+window.puedeVerLocal = puedeVerLocal;
 window.cargarLocalesEnFiltro = cargarLocalesEnFiltro;
 window.cargarLocalesEnVentas = cargarLocalesEnVentas;
 window.cargarLocalesEnUsuarios = cargarLocalesEnUsuarios;
@@ -281,6 +334,11 @@ window.renderUsuarios = null;
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initSidebar, 100);
+    
+    // NO mostrar la app hasta que haya usuario
+    document.querySelector('.main-content').style.display = 'none';
+    document.querySelector('.sidebar').style.display = 'none';
+    
     const checkUser = setInterval(() => {
         if (AppState.usuario) {
             clearInterval(checkUser);

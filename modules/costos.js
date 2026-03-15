@@ -47,7 +47,7 @@ function cargarCostosDesdeFirebase() {
 }
 
 // ============================================
-// RENDERIZAR VISTA DE COSTOS
+// RENDERIZAR VISTA DE COSTOS (CORREGIDO)
 // ============================================
 function renderCostos() {
     console.log('Renderizando costos...');
@@ -81,9 +81,12 @@ function renderCostos() {
         return;
     }
     
+    // 🔥 CORRECCIÓN: Filtrar por permisos del usuario
+    const localesPermitidos = getLocalesPermitidos();
+    
     const localesAMostrar = filtroLocal === 'Todos' 
-        ? Object.keys(costosData) 
-        : [filtroLocal].filter(l => costosData[l]);
+        ? Object.keys(costosData).filter(local => puedeVerLocal(local))
+        : [filtroLocal].filter(l => puedeVerLocal(l) && costosData[l]);
     
     if (localesAMostrar.length === 0) {
         html += `
@@ -143,7 +146,7 @@ function renderCostos() {
 }
 
 // ============================================
-// MOSTRAR MODAL DE NUEVO COSTO
+// MOSTRAR MODAL DE NUEVO COSTO (CORREGIDO)
 // ============================================
 function mostrarModalCosto() {
     const modal = document.getElementById('costoModal');
@@ -155,12 +158,25 @@ function mostrarModalCosto() {
     document.getElementById('costoConcepto').innerHTML = '<option value="">Seleccionar concepto...</option>';
     document.getElementById('costoMonto').value = '';
     
-    // Cargar locales
+    // Cargar locales (solo los permitidos)
     const selectLocal = document.getElementById('costoLocal');
     selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
+    
+    const localesPermitidos = getLocalesPermitidos();
+    
     AppState.locales.forEach(local => {
-        selectLocal.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
+        if (localesPermitidos.includes(local.nombre)) {
+            selectLocal.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
+        }
     });
+    
+    // Si es usuario, preseleccionar y deshabilitar
+    if (esUsuario() && AppState.usuario?.local) {
+        selectLocal.value = AppState.usuario.local;
+        selectLocal.disabled = true;
+    } else {
+        selectLocal.disabled = false;
+    }
     
     modal.classList.add('active');
     overlay.classList.add('active');

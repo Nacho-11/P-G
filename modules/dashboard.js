@@ -5,7 +5,6 @@
 // ============================================
 function limpiarFecha(fecha) {
     if (!fecha) return '';
-    // Si viene con hora (YYYY-MM-DDTHH:MM:SS), tomar solo la fecha
     return fecha.split('T')[0];
 }
 
@@ -21,22 +20,18 @@ function renderDashboard() {
         return;
     }
     
-    // Obtener datos de las variables globales
     const ventasData = window.ventasData || [];
     const costosData = window.costosData || {};
     
     console.log('Ventas para dashboard:', ventasData.length);
     console.log('Costos para dashboard:', Object.keys(costosData).length);
     
-    // Obtener filtros actuales
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
 
-    // Calcular fecha de HOY (para referencia)
     const hoy = new Date();
-    const hoyStr = hoy.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const hoyStr = hoy.toLocaleDateString('en-CA');
 
-    // Calcular fecha de AYER (para el filtro)
     const ayer = new Date(hoy);
     ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
@@ -48,35 +43,31 @@ function renderDashboard() {
     console.log('📅 Mes actual:', mesActual);
     console.log('📅 Año actual:', anioActual);
 
-    // FILTRAR VENTAS
+    // FILTRAR VENTAS POR LOCAL (con permisos)
     const ventasFiltradas = ventasData.filter(v => {
+        // Primero, filtro por permisos de usuario
+        if (!puedeVerLocal(v.local)) return false;
+        
+        // Luego, filtro por local seleccionado
         if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
         
         const fechaVenta = limpiarFecha(v.fecha);
         if (!fechaVenta) return false;
         
-        if (filtroTiempo === 'ayer') {
-            return fechaVenta === ayerStr;
-        }
-        if (filtroTiempo === 'mes') {
-            return fechaVenta.substring(0, 7) === mesActual;
-        }
-        if (filtroTiempo === 'anio') {
-            return fechaVenta.substring(0, 4) === anioActual;
-        }
-        if (filtroTiempo === 'personalizado') {
-            return fechaVenta === AppState.filtros?.fechaPersonalizada;
-        }
+        if (filtroTiempo === 'ayer') return fechaVenta === ayerStr;
+        if (filtroTiempo === 'mes') return fechaVenta.substring(0, 7) === mesActual;
+        if (filtroTiempo === 'anio') return fechaVenta.substring(0, 4) === anioActual;
+        if (filtroTiempo === 'personalizado') return fechaVenta === AppState.filtros?.fechaPersonalizada;
         
-        return true; // 'todos'
+        return true;
     });
 
     console.log('📊 Ventas filtradas por', filtroTiempo, ':', ventasFiltradas.length);
     
-    // FILTRAR COSTOS
+    // FILTRAR COSTOS POR LOCAL (con permisos)
     let costosFiltrados = [];
     for (const local in costosData) {
-        // Filtro por local
+        if (!puedeVerLocal(local)) continue;
         if (filtroLocal !== 'Todos' && local !== filtroLocal) continue;
         
         for (const categoria in costosData[local]) {
@@ -90,13 +81,11 @@ function renderDashboard() {
         }
     }
     
-    // Calcular totales
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
     const totalCostos = costosFiltrados.reduce((sum, c) => sum + (c.monto || 0), 0);
     const utilidad = totalVentas - totalCostos;
     const margen = totalVentas > 0 ? ((utilidad / totalVentas) * 100).toFixed(1) : 0;
     
-    // Calcular delivery
     const deliveryData = ventasFiltradas.reduce((acc, v) => {
         const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
         const comisiones = (v.comisiones?.total || 0);
@@ -106,13 +95,11 @@ function renderDashboard() {
         };
     }, { ventas: 0, comisiones: 0 });
     
-    // Ventas por local
     const ventasPorLocal = {};
     ventasFiltradas.forEach(v => {
         ventasPorLocal[v.local] = (ventasPorLocal[v.local] || 0) + (v.total || 0);
     });
     
-    // Ventas mensuales para el gráfico
     const ventasMensuales = {};
     ventasFiltradas.forEach(v => {
         if (v.fecha) {
@@ -122,21 +109,17 @@ function renderDashboard() {
         }
     });
     
-    // Ordenar meses y tomar últimos 6
     const meses = Object.keys(ventasMensuales).sort().slice(-6);
     const valoresMensuales = meses.map(m => ventasMensuales[m] || 0);
     
-    // Top 5 locales
     const topLocales = Object.entries(ventasPorLocal)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
     
-    // Determinar qué mostrar en la tabla inferior
-    const mostrarTopLocales = filtroLocal === 'Todos';
+    const mostrarTopLocales = filtroLocal === 'Todos' && esGerencia();
     
     const dashboardHTML = `
         <div style="padding: 20px;">
-            <!-- Título y filtros -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 20px;">
                 <h1 style="font-size: 24px; color: #333;">
                     <i class="fas fa-chart-line" style="color: #2563eb; margin-right: 10px;"></i>
@@ -153,7 +136,6 @@ function renderDashboard() {
                 </div>
             </div>
             
-            <!-- Tarjetas de resumen -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">VENTAS TOTALES</div>
@@ -174,9 +156,7 @@ function renderDashboard() {
                 </div>
             </div>
             
-            <!-- Gráficos y estadísticas -->
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px;">
-                <!-- Gráfico de ventas mensuales -->
                 <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h3 style="margin-bottom: 20px; color: #333;">
                         <i class="fas fa-chart-bar" style="color: #2563eb; margin-right: 10px;"></i>
@@ -188,7 +168,6 @@ function renderDashboard() {
                     ${meses.length === 0 ? '<p style="text-align: center; color: #666; margin-top: 20px;">No hay datos para mostrar en el gráfico</p>' : ''}
                 </div>
                 
-                <!-- Tarjetas de delivery -->
                 <div style="display: flex; flex-direction: column; gap: 20px;">
                     <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <div style="display: flex; align-items: center; gap: 15px;">
@@ -212,7 +191,6 @@ function renderDashboard() {
                 </div>
             </div>
             
-            <!-- Tabla inferior -->
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h3 style="margin-bottom: 20px; color: #333;">
                     <i class="fas fa-${mostrarTopLocales ? 'store' : 'clock'}" style="color: #2563eb; margin-right: 10px;"></i>
@@ -267,7 +245,6 @@ function renderDashboard() {
                 </div>
             </div>
             
-            <!-- Información de usuario -->
             <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 0.9rem; color: #64748b;">
                 <i class="fas fa-user" style="margin-right: 8px;"></i>
                 ${AppState.usuario?.nombre || 'Usuario'} | 
@@ -279,7 +256,6 @@ function renderDashboard() {
     
     dashboardContent.innerHTML = dashboardHTML;
     
-    // Crear gráfico si hay datos
     if (meses.length > 0) {
         setTimeout(() => {
             crearGraficoVentasMensuales(meses, valoresMensuales);
@@ -294,12 +270,10 @@ function crearGraficoVentasMensuales(meses, valores) {
     const ctx = document.getElementById('graficoVentasMensuales');
     if (!ctx) return;
     
-    // Destruir gráfico existente
     if (window.ventasChart) {
         window.ventasChart.destroy();
     }
     
-    // Formatear meses para mostrar
     const mesesFormateados = meses.map(m => {
         const [año, mes] = m.split('-');
         const mesesNombre = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -321,9 +295,7 @@ function crearGraficoVentasMensuales(meses, valores) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
@@ -348,7 +320,6 @@ function crearGraficoVentasMensuales(meses, valores) {
 function initDashboardListeners() {
     console.log('Inicializando listeners del dashboard...');
     
-    // Escuchar cambios en ventas
     firebase.database().ref('ventas').on('value', (snapshot) => {
         const data = snapshot.val();
         const ventasArray = [];
@@ -364,13 +335,11 @@ function initDashboardListeners() {
         
         window.ventasData = ventasArray;
         
-        // Si el dashboard está activo, actualizar
         if (document.getElementById('dashboard').classList.contains('active')) {
             renderDashboard();
         }
     });
     
-    // Escuchar cambios en costos
     firebase.database().ref('costos').on('value', (snapshot) => {
         const data = snapshot.val();
         const costosObj = {};
@@ -392,24 +361,18 @@ function initDashboardListeners() {
         
         window.costosData = costosObj;
         
-        // Si el dashboard está activo, actualizar
         if (document.getElementById('dashboard').classList.contains('active')) {
             renderDashboard();
         }
     });
 }
 
-// ===== FUNCIÓN PARA OBTENER FECHA ACTUAL EN COSTA RICA =====
 function obtenerFechaCR() {
     const ahora = new Date();
-    // Ajustar a UTC-6 (Costa Rica)
-    const crTime = new Date(ahora.getTime() - (360 * 60000)); // Ajuste manual
+    const crTime = new Date(ahora.getTime() - (360 * 60000));
     return crTime.toISOString().split('T')[0];
 }
 
-// ============================================
-// HACER FUNCIONES GLOBALES
-// ============================================
 window.renderDashboard = renderDashboard;
 window.crearGraficoVentasMensuales = crearGraficoVentasMensuales;
 window.initDashboardListeners = initDashboardListeners;

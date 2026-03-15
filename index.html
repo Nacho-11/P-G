@@ -238,46 +238,113 @@
             </form>
         </div>
     </div>
-
-    <!-- Modal Usuarios -->
-    <div class="modal" id="usuarioModal">
-        <div class="modal-header">
-            <h2 id="usuarioModalTitle"><i class="fas fa-user"></i> Nuevo Usuario</h2>
-            <button class="modal-close" onclick="cerrarModal('usuarioModal')"><i class="fas fa-times"></i></button>
+    
+    <!-- Modal de Usuario - VERSIÓN ÚNICA Y CORRECTA -->
+    <div class="modal" id="usuarioModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        <!-- Header con icono sin cuadro -->
+        <div class="modal-header" id="usuarioModalHeader" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <!-- ÍCONO SIN CUADRO (exactamente como lo quieres) -->
+                <i class="fas" id="usuarioModalIcon" style="font-size: 2rem; color: white;"></i>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.3px;" id="usuarioModalTitle">Nuevo Usuario</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem;" id="usuarioModalSubtitle">Complete los datos del nuevo usuario</p>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
+        
+        <div class="modal-body" style="padding: 30px; background: #f8fafd;">
             <form id="usuarioForm" onsubmit="event.preventDefault(); document.getElementById('usuarioModal').dataset.editUid ? actualizarUsuario() : guardarUsuario();">
-                <div class="form-group">
-                    <label>Nombre completo</label>
-                    <input type="text" id="usuarioNombre" placeholder="Ej: Juan Pérez">
-                </div>
-                <div class="form-group">
-                    <label>Correo electrónico</label>
-                    <input type="email" id="usuarioEmail" required placeholder="ej: usuario@parrillita.com">
-                </div>
-                <div class="form-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)">
-                </div>
-                <div class="form-group">
-                    <label>Rol</label>
-                    <select id="usuarioRol" required>
-                        <option value="gerencia">Gerencia</option>
-                        <option value="encargado">Encargado de Local</option>
-                        <option value="sistemas">Sistemas</option>
-                        <option value="consultor">Consultor</option>
+                
+                <!-- Campo LOCAL editable -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
+                        <i class="fas fa-store" style="color: #3498db; font-size: 1rem;"></i> Local asignado
+                    </label>
+                    <select id="usuarioLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px; font-size: 0.95rem; background: white; transition: all 0.2s; outline: none; color: #1e293b;">
+                        <option value="">Seleccionar local...</option>
                     </select>
                 </div>
-                <div class="form-group" id="usuarioLocalGroup" style="display: none;">
-                    <label>Local asignado</label>
-                    <select id="usuarioLocal"></select>
+                
+                <!-- Campo LOCAL solo lectura (edición) -->
+                <div id="campoLocalSoloLectura" style="background: linear-gradient(135deg, #f8fafc, #ffffff); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #eef2f6; display: none;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #f1f5f9; width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-store" style="color: #3498db; font-size: 1.4rem;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">LOCAL ASIGNADO</div>
+                            <div style="font-weight: 600; font-size: 1.1rem; color: #1e293b;" id="usuarioLocalDisplay">-</div>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 30px; color: #64748b; font-size: 0.8rem;">
+                            <i class="fas fa-lock"></i> Fijo
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="usuarioActivo" checked> Usuario activo</label>
+                
+                <!-- Nombre -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
+                        <i class="fas fa-user" style="color: #3498db; font-size: 1rem;"></i> Nombre
+                    </label>
+                    <input type="text" id="usuarioNombre" placeholder="Ej: Ignacio Calderón" style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px; font-size: 0.95rem; transition: all 0.2s; outline: none;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #64748b; font-size: 0.8rem;">
+                        <i class="fas fa-info-circle" style="color: #3498db;"></i>
+                        <span>Nombre real de la persona</span>
+                    </div>
                 </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" onclick="cerrarModal('usuarioModal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+                
+                <!-- Correo electrónico -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
+                        <i class="fas fa-envelope" style="color: #3498db; font-size: 1rem;"></i> Correo electrónico
+                    </label>
+                    <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
+                        <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
+                            <i class="fas fa-at"></i>
+                        </span>
+                        <input type="email" id="usuarioEmail" required placeholder="ej: gerencia@parrillita.com" style="flex: 1; padding: 14px 16px; border: none; font-size: 0.95rem; outline: none; background: transparent;">
+                    </div>
+                </div>
+                
+                <!-- Contraseña -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
+                        <i class="fas fa-lock" style="color: #3498db; font-size: 1rem;"></i> Contraseña
+                    </label>
+                    <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
+                        <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
+                            <i class="fas fa-key"></i>
+                        </span>
+                        <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)" style="flex: 1; padding: 14px 16px; border: none; font-size: 0.95rem; outline: none; background: transparent;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #64748b; font-size: 0.8rem;" id="passwordHelp">
+                        <i class="fas fa-shield-alt" style="color: #3498db;"></i>
+                        <span>Mínimo 6 caracteres</span>
+                    </div>
+                </div>
+                
+                <!-- Checkbox -->
+                <div style="background: white; border-radius: 20px; padding: 16px 20px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <div style="position: relative;">
+                            <input type="checkbox" id="usuarioActivo" checked style="width: 20px; height: 20px; accent-color: #3498db;">
+                        </div>
+                        <div>
+                            <span style="font-weight: 500; color: #1e293b;">Usuario activo</span>
+                            <span style="display: block; font-size: 0.8rem; color: #64748b; margin-top: 2px;">El usuario podrá acceder al sistema</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Botones -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" onclick="cerrarModal('usuarioModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" id="usuarioSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-save"></i> Guardar Usuario
+                    </button>
                 </div>
             </form>
         </div>
@@ -817,6 +884,14 @@
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
     <script src="login.js"></script>
+    <script>
+        // Asegurar que Functions está inicializado
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        // Opcional: configurar región (si usas una diferente)
+        // firebase.functions().useEmulator('localhost', 5001); // para pruebas locales
+    </script>
     <script src="modules/dashboard.js"></script>
     <script src="modules/ventas.js"></script>
     <script src="modules/costos.js"></script>

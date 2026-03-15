@@ -1,8 +1,5 @@
 // modules/planilla.js
 
-// ============================================
-// FUNCIÓN AUXILIAR PARA LIMPIAR FECHAS
-// ============================================
 function limpiarFecha(fecha) {
     if (!fecha) return '';
     return fecha.split('T')[0];
@@ -131,21 +128,18 @@ function renderPlanilla() {
         });
     }
     else if (filtroTiempo === 'mes') {
-        // CORRECCIÓN: Para mes, fechaBuscar debe ser el mes (YYYY-MM)
-        fechaBuscar = hoyStr.substring(0, 7); // "2026-03"
+        fechaBuscar = hoyStr.substring(0, 7);
         const [año, mes] = hoyStr.split('-');
         const mesesNombre = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         fechaMostrar = `${mesesNombre[parseInt(mes)-1]} ${año}`;
     }
     else if (filtroTiempo === 'anio') {
-        // CORRECCIÓN: Para año, fechaBuscar debe ser el año (YYYY)
-        fechaBuscar = hoyStr.substring(0, 4); // "2026"
+        fechaBuscar = hoyStr.substring(0, 4);
         fechaMostrar = `Año ${fechaBuscar}`;
     }
     else {
-        // 'todos' - mostrar el día actual
-        fechaBuscar = hoyStr; // Usar hoy como fecha a buscar
+        fechaBuscar = hoyStr;
         fechaMostrar = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-CR', { 
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         });
@@ -173,9 +167,10 @@ function renderPlanilla() {
         return;
     }
     
+    // FILTRAR POR LOCAL (con permisos)
     const localesAMostrar = filtroLocal === 'Todos' 
-        ? Object.keys(planillaData) 
-        : [filtroLocal].filter(l => planillaData[l] && planillaData[l].length > 0);
+        ? Object.keys(planillaData).filter(local => puedeVerLocal(local))
+        : [filtroLocal].filter(l => puedeVerLocal(l) && planillaData[l]);
     
     if (localesAMostrar.length === 0) {
         planillaContent.innerHTML = `
@@ -263,9 +258,7 @@ function renderPlanilla() {
 
             let mostrarDetalleHoras = false;
 
-            // CORRECCIÓN DEFINITIVA: Usar fechaBuscar según el filtro
             if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
-                // Día específico
                 horasDelDia = emp.horas?.[fechaBuscar] || {
                     ordinarias: 0,
                     extras: 0,
@@ -275,7 +268,6 @@ function renderPlanilla() {
                 mostrarDetalleHoras = true;
             }
             else if (filtroTiempo === 'mes') {
-                // Mes completo - sumar todas las horas del mes
                 if (emp.horas) {
                     Object.entries(emp.horas).forEach(([fecha, horas]) => {
                         if (fecha.substring(0, 7) === fechaBuscar) {
@@ -286,11 +278,9 @@ function renderPlanilla() {
                         }
                     });
                 }
-                // Para mes no mostramos detalle de horas por día
                 mostrarDetalleHoras = false;
             }
             else if (filtroTiempo === 'anio') {
-                // Año completo - sumar todas las horas del año
                 if (emp.horas) {
                     Object.entries(emp.horas).forEach(([fecha, horas]) => {
                         if (fecha.substring(0, 4) === fechaBuscar) {
@@ -304,8 +294,6 @@ function renderPlanilla() {
                 mostrarDetalleHoras = false;
             }
             else {
-                // 'todos' - NO acumular, mostrar solo las horas del día actual (HOY)
-                // Usar hoyStr que ya está definido al principio
                 horasDelDia = emp.horas?.[hoyStr] || {
                     ordinarias: 0,
                     extras: 0,
@@ -313,7 +301,6 @@ function renderPlanilla() {
                     extrasNocturnas: 0
                 };
                 mostrarDetalleHoras = true;
-                // NO redefinir fechaMostrar aquí
             }
             
             const pagos = calcularPagoHoras(emp, horasDelDia);
@@ -353,7 +340,6 @@ function renderPlanilla() {
                 </tr>
             `;
             
-            // Mostrar detalle de horas solo para días específicos
             if (mostrarDetalleHoras && (horasDelDia.ordinarias > 0 || horasDelDia.extras > 0 || horasDelDia.nocturnas > 0 || horasDelDia.extrasNocturnas > 0)) {
                 html += `
                     <tr style="background: #f8fafc;">
@@ -413,7 +399,7 @@ function renderPlanilla() {
 }
 
 // ============================================
-// MOSTRAR REGISTRO DE HORAS (CORREGIDO)
+// MOSTRAR REGISTRO DE HORAS
 // ============================================
 function mostrarRegistroHoras(local, empleadoId, nombre) {
     const modal = document.getElementById('horasModal');
@@ -421,7 +407,6 @@ function mostrarRegistroHoras(local, empleadoId, nombre) {
     
     if (!modal) return;
     
-    // Obtener la fecha del filtro actual como sugerencia
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
     let fechaSugerida = '';
     
@@ -445,22 +430,18 @@ function mostrarRegistroHoras(local, empleadoId, nombre) {
     document.getElementById('horasEmpleadoNombre').textContent = nombre;
     document.getElementById('horasEmpleadoLocal').textContent = local;
     
-    // MOSTRAR CAMPOS NOCTURNOS SOLO PARA LOS AÑOS LOCOS
     const nocturnoField = document.getElementById('nocturnoField');
     if (nocturnoField) {
-        // Verificar si el local incluye "Los Años Locos"
         const esLosAñosLocos = local.includes('Los Años Locos');
         nocturnoField.style.display = esLosAñosLocos ? 'block' : 'none';
         console.log('🌙 Mostrar campos nocturnos:', esLosAñosLocos);
     }
     
-    // Establecer la fecha sugerida
     const fechaInput = document.getElementById('horasFecha');
     if (fechaInput) {
         fechaInput.value = fechaSugerida;
     }
     
-    // Cargar horas existentes para esa fecha
     cargarHorasExistentes(local, empleadoId, fechaSugerida);
     
     modal.classList.add('active');
@@ -525,7 +506,6 @@ async function guardarHoras() {
     const local = modal.dataset.local;
     const empleadoId = modal.dataset.empleadoId;
     
-    // Obtener la fecha del input
     const fecha = document.getElementById('horasFecha').value;
     
     if (!fecha) {
@@ -538,7 +518,6 @@ async function guardarHoras() {
     const nocturnas = parseFloat(document.getElementById('horasNocturnas')?.value) || 0;
     const extrasNocturnas = parseFloat(document.getElementById('horasExtrasNocturnas')?.value) || 0;
     
-    // Validar que no exceda 24 horas
     const totalHoras = ordinarias + extras + nocturnas + extrasNocturnas;
     if (totalHoras > 24) {
         alert('El total de horas no puede exceder 24 horas');
@@ -557,7 +536,6 @@ async function guardarHoras() {
             .ref(`planilla/${local}/${empleadoId}/horas/${fecha}`)
             .set(horasData);
         
-        // Formatear fecha para mostrar
         const fechaObj = new Date(fecha + 'T12:00:00');
         const fechaFormateada = fechaObj.toLocaleDateString('es-CR', {
             year: 'numeric',
@@ -601,15 +579,11 @@ function setFechaRapida(tipo) {
     const fechaStr = nuevaFecha.toLocaleDateString('en-CA');
     fechaInput.value = fechaStr;
     
-    // Cargar horas existentes para la nueva fecha
     if (local && empleadoId) {
         cargarHorasExistentes(local, empleadoId, fechaStr);
     }
 }
 
-// ============================================
-// EVENTO PARA CUANDO CAMBIA LA FECHA MANUALMENTE
-// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     const fechaInput = document.getElementById('horasFecha');
     if (fechaInput) {
@@ -628,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================
-// MOSTRAR MODAL DE EMPLEADO (VERSIÓN FINAL)
+// MOSTRAR MODAL DE EMPLEADO
 // ============================================
 function mostrarModalEmpleado(editLocal = null, editId = null) {
     console.log('📝 Mostrar modal empleado:', { editLocal, editId });
@@ -641,7 +615,6 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
         return;
     }
     
-    // Elementos del header
     const header = document.getElementById('empleadoModalHeader');
     const icon = document.getElementById('empleadoModalIcon');
     const badge = document.getElementById('empleadoModalBadge');
@@ -649,44 +622,37 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
     const subtitle = document.getElementById('empleadoModalSubtitle');
     const submitBtn = document.getElementById('empleadoSubmitBtn');
     
-    // Campos de local
     const campoLocalEditable = document.getElementById('campoLocalEditable');
     const campoLocalSoloLectura = document.getElementById('campoLocalSoloLectura');
     const localDisplay = document.getElementById('empleadoLocalDisplay');
     const localSelect = document.getElementById('empleadoLocal');
     
-    // Campos de opciones
     const campoNocturnoNuevo = document.getElementById('campoNocturnoNuevo');
     const campoActivoEdicion = document.getElementById('campoActivoEdicion');
     const mensajeActivoNuevo = document.getElementById('mensajeActivoNuevo');
     const mensajeNocturnoEdicion = document.getElementById('mensajeNocturnoEdicion');
     
-    // Limpiar campos
     document.getElementById('empleadoNombre').value = '';
     document.getElementById('empleadoPuesto').value = '';
     document.getElementById('empleadoSalario').value = '';
     document.getElementById('empleadoFechaIngreso').value = new Date().toISOString().split('T')[0];
     document.getElementById('empleadoNocturno').checked = false;
-    document.getElementById('empleadoActivo').checked = true; // Por defecto
+    document.getElementById('empleadoActivo').checked = true;
     
-    // Cargar locales en el select
     localSelect.innerHTML = '<option value="">Seleccionar local...</option>';
     localSelect.disabled = false;
     
     let localesAMostrar = [];
-    if (AppState.usuario?.rol === 'gerencia') {
+    if (esGerencia()) {
         localesAMostrar = AppState.locales;
-    } else if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) {
-        localesAMostrar = AppState.locales.filter(l => l.nombre === AppState.usuario.local);
     } else {
-        localesAMostrar = AppState.locales;
+        localesAMostrar = AppState.locales.filter(l => l.nombre === AppState.usuario?.local);
     }
     
     localesAMostrar.forEach(local => {
         localSelect.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
     });
     
-    // Si es edición
     if (editLocal && editId) {
         console.log('✏️ Editando empleado:', editLocal, editId);
         
@@ -695,10 +661,9 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
         if (empleado) {
             console.log('✅ Empleado encontrado:', empleado);
             
-            // Configurar modo edición
             header.style.background = 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)';
             icon.className = 'fas fa-user-edit';
-            badge.textContent = 'EDITANDO';
+            badge.innerHTML = '<i class="fas fa-pen"></i> EDITANDO';
             badge.style.background = '#FCD34D';
             badge.style.color = '#92400E';
             title.textContent = 'Editar Empleado';
@@ -706,28 +671,15 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
             submitBtn.innerHTML = '<i class="fas fa-save"></i> GUARDAR CAMBIOS';
             submitBtn.style.background = 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)';
             
-            // Para modo nuevo
-            badge.innerHTML = '<i class="fas fa-plus-circle"></i> NUEVO';
-            badge.style.background = '#FFD966';
-            badge.style.color = '#0B5E42';
-
-            // Para modo edición
-            badge.innerHTML = '<i class="fas fa-pen"></i> EDITANDO';
-            badge.style.background = '#FCD34D';
-            badge.style.color = '#92400E';
-            
-            // Mostrar campo de solo lectura para local
             campoLocalEditable.style.display = 'none';
             campoLocalSoloLectura.style.display = 'block';
             localDisplay.textContent = editLocal;
             
-            // En edición: NO mostrar campo nocturno, SÍ mostrar campo activo
             campoNocturnoNuevo.style.display = 'none';
             campoActivoEdicion.style.display = 'flex';
             mensajeActivoNuevo.style.display = 'none';
             mensajeNocturnoEdicion.style.display = 'flex';
             
-            // Llenar datos
             document.getElementById('empleadoNombre').value = empleado.nombre || '';
             document.getElementById('empleadoPuesto').value = empleado.puesto || '';
             document.getElementById('empleadoSalario').value = empleado.salario || '';
@@ -742,10 +694,9 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
             return;
         }
     } else {
-        // Modo nuevo empleado
         header.style.background = 'linear-gradient(145deg, #0B5E42 0%, #1A8F6E 100%)';
         icon.className = 'fas fa-user-plus';
-        badge.textContent = 'NUEVO REGISTRO';
+        badge.innerHTML = '<i class="fas fa-plus-circle"></i> NUEVO';
         badge.style.background = '#FFD966';
         badge.style.color = '#0B5E42';
         title.textContent = 'Incorporar Empleado';
@@ -753,19 +704,17 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
         submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> CONFIRMAR NUEVO EMPLEADO';
         submitBtn.style.background = '#0B5E42';
         
-        // Mostrar campo editable para local
         campoLocalEditable.style.display = 'block';
         campoLocalSoloLectura.style.display = 'none';
         
-        // En nuevo: SÍ mostrar campo nocturno, NO mostrar campo activo
         campoNocturnoNuevo.style.display = 'flex';
         campoActivoEdicion.style.display = 'none';
         mensajeActivoNuevo.style.display = 'flex';
         mensajeNocturnoEdicion.style.display = 'none';
         
-        // Si es encargado, preseleccionar su local
-        if (AppState.usuario?.rol === 'encargado' && AppState.usuario?.local) {
+        if (!esGerencia() && AppState.usuario?.local) {
             document.getElementById('empleadoLocal').value = AppState.usuario.local;
+            document.getElementById('empleadoLocal').disabled = true;
         }
         
         delete modal.dataset.editLocal;
@@ -846,17 +795,11 @@ async function guardarEmpleado() {
     }
 }
 
-// ============================================
-// EDITAR EMPLEADO (FUNCIÓN DE PUENTE)
-// ============================================
 function editarEmpleado(local, id) {
     console.log('🔍 Editar empleado llamado:', local, id);
     mostrarModalEmpleado(local, id);
 }
 
-// ============================================
-// ALTERNAR ESTADO ACTIVO DEL EMPLEADO
-// ============================================
 async function toggleActivoEmpleado(local, empleadoId, estadoActual) {
     const nuevoEstado = !estadoActual;
     const accion = nuevoEstado ? 'activar' : 'desactivar';
@@ -876,9 +819,6 @@ async function toggleActivoEmpleado(local, empleadoId, estadoActual) {
     }
 }
 
-// ============================================
-// ELIMINAR EMPLEADO
-// ============================================
 async function eliminarEmpleado(local, id) {
     const empleado = window.planillaData?.[local]?.find(e => e.id === id);
     const tieneHoras = empleado?.horas && Object.keys(empleado.horas).length > 0;
@@ -899,18 +839,12 @@ async function eliminarEmpleado(local, id) {
     }
 }
 
-// ============================================
-// FILTRAR EMPLEADOS ACTIVOS/INACTIVOS
-// ============================================
 function toggleVerInactivos() {
     const verInactivos = localStorage.getItem('verInactivos') === 'true';
     localStorage.setItem('verInactivos', !verInactivos);
     renderPlanilla();
 }
 
-// ============================================
-// INICIALIZAR
-// ============================================
 function initPlanilla() {
     console.log('Inicializando planilla...');
     setTimeout(() => {
@@ -922,9 +856,6 @@ function initPlanilla() {
     }, 100);
 }
 
-// ============================================
-// HACER FUNCIONES GLOBALES
-// ============================================
 window.renderPlanilla = renderPlanilla;
 window.mostrarModalEmpleado = mostrarModalEmpleado;
 window.guardarEmpleado = guardarEmpleado;
