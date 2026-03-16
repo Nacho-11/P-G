@@ -877,25 +877,622 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Modal de Servicio - VERSIÓN ESPECÍFICA PARA AGUA, LUZ Y GAS -->
+    <div class="modal" id="servicioModal" style="max-width: 800px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-bolt" id="servicioModalIcon" style="font-size: 2rem;"></i>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.5rem;" id="servicioModalTitle">Registrar Servicio</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.8;" id="servicioModalSubtitle">Agua, electricidad o gas</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-body" style="padding: 30px; background: #f8fafd; max-height: 80vh; overflow-y: auto;">
+            <form id="servicioForm" onsubmit="event.preventDefault(); guardarServicio();">
+                
+                <!-- Fecha y Local -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 20px;">
+                    <div style="background: white; border-radius: 16px; padding: 15px;">
+                        <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-calendar-alt" style="color: #f59e0b;"></i> Fecha
+                        </label>
+                        <input type="date" id="servicioFecha" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                    </div>
+                    
+                    <div style="background: white; border-radius: 16px; padding: 15px;">
+                        <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-store" style="color: #f59e0b;"></i> Local
+                        </label>
+                        <select id="servicioLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                            <option value="">Seleccionar local...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Tipo de servicio (SOLO 3 OPCIONES) -->
+                <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-tag" style="color: #f59e0b;"></i> Tipo de servicio
+                    </label>
+                    <select id="servicioTipo" required onchange="cambiarTipoServicio()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="Agua">💧 Agua</option>
+                        <option value="Electricidad">⚡ Electricidad</option>
+                        <option value="Gas">🔥 Gas</option>
+                    </select>
+                </div>
+                
+                <!-- Número de medidor (opcional) -->
+                <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de medidor
+                    </label>
+                    <input type="text" id="servicioMedidor" placeholder="Ej: 12345678" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                </div>
+                
+                <!-- SECCIÓN PARA AGUA (6 lecturas: Apertura y Cierre para 3 períodos) -->
+                <div id="seccionAgua" style="display: none;">
+                    <div style="background: linear-gradient(135deg, #3b82f610, #3b82f620); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-water" style="color: #3b82f6;"></i> Lecturas de Agua (M³)
+                        </h3>
+                        
+                        <!-- Período 1: Misceláneo -->
+                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-clock" style="color: #0369a1; font-size: 0.9rem;"></i>
+                                </div>
+                                <span style="font-weight: 600; color: #0369a1;">Período Misceláneo</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
+                                    <input type="number" id="aguaMiscApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
+                                    <input type="number" id="aguaMiscCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                            </div>
+                            <!-- Consumo parcial de este período -->
+                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
+                                Consumo: <span id="aguaConsumoMisc">0.000</span> M³
+                            </div>
+                        </div>
+                        
+                        <!-- Período 2: Operación -->
+                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-industry" style="color: #0369a1; font-size: 0.9rem;"></i>
+                                </div>
+                                <span style="font-weight: 600; color: #0369a1;">Período Operación</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
+                                    <input type="number" id="aguaOpApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
+                                    <input type="number" id="aguaOpCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
+                                Consumo: <span id="aguaConsumoOp">0.000</span> M³
+                            </div>
+                        </div>
+                        
+                        <!-- Período 3: Cerrado -->
+                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-door-closed" style="color: #0369a1; font-size: 0.9rem;"></i>
+                                </div>
+                                <span style="font-weight: 600; color: #0369a1;">Período Cerrado</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
+                                    <input type="number" id="aguaCerradoApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                                <div>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
+                                    <input type="number" id="aguaCerradoCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
+                                Consumo: <span id="aguaConsumoCerrado">0.000</span> M³
+                            </div>
+                        </div>
+                        
+                        <!-- Totales -->
+                        <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 15px; border: 2px solid #3b82f620;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                                <div>
+                                    <span style="color: #64748b;">Consumo Total del Día</span>
+                                    <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;" id="aguaConsumoTotal">0.000 M³</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="color: #64748b;">Monto Calculado</span>
+                                    <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="aguaMontoCalculado">₡0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SECCIÓN PARA ELECTRICIDAD/GAS (2 lecturas) -->
+                <div id="seccionElectricidad" style="display: none;">
+                    <div style="background: linear-gradient(135deg, #f59e0b10, #f59e0b20); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas" id="energiaIcon" style="color: #f59e0b;"></i> Lecturas <span id="energiaUnidad">(kWh)</span>
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Lectura Apertura</label>
+                                <input type="number" id="energiaApertura" step="0.1" placeholder="0.0" oninput="calcularConsumoEnergia()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Lectura Cierre</label>
+                                <input type="number" id="energiaCierre" step="0.1" placeholder="0.0" oninput="calcularConsumoEnergia()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
+                            </div>
+                        </div>
+                        
+                        <div style="background: white; border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="color: #64748b;">Consumo Total</span>
+                                    <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;" id="energiaConsumoTotal">0.0 kWh</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="color: #64748b;">Monto Calculado</span>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #059669;" id="energiaMontoCalculado">₡0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN PARA GAS (recarga) -->
+                <div id="seccionGas" style="display: none;">
+                    <div style="background: linear-gradient(135deg, #ef444410, #ef444420); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-fire" style="color: #ef4444;"></i> Recarga de Gas
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Cantidad de gas</label>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="number" id="gasCantidad" step="0.1" placeholder="0.0" oninput="calcularGas()" style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
+                                    <select id="gasUnidad" onchange="calcularGas()" style="padding: 12px; border: 2px solid #eef2f6; border-radius: 10px; background: white;">
+                                        <option value="kg">kg</option>
+                                        <option value="litros">litros</option>
+                                        <option value="m³">m³</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Costo total de la recarga (₡)</label>
+                                <div style="display: flex; align-items: center;">
+                                    <span style="background: #f1f5f9; padding: 12px; border: 2px solid #eef2f6; border-right: none; border-radius: 10px 0 0 10px; font-weight: 600;">₡</span>
+                                    <input type="number" id="gasCostoTotal" step="100" placeholder="0" oninput="calcularGas()" style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-left: none; border-radius: 0 10px 10px 0;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: white; border-radius: 12px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="color: #64748b;">Total a pagar</span>
+                                    <div style="font-size: 1.8rem; font-weight: 700; color: #ef4444;" id="gasMontoCalculado">₡0</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="color: #64748b;">Precio por unidad</span>
+                                    <div style="font-size: 1.2rem; font-weight: 600; color: #059669;" id="gasPrecioUnitario">₡0/kg</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Precio por unidad (solo lectura) -->
+                <div style="background: #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <i class="fas fa-dollar-sign" style="color: #f59e0b;"></i>
+                        <span style="font-weight: 600;">Precios configurados para este local:</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <!-- Agua - Solo lectura -->
+                        <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <i class="fas fa-water" style="color: #3b82f6; font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 0.7rem; color: #64748b;">AGUA</div>
+                                <div style="display: flex; align-items: baseline; gap: 2px;">
+                                    <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioAguaDisplay">1500</span>
+                                    <span style="font-size: 0.8rem; color: #64748b;">₡/M³</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Electricidad - Solo lectura -->
+                        <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <i class="fas fa-bolt" style="color: #f59e0b; font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 0.7rem; color: #64748b;">ELECTRICIDAD</div>
+                                <div style="display: flex; align-items: baseline; gap: 2px;">
+                                    <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioElectricidadDisplay">120</span>
+                                    <span style="font-size: 0.8rem; color: #64748b;">₡/kWh</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 12px; color: #64748b; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; background: white; padding: 8px 12px; border-radius: 30px;">
+                        <i class="fas fa-info-circle" style="color: #3b82f6;"></i>
+                        <span>Los precios se configuran en el botón "Precios Agua/Luz"</span>
+                    </div>
+                </div>
+
+<!-- Inputs ocultos para mantener compatibilidad con el código existente -->
+<input type="hidden" id="precioAgua">
+<input type="hidden" id="precioElectricidad">
+<input type="hidden" id="precioGas">
+                
+                <!-- Monto final (automático) -->
+                <input type="hidden" id="servicioConsumo">
+                <input type="hidden" id="servicioMonto">
+                
+                <!-- Botones -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px; border-top: 2px solid #eef2f6; padding-top: 20px;">
+                    <button type="button" onclick="cerrarModal('servicioModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="servicioSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);">
+                        <i class="fas fa-save"></i> Guardar Servicio
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Producto -->
+    <div class="modal" id="productoModal" style="max-width: 550px; border-radius: 24px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+            <h2 id="productoModalTitle"><i class="fas fa-box"></i> Nuevo Producto</h2>
+            <button class="modal-close" onclick="cerrarModal('productoModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="productoForm" onsubmit="event.preventDefault(); guardarProducto();">
+                <div class="form-group">
+                    <label>Familia</label>
+                    <input type="text" id="productoFamilia" required placeholder="Ej: VEGETALES, LICOR, PROTEINAS">
+                </div>
+                <div class="form-group">
+                    <label>Nombre del Producto</label>
+                    <input type="text" id="productoNombre" required placeholder="Ej: ZUQUINI, WHISKY J&B">
+                </div>
+                <div class="form-group">
+                    <label>Presentación (cantidad)</label>
+                    <input type="number" id="productoPresentacion" step="0.001" placeholder="Ej: 1000, 33.81">
+                </div>
+                <div class="form-group">
+                    <label>Unidad</label>
+                    <select id="productoUnidad" required>
+                        <option value="GR">Gramos (GR)</option>
+                        <option value="KG">Kilogramos (KG)</option>
+                        <option value="ML">Mililitros (ML)</option>
+                        <option value="L">Litros (L)</option>
+                        <option value="UD">Unidad (UD)</option>
+                        <option value="onz">Onzas (onz)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Precio (₡)</label>
+                    <input type="number" id="productoPrecio" step="0.01" required placeholder="0.00">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('productoModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="productoSubmitBtn">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+        <!-- Modal de Catálogo de Productos (ÚNICO) -->
+    <div class="modal" id="catalogoModal" style="max-width: 1100px; width: 95%; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        <!-- Header -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-boxes" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Catálogo de Productos</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.9;">Gestione los productos para control de mermas</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal('catalogoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Body -->
+        <div class="modal-body" style="padding: 30px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+            <!-- Barra de búsqueda y botón nuevo -->
+            <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
+                <div style="flex: 1; position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                    <input type="text" 
+                        id="buscarProductoCatalogo" 
+                        placeholder="Buscar por nombre o familia..." 
+                        oninput="filtrarCatalogo()"
+                        style="width: 100%; padding: 14px 14px 14px 45px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem; background: white;">
+                </div>
+                <button class="btn btn-primary" onclick="window.mostrarModalProducto()" style="padding: 14px 28px; border-radius: 16px; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: white; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                    <i class="fas fa-plus-circle"></i> Nuevo Producto
+                </button>
+            </div>
+
+            <!-- Contenedor de productos -->
+            <div style="background: white; border-radius: 20px; padding: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div id="catalogoProductos" style="min-height: 300px;">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div style="display: flex; justify-content: center; align-items: center; height: 300px;">
+                        <div style="text-align: center;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: #3b82f6;"></i>
+                            <p style="color: #64748b; margin-top: 15px;">Cargando productos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen -->
+            <div style="margin-top: 20px; background: white; border-radius: 16px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border: 2px solid #eef2f6;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: #e0f2fe; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-cubes" style="color: #0284c7;"></i>
+                    </div>
+                    <div>
+                        <span style="color: #64748b;">Total de productos</span>
+                        <div style="font-size: 1.4rem; font-weight: 700;" id="totalProductosCatalogo">0</div>
+                    </div>
+                </div>
+                <div style="color: #64748b; font-size: 0.9rem;">
+                    <i class="fas fa-info-circle"></i> Haga clic en un producto para editar
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Producto Individual (ÚNICO) -->
+    <div class="modal" id="productoModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        <!-- Header dinámico -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-box" style="font-size: 1.8rem;"></i>
+                </div>
+                <h2 id="productoModalTitle" style="margin: 0; font-size: 1.5rem;">Nuevo Producto</h2>
+            </div>
+            <button class="modal-close" onclick="cerrarModal('productoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body" style="padding: 30px; background: #f8fafc;">
+            <form id="productoForm" onsubmit="event.preventDefault(); guardarProducto();">
+                
+                <!-- Familia -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-tag" style="color: #3b82f6;"></i> Familia del Producto
+                    </label>
+                    <input type="text" 
+                        id="productoFamilia" 
+                        required 
+                        placeholder="Ej: VEGETALES, LICOR, PROTEINAS, LACTEOS"
+                        style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
+                </div>
+
+                <!-- Nombre del producto -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-box" style="color: #3b82f6;"></i> Nombre del Producto
+                    </label>
+                    <input type="text" 
+                        id="productoNombre" 
+                        required 
+                        placeholder="Ej: ZUQUINI, WHISKY J&B, LOMO COMPLETO"
+                        style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
+                </div>
+
+                <!-- Presentación y Unidad en grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <!-- Presentación -->
+                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <i class="fas fa-weight-hanging" style="color: #3b82f6;"></i> Presentación
+                        </label>
+                        <input type="number" 
+                            id="productoPresentacion" 
+                            step="0.001" 
+                            placeholder="Ej: 1000, 33.81, 1"
+                            value="1"
+                            style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
+                        <small style="color: #64748b; display: block; margin-top: 5px;">Cantidad por unidad</small>
+                    </div>
+
+                    <!-- Unidad -->
+                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <i class="fas fa-ruler" style="color: #3b82f6;"></i> Unidad
+                        </label>
+                        <select id="productoUnidad" required style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem; background: white;">
+                            <option value="GR">Gramos (GR)</option>
+                            <option value="KG">Kilogramos (KG)</option>
+                            <option value="ML">Mililitros (ML)</option>
+                            <option value="L">Litros (L)</option>
+                            <option value="UD">Unidad (UD)</option>
+                            <option value="ONZ">Onzas (ONZ)</option>
+                            <option value="LB">Libras (LB)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Precio -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-dollar-sign" style="color: #3b82f6;"></i> Precio (₡)
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #3b82f6; color: white; padding: 14px 20px; border-radius: 14px; font-weight: 600;">₡</span>
+                        <input type="number" 
+                            id="productoPrecio" 
+                            step="0.01" 
+                            required 
+                            placeholder="0.00"
+                            style="flex: 1; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
+                    </div>
+                    <small style="color: #64748b; display: block; margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> Este es el precio por la presentación completa
+                    </small>
+                </div>
+
+                <!-- Precio unitario calculado (solo lectura) -->
+                <div style="background: #f1f5f9; border-radius: 14px; padding: 15px; margin-bottom: 25px; border: 2px dashed #94a3b8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #475569;">Precio por unidad:</span>
+                        <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioUnitarioCalculado">₡0.00 / unidad</span>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px;">
+                    <button type="button" onclick="cerrarModal('productoModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="productoSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);">
+                        <i class="fas fa-save"></i> Guardar Producto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Merma (ÚNICO) -->
+    <div class="modal" id="mermaModal" style="max-width: 550px; border-radius: 24px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+            <h2 id="mermaModalTitle"><i class="fas fa-trash-alt"></i> Registrar Merma</h2>
+        </div>
+        <div class="modal-body">
+            <form id="mermaForm" onsubmit="event.preventDefault(); guardarMerma();">
+                
+                <!-- Fecha -->
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> Fecha</label>
+                    <input type="date" id="mermaFecha" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                </div>
+                
+                <!-- Local -->
+                <div class="form-group">
+                    <label><i class="fas fa-store"></i> Local</label>
+                    <select id="mermaLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                        <option value="">Seleccionar local...</option>
+                    </select>
+                </div>
+                
+                <!-- BUSCADOR DE PRODUCTOS -->
+                <div class="form-group">
+                    <label><i class="fas fa-search" style="color: #ef4444;"></i> Buscar Producto</label>
+                    <input type="text" 
+                        id="buscadorProducto" 
+                        placeholder="Escriba para buscar (ej: platano, carne, arroz...)" 
+                        oninput="buscarProductos()"
+                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem;">
+                    
+                    <!-- Resultados de búsqueda -->
+                    <div id="resultadosBusqueda" style="display: none; margin-top: 10px; max-height: 300px; overflow-y: auto; border: 2px solid #e2e8f0; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    </div>
+                    
+                    <!-- Producto seleccionado -->
+                    <div id="productoSeleccionado" style="display: none; background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 12px; padding: 15px; margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: #3b82f6;">PRODUCTO SELECCIONADO</div>
+                                <div style="font-size: 1.2rem; font-weight: 600;" id="productoSeleccionadoNombre">-</div>
+                                <div style="font-size: 0.9rem; color: #64748b;" id="productoSeleccionadoDetalle">-</div>
+                            </div>
+                            <button type="button" onclick="limpiarSeleccionProducto()" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 8px;">
+                                <i class="fas fa-times"></i> Cambiar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Input oculto para el ID del producto -->
+                    <input type="hidden" id="mermaProductoId">
+                </div>
+                
+                <!-- Cantidad -->
+                <div class="form-group">
+                    <label><i class="fas fa-weight-hanging"></i> Cantidad</label>
+                    <input type="number" id="mermaCantidad" step="0.001" required oninput="calcularCostoMerma()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                </div>
+                
+                <!-- Motivo -->
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> Motivo (opcional)</label>
+                    <input type="text" id="mermaMotivo" placeholder="Ej: Se quemó, se cayó, etc." style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                </div>
+                
+                <!-- Resumen de costos -->
+                <div style="background: #f3f4f6; border-radius: 12px; padding: 15px; margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Costo unitario:</span>
+                        <strong id="mermaCostoUnitario">₡0 / unidad</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.2rem;">
+                        <span>Costo total:</span>
+                        <strong style="color: #ef4444;" id="mermaCostoTotal">₡0</strong>
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="cerrarModal('mermaModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="mermaSubmitBtn" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Guardar Merma</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs (SIEMPRE PRIMERO) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+    <!-- Configuración de Firebase -->
     <script src="firebase-config.js"></script>
+
+    <!-- App principal (AppState y funciones globales) -->
     <script src="app.js"></script>
+
+    <!-- Login -->
     <script src="login.js"></script>
-    <script>
-        // Asegurar que Functions está inicializado
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        // Opcional: configurar región (si usas una diferente)
-        // firebase.functions().useEmulator('localhost', 5001); // para pruebas locales
-    </script>
+
+    <!-- Módulos (EN ESTE ORDEN) -->
     <script src="modules/dashboard.js"></script>
     <script src="modules/ventas.js"></script>
     <script src="modules/costos.js"></script>
     <script src="modules/usuarios.js"></script>
     <script src="modules/planilla.js"></script>
+    <script src="modules/servicios.js"></script>
+    <script src="modules/merma.js"></script>  <!-- ÚLTIMO para asegurar que todo lo demás está cargado -->
 </body>
 </html>

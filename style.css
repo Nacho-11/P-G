@@ -851,3 +851,173 @@ body {
 .btn-sm i {
     font-size: 1rem;
 }
+
+/* Para el modal de servicios */
+#servicioConsumoDisplay {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+#servicioUnidadDisplay {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+select optgroup {
+    font-weight: 600;
+    color: #1e293b;
+    background: #f8fafc;
+}
+
+select optgroup option {
+    font-weight: normal;
+    padding-left: 20px;
+    background: white;
+}
+
+.modal-overlay {
+    z-index: 1000;
+}
+
+.modal {
+    z-index: 1001;
+}
+
+/* Asegurar que solo un modal esté visible a la vez */
+.modal.active {
+    display: block !important;
+}
+
+.modal:not(.active) {
+    display: none !important;
+}
+
+/* Asegurar que los modales sean visibles cuando estén activos */
+.modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    background: white;
+    width: 90%;
+    max-width: 1100px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 28px;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);
+}
+
+.modal.active {
+    display: block !important;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: block !important;
+}
+
+/* Garantizar que el modal de catálogo tenga estilos específicos */
+#catalogoModal {
+    display: none;
+}
+
+#catalogoModal.active {
+    display: block !important;
+}
+
+#productoModal {
+    display: none;
+}
+
+#productoModal.active {
+    display: block !important;
+}
+
+#mermaModal {
+    display: none;
+}
+
+#mermaModal.active {
+    display: block !important;
+}
+
+/* ===== CORRECCIÓN DE MODALES ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9999 !important;
+}
+
+.modal-overlay.active {
+    display: block !important;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    z-index: 10000 !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);
+}
+
+.modal.active {
+    display: block !important;
+}
+
+/* Modal específico de catálogo */
+#catalogoModal {
+    max-width: 1100px;
+    width: 95%;
+    border-radius: 28px;
+}
+
+#catalogoModal.active {
+    display: block !important;
+}
+
+/* Modal de producto */
+#productoModal {
+    max-width: 550px;
+    width: 90%;
+    border-radius: 28px;
+}
+
+#productoModal.active {
+    display: block !important;
+}
+
+/* Modal de merma */
+#mermaModal {
+    max-width: 550px;
+    width: 90%;
+    border-radius: 24px;
+}
+
+#mermaModal.active {
+    display: block !important;
+}

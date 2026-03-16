@@ -132,6 +132,8 @@ function cambiarModulo(moduleId) {
         else if (moduleId === 'costos' && window.renderCostos) window.renderCostos();
         else if (moduleId === 'usuarios' && window.renderUsuarios) window.renderUsuarios();
         else if (moduleId === 'planilla' && window.renderPlanilla) window.renderPlanilla();
+        else if (moduleId === 'servicios' && window.renderServicios) window.renderServicios();
+        else if (moduleId === 'merma' && window.renderMerma) window.renderMerma();
     }, 100);
 }
 
@@ -287,6 +289,43 @@ function actualizarVistasPorFiltro() {
         window.renderUsuarios();
     } else if (moduloActivo === 'planilla' && window.renderPlanilla) {
         window.renderPlanilla();
+    }else if (moduloActivo === 'servicios' && window.renderServicios) {
+        window.renderServicios();
+    }else if (moduloActivo === 'merma' && window.renderMerma) {
+        window.renderMerma();
+    }
+}
+
+// ============================================
+// FILTRAR PRODUCTOS EN EL MODAL
+// ============================================
+function filtrarProductos() {
+    const busqueda = document.getElementById('buscarProducto')?.value.toLowerCase() || '';
+    const select = document.getElementById('mermaProducto');
+    
+    // Guardar el valor seleccionado actual
+    const valorActual = select.value;
+    
+    // Recorrer todas las opciones
+    for (let i = 0; i < select.options.length; i++) {
+        const option = select.options[i];
+        const texto = option.text.toLowerCase();
+        
+        if (texto.includes(busqueda) || busqueda === '') {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    }
+    
+    // Restaurar selección si aún es visible
+    if (valorActual) {
+        const option = select.querySelector(`option[value="${valorActual}"]`);
+        if (option && option.style.display !== 'none') {
+            select.value = valorActual;
+        } else {
+            select.value = '';
+        }
     }
 }
 
@@ -299,12 +338,34 @@ document.addEventListener('change', function(e) {
 });
 
 // ===== CERRAR MODAL =====
-function cerrarModal(id) {
+function cerrarModal(id = null) {
+    console.log('🔒 Cerrando modal:', id);
+    
     const overlay = document.getElementById('modalOverlay');
-    if (overlay) overlay.classList.remove('active');
+    
+    // Si se especifica un ID, cerrar ese modal específico
     if (id) {
         const modal = document.getElementById(id);
-        if (modal) modal.classList.remove('active');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none'; // Forzar ocultamiento
+        }
+    } else {
+        // Si no se especifica, cerrar TODOS los modales
+        const modales = document.querySelectorAll('.modal');
+        modales.forEach(modal => {
+            modal.classList.remove('active');
+            modal.style.display = 'none'; // Forzar ocultamiento
+        });
+    }
+    
+    // Cerrar overlay si no hay modales activos
+    if (overlay) {
+        const modalesActivos = document.querySelectorAll('.modal.active');
+        if (modalesActivos.length === 0) {
+            overlay.classList.remove('active');
+            overlay.style.display = 'none'; // Forzar ocultamiento
+        }
     }
 }
 
@@ -330,6 +391,9 @@ window.renderDashboard = null;
 window.renderVentas = null;
 window.renderCostos = null;
 window.renderUsuarios = null;
+window.renderServicios = null;
+window.renderPlanilla = null;
+window.renderMerma = null;
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {

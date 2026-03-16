@@ -99,6 +99,8 @@ async function cargarDatosUsuario(uid) {
         if (typeof initCostos === 'function') setTimeout(() => initCostos(), 200);
         if (typeof initDashboardListeners === 'function') setTimeout(() => initDashboardListeners(), 300);
         if (typeof initPlanilla === 'function') setTimeout(() => initPlanilla(), 400);
+        if (typeof initServicios === 'function') setTimeout(() => initServicios(), 500);
+        if (typeof initMerma === 'function') setTimeout(() => initMerma(), 600);
         
         // Mostrar APP
         const mainContent = document.querySelector('.main-content');
