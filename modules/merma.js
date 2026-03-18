@@ -843,74 +843,222 @@ function mostrarModalProducto(editId = null) {
 }
 
 // ============================================
-// IMPORTAR EXCEL
+// MOSTRAR MODAL IMPORTAR PRODUCTOS
 // ============================================
 function mostrarModalImportarProductos() {
-    if (!esGerencia()) return alert('Solo gerencia');
+    console.log('📤 Abriendo selector de archivo para importar');
+    
+    if (!esGerencia()) {
+        alert('Solo gerencia puede importar productos');
+        return;
+    }
+    
+    // Crear input de archivo
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.xlsx, .xls';
+    input.accept = '.xlsx, .xls, .csv';
+    input.style.display = 'none';
+    
     input.onchange = (e) => {
-        if (e.target.files[0]) importarProductosDesdeExcel(e.target.files[0]);
+        const file = e.target.files[0];
+        if (file) {
+            console.log('📁 Archivo seleccionado:', file.name);
+            importarProductosDesdeExcel(file);
+        }
+        document.body.removeChild(input);
     };
+    
+    document.body.appendChild(input);
     input.click();
 }
 
+// ============================================
+// IMPORTAR EXCEL - VERSIÓN ADAPTADA A TU FORMATO
+// ============================================
 async function importarProductosDesdeExcel(file) {
-    if (!esGerencia()) return;
+    console.log('📤 Iniciando importación de productos...');
+    
+    if (!esGerencia()) {
+        alert('Solo gerencia puede importar productos');
+        return;
+    }
     
     const reader = new FileReader();
+    
     reader.onload = async function(e) {
-        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-        
-        let startRow = 0;
-        for (let i = 0; i < jsonData.length; i++) {
-            if (jsonData[i] && jsonData[i][0] === 'FAMILIA' && jsonData[i][1] === 'PRODUCTO') {
-                startRow = i + 1;
-                break;
+        try {
+            console.log('📖 Leyendo archivo Excel...');
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Obtener la primera hoja
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convertir a JSON con encabezados
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            console.log('📊 Primera fila:', jsonData[0]);
+            console.log('📊 Segunda fila:', jsonData[1]);
+            console.log('📊 Tercera fila:', jsonData[2]);
+            
+            // Buscar la fila donde están los encabezados (FAMILIA, PRODUCTO, etc.)
+            let startRow = -1;
+            for (let i = 0; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row) continue;
+                
+                // Buscar en la fila algún texto que indique encabezados
+                for (let j = 0; j < row.length; j++) {
+                    const cell = String(row[j] || '').toUpperCase().trim();
+                    if (cell === 'FAMILIA' || cell === 'FAMILIA') {
+                        startRow = i + 1; // La siguiente fila son los datos
+                        console.log('✅ Encabezados encontrados en fila:', i, 'columna:', j);
+                        break;
+                    }
+                }
+                if (startRow !== -1) break;
             }
-        }
-        
-        if (startRow === 0) return alert('Formato no válido');
-        
-        let actualizados = 0, nuevos = 0, ignorados = 0;
-        
-        for (let i = startRow; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row || !row[0] || !row[1] || row[0].toString().startsWith('=')) {
-                ignorados++;
-                continue;
+            
+            // Si no encuentra encabezados, empezar desde la fila 3 (después de los espacios)
+            if (startRow === -1) {
+                console.log('⚠️ No se encontraron encabezados, empezando desde fila 3');
+                startRow = 3; // Las primeras 2 filas están vacías o con metadata
             }
             
-            const familia = row[0].toString().trim();
-            const nombre = row[1].toString().trim();
-            const presentacion = parseFloat(row[2]) || 0;
-            const unidad = row[3]?.toString().trim() || 'UD';
-            const precio = parseFloat(row[4]) || 0;
+            let actualizados = 0;
+            let nuevos = 0;
+            let ignorados = 0;
+            let errores = [];
             
-            if (precio === 0) {
-                ignorados++;
-                continue;
+            for (let i = startRow; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                
+                // Saltar filas vacías
+                if (!row || row.length === 0) {
+                    ignorados++;
+                    continue;
+                }
+                
+                // Las columnas en tu Excel son:
+                // Col D (índice 3): FAMILIA
+                // Col E (índice 4): PRODUCTO
+                // Col F (índice 5): PRESENTACION
+                // Col G (índice 6): UNIDAD
+                // Col H (índice 7): PRECIO FINAL
+                
+                const familia = row[3] ? String(row[3]).trim().toUpperCase() : '';
+                const producto = row[4] ? String(row[4]).trim().toUpperCase() : '';
+                const presentacionRaw = row[5] ? String(row[5]).trim() : '';
+                const unidad = row[6] ? String(row[6]).trim().toUpperCase() : '';
+                const precioRaw = row[7] ? String(row[7]).trim() : '';
+                
+                // Saltar filas sin datos esenciales
+                if (!familia || !producto) {
+                    ignorados++;
+                    continue;
+                }
+                
+                // Saltar filas que son encabezados o metadata
+                if (familia === 'FAMILIA' || producto === 'PRODUCTO') {
+                    ignorados++;
+                    continue;
+                }
+                
+                // Limpiar presentación (quitar caracteres no numéricos)
+                let presentacion = 1;
+                if (presentacionRaw) {
+                    const cleaned = presentacionRaw.replace(/[^\d.-]/g, '');
+                    presentacion = parseFloat(cleaned) || 1;
+                }
+                
+                // Limpiar precio (quitar caracteres no numéricos)
+                let precio = 0;
+                if (precioRaw) {
+                    const cleaned = precioRaw.replace(/[^\d.-]/g, '');
+                    precio = parseFloat(cleaned) || 0;
+                }
+                
+                // Validaciones básicas
+                if (precio <= 0) {
+                    console.log('⚠️ Precio inválido para:', producto, 'precio:', precioRaw);
+                    ignorados++;
+                    continue;
+                }
+                
+                console.log(`🔄 Procesando: ${familia} - ${producto} - ₡${precio} (${presentacion} ${unidad})`);
+                
+                try {
+                    // Buscar si el producto ya existe (por nombre)
+                    const snapshot = await firebase.database()
+                        .ref('productos')
+                        .orderByChild('nombre')
+                        .equalTo(producto)
+                        .once('value');
+                    
+                    let existe = false;
+                    let existingKey = null;
+                    
+                    snapshot.forEach(child => {
+                        existe = true;
+                        existingKey = child.key;
+                    });
+                    
+                    const data = {
+                        familia,
+                        nombre: producto,
+                        presentacion,
+                        unidad: unidad || 'UD',
+                        precio,
+                        ultimaActualizacion: new Date().toISOString(),
+                        actualizadoPor: AppState.usuario?.email || 'sistema'
+                    };
+                    
+                    if (existe && existingKey) {
+                        // Actualizar existente
+                        await firebase.database().ref(`productos/${existingKey}`).update(data);
+                        actualizados++;
+                        console.log(`✅ Actualizado: ${producto}`);
+                    } else {
+                        // Crear nuevo
+                        data.fechaCreacion = new Date().toISOString();
+                        data.creadoPor = AppState.usuario?.email || 'sistema';
+                        await firebase.database().ref('productos').push(data);
+                        nuevos++;
+                        console.log(`✅ Nuevo: ${producto}`);
+                    }
+                    
+                } catch (rowError) {
+                    console.error('❌ Error procesando fila:', row, rowError);
+                    errores.push(`Fila ${i + 1}: ${producto} - ${rowError.message}`);
+                    ignorados++;
+                }
             }
             
-            const snapshot = await firebase.database().ref('productos').orderByChild('nombre').equalTo(nombre).once('value');
-            let existe = false, ref = null;
-            snapshot.forEach(child => { existe = true; ref = child.ref; });
+            // Mostrar resumen
+            const mensaje = `✅ Importación completada:\n` +
+                           `• ${nuevos} productos nuevos\n` +
+                           `• ${actualizados} productos actualizados\n` +
+                           `• ${ignorados} filas ignoradas`;
             
-            const data = { familia, nombre, presentacion, unidad, precio, ultimaActualizacion: new Date().toISOString(), actualizadoPor: AppState.usuario?.email };
-            
-            if (existe && ref) {
-                await ref.update(data);
-                actualizados++;
+            if (errores.length > 0) {
+                console.warn('⚠️ Errores encontrados:', errores);
+                alert(mensaje + `\n\n⚠️ ${errores.length} errores (ver consola)`);
             } else {
-                await firebase.database().ref('productos').push(data);
-                nuevos++;
+                alert(mensaje);
             }
+            
+        } catch (error) {
+            console.error('❌ Error al importar:', error);
+            alert('Error al importar: ' + error.message);
         }
-        
-        alert(`✅ Importados: ${nuevos} nuevos, ${actualizados} actualizados, ${ignorados} ignorados`);
     };
+    
+    reader.onerror = function(error) {
+        console.error('❌ Error al leer el archivo:', error);
+        alert('Error al leer el archivo');
+    };
+    
     reader.readAsArrayBuffer(file);
 }
 
@@ -1039,7 +1187,7 @@ window.guardarMerma = guardarMerma;
 window.eliminarMerma = eliminarMerma;
 window.mostrarModalCatalogo = mostrarModalCatalogo;
 window.mostrarModalProducto = mostrarModalProducto;
-window.guardarProducto = guardarProducto;           // <-- ESTA ES LA QUE FALTA
+window.guardarProducto = guardarProducto;
 window.eliminarProducto = eliminarProducto;
 window.mostrarModalImportarProductos = mostrarModalImportarProductos;
 window.buscarProductos = buscarProductos;
@@ -1047,7 +1195,8 @@ window.seleccionarProducto = seleccionarProducto;
 window.limpiarSeleccionProducto = limpiarSeleccionProducto;
 window.calcularCostoMerma = calcularCostoMerma;
 window.filtrarCatalogo = filtrarCatalogo;
-window.calcularPrecioUnitario = calcularPrecioUnitario;  // <-- TAMBIÉN AGREGAR ESTA
+window.calcularPrecioUnitario = calcularPrecioUnitario;
+window.mostrarModalImportarProductos = mostrarModalImportarProductos;
 
 console.log('✅ merma.js cargado - Funciones exportadas:', {
     guardarProducto: typeof window.guardarProducto,
