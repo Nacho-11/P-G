@@ -62,7 +62,7 @@ function cargarVentasDesdeFirebase() {
 }
 
 // ============================================
-// RENDERIZAR VISTA DE VENTAS
+// RENDERIZAR VISTA DE VENTAS (VERSIÓN PROFESIONAL)
 // ============================================
 function renderVentas() {
     console.log('Renderizando ventas...');
@@ -78,33 +78,16 @@ function renderVentas() {
     
     console.log('📊 Total ventas en memoria:', ventasData.length);
     
-    if (ventasData.length === 0) {
-        ventasContent.innerHTML = `
-            <div class="card" style="padding: 40px; text-align: center;">
-                <i class="fas fa-shopping-cart" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
-                <h3 style="color: #4b5563;">No hay ventas registradas</h3>
-                <p style="color: #6b7280;">Haga clic en "Nueva Venta" para agregar una.</p>
-            </div>
-        `;
-        return;
-    }
-    
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
 
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
-
     const ayer = new Date(hoy);
     ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
-
     const mesActual = ayerStr.substring(0, 7);
     const anioActual = ayerStr.substring(0, 4);
-
-    console.log('📅 Ayer:', ayerStr);
-    console.log('📅 Mes actual:', mesActual);
-    console.log('📅 Año actual:', anioActual);
 
     // FILTRAR VENTAS POR LOCAL (con permisos)
     const ventasFiltradas = ventasData.filter(v => {
@@ -122,8 +105,7 @@ function renderVentas() {
         return true;
     });
     
-    console.log('🎯 Ventas filtradas:', ventasFiltradas.length);
-    
+    // Calcular totales
     const totales = ventasFiltradas.reduce((acc, v) => {
         const comisiones = (v.pedidosYa || 0) * 0.18 + 
                           (v.didi || 0) * 0.18 + 
@@ -136,89 +118,144 @@ function renderVentas() {
         };
     }, { brutas: 0, comisiones: 0, netas: 0 });
     
-    let ventasHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
-                <div>
-                    <div style="font-size: 0.8rem; color: #64748b;">Ventas Brutas</div>
-                    <div style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">₡${Math.round(totales.brutas).toLocaleString()}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.8rem; color: #64748b;">Comisiones</div>
-                    <div style="font-size: 1.8rem; font-weight: 700; color: #ef4444;">₡${Math.round(totales.comisiones).toLocaleString()}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.8rem; color: #64748b;">Ventas Netas</div>
-                    <div style="font-size: 1.8rem; font-weight: 700; color: #10b981;">₡${Math.round(totales.netas).toLocaleString()}</div>
-                </div>
-            </div>
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+            <h2><i class="fas fa-shopping-cart" style="color: #3b82f6;"></i> Ventas</h2>
             <button class="btn btn-primary" onclick="mostrarModalVenta()" style="padding: 12px 32px;">
                 <i class="fas fa-plus"></i> Nueva Venta
             </button>
         </div>
         
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-clock"></i> Ventas Recientes</h3>
+        <!-- Tarjetas de resumen -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+            
+            <!-- Tarjeta Ventas Brutas -->
+            <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 16px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-chart-line" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">VENTAS BRUTAS</div>
+                        <div style="font-size: 1.8rem; font-weight: 700;">₡${Math.round(totales.brutas).toLocaleString()}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Total sin comisiones</div>
+                    </div>
+                </div>
             </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Local</th>
-                            <th>Efectivo</th>
-                            <th>Tarjeta</th>
-                            <th>Delivery</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-    
-    if (ventasFiltradas.length > 0) {
-        ventasFiltradas.forEach(v => {
-            const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
-            const fecha = v.fecha ? v.fecha.split('T')[0] : 'Fecha no disponible';
-            ventasHTML += `
-                <tr>
-                    <td>${fecha}</td>
-                    <td><strong>${v.local || 'N/A'}</strong></td>
-                    <td>₡${(v.efectivo || 0).toLocaleString()}</td>
-                    <td>₡${(v.bac || 0).toLocaleString()}</td>
-                    <td>₡${delivery.toLocaleString()}</td>
-                    <td><strong>₡${(v.total || 0).toLocaleString()}</strong></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-    } else {
-        ventasHTML += `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px;">
-                    <i class="fas fa-shopping-cart" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px;"></i>
-                    No hay ventas para mostrar
-                </td>
-            </tr>
-        `;
-    }
-    
-    ventasHTML += `
-                    </tbody>
-                </table>
+            
+            <!-- Tarjeta Comisiones -->
+            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-percent" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">COMISIONES</div>
+                        <div style="font-size: 1.8rem; font-weight: 700;">₡${Math.round(totales.comisiones).toLocaleString()}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Delivery y BAC</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta Ventas Netas -->
+            <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-coins" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">VENTAS NETAS</div>
+                        <div style="font-size: 1.8rem; font-weight: 700;">₡${Math.round(totales.netas).toLocaleString()}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Después de comisiones</div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
     
-    ventasContent.innerHTML = ventasHTML;
+    if (ventasFiltradas.length === 0) {
+        html += `
+            <div class="card" style="padding: 40px; text-align: center;">
+                <i class="fas fa-shopping-cart" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+                <h3>No hay ventas registradas</h3>
+                <p style="color: #64748b; margin-bottom: 25px;">Haga clic en "Nueva Venta" para agregar una.</p>
+                <button class="btn btn-primary" onclick="mostrarModalVenta()" style="padding: 12px 32px;">
+                    <i class="fas fa-plus"></i> Nueva Venta
+                </button>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;"><i class="fas fa-clock" style="color: #3b82f6;"></i> Últimas Ventas</h3>
+                    <span style="background: #f1f5f9; padding: 5px 15px; border-radius: 20px;">
+                        ${ventasFiltradas.length} registros
+                    </span>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Local</th>
+                                <th>Efectivo</th>
+                                <th>Tarjeta</th>
+                                <th>Delivery</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        ventasFiltradas.slice(0, 50).forEach(v => {
+            const delivery = (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0);
+            const fecha = v.fecha ? new Date(v.fecha + 'T12:00:00').toLocaleDateString('es-CR') : '—';
+            
+            html += `
+                <tr>
+                    <td><strong>${fecha}</strong></td>
+                    <td>${v.local || '—'}</td>
+                    <td>₡${(v.efectivo || 0).toLocaleString()}</td>
+                    <td>₡${(v.bac || 0).toLocaleString()}</td>
+                    <td>₡${delivery.toLocaleString()}</td>
+                    <td style="color: #3b82f6; font-weight: 600;">₡${(v.total || 0).toLocaleString()}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-sm btn-outline" onclick="verDetalleVenta('${v.id}')" title="Ver detalle">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${esGerencia() ? `
+                                <button class="btn btn-sm btn-danger" onclick="eliminarVenta('${v.id}')" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Información adicional -->
+            <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 0.9rem; color: #64748b; display: flex; justify-content: space-between;">
+                <span>
+                    <i class="fas fa-filter"></i> Mostrando ${Math.min(ventasFiltradas.length, 50)} de ${ventasFiltradas.length} ventas
+                </span>
+                <span>
+                    <i class="fas fa-percent"></i> Comisiones: PedidosYa/Didi 18% | Uber 44% | BAC 2.25%
+                </span>
+            </div>
+        `;
+    }
+    
+    ventasContent.innerHTML = html;
 }
 
 // ============================================

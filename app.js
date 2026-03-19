@@ -134,6 +134,11 @@ function cambiarModulo(moduleId) {
         else if (moduleId === 'planilla' && window.renderPlanilla) window.renderPlanilla();
         else if (moduleId === 'servicios' && window.renderServicios) window.renderServicios();
         else if (moduleId === 'merma' && window.renderMerma) window.renderMerma();
+        else if (moduleId === 'logistica' && window.renderLogistica) window.renderLogistica();
+        else if (moduleId === 'facturacion' && window.renderFacturacion) window.renderFacturacion();
+        else if (moduleId === 'prestamo' && window.renderPrestamo) window.renderPrestamo();
+        else if (moduleId === 'compras' && window.renderCompras) window.renderCompras();
+        else if (moduleId === 'resumen' && window.renderResumen) window.renderResumen();
     }, 100);
 }
 
@@ -293,8 +298,18 @@ function actualizarVistasPorFiltro() {
         window.renderServicios();
     }else if (moduloActivo === 'merma' && window.renderMerma) {
         window.renderMerma();
+    }else if (moduloActivo === 'logistica' && window.renderLogistica) {
+        window.renderLogistica();
+    }else if (moduloActivo === 'facturacion' && window.renderFacturacion) {
+        window.renderFacturacion();
+    }else if (moduloActivo === 'prestamo' && window.renderPrestamo) {
+        window.renderPrestamo();
+    }else if (moduloActivo === 'compras' && window.renderCompras) {
+        window.renderCompras();
+    }else if (moduloActivo === 'resumen' && window.renderResumen) {
+        window.renderResumen();
     }
-}
+}  
 
 // ============================================
 // FILTRAR PRODUCTOS EN EL MODAL
@@ -394,6 +409,10 @@ window.renderUsuarios = null;
 window.renderServicios = null;
 window.renderPlanilla = null;
 window.renderMerma = null;
+window.renderLogistica = null;
+window.renderFacturacion = null;
+window.renderPrestamo = null;
+window.renderCompras = null;
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {

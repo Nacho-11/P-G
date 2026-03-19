@@ -101,7 +101,13 @@ async function cargarDatosUsuario(uid) {
         if (typeof initPlanilla === 'function') setTimeout(() => initPlanilla(), 400);
         if (typeof initServicios === 'function') setTimeout(() => initServicios(), 500);
         if (typeof initMerma === 'function') setTimeout(() => initMerma(), 600);
-        
+        if (typeof initLogistica === 'function') setTimeout(() => initLogistica(), 700);
+        if (typeof initFacturacion === 'function') setTimeout(() => initFacturacion(), 800);
+        if (typeof initSidebar === 'function') setTimeout(() => initSidebar(), 900);
+        if (typeof initPrestamo === 'function') setTimeout(() => initPrestamo(), 1000);
+        if (typeof initCompras === 'function') setTimeout(() => initCompras(), 1100);
+        if (typeof initResumen === 'function') setTimeout(() => initResumen(), 1200);
+
         // Mostrar APP
         const mainContent = document.querySelector('.main-content');
         const sidebar = document.querySelector('.sidebar');

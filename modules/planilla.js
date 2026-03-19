@@ -41,23 +41,44 @@ function cargarPlanillaDesdeFirebase() {
 }
 
 // ============================================
-// CALCULAR PAGO POR HORAS
+// CALCULAR PAGO POR HORAS (CORREGIDO SEGÚN LEY)
 // ============================================
 function calcularPagoHoras(empleado, horas) {
     const salarioMensual = parseFloat(empleado.salario) || 0;
-    const salarioHoraOrdinaria = salarioMensual / 240;
     
-    const PORCENTAJES = {
-        ordinarias: 1.0,
-        extras: 1.5,
-        nocturnas: 1.2,
-        extrasNocturnas: 1.8
+    // Bases según tipo de jornada
+    const HORAS_MENSUALES = {
+        diurno: 240,    // 30 días × 8 horas
+        nocturno: 180   // 30 días × 6 horas
     };
     
-    const ordinarias = horas.ordinarias * salarioHoraOrdinaria * PORCENTAJES.ordinarias;
-    const extras = horas.extras * salarioHoraOrdinaria * PORCENTAJES.extras;
-    const nocturnas = horas.nocturnas * salarioHoraOrdinaria * PORCENTAJES.nocturnas;
-    const extrasNocturnas = horas.extrasNocturnas * salarioHoraOrdinaria * PORCENTAJES.extrasNocturnas;
+    // Valores por hora según el local
+    const valorHoraDiurna = salarioMensual / HORAS_MENSUALES.diurno;
+    const valorHoraNocturna = salarioMensual / HORAS_MENSUALES.nocturno; // Para Los Años Locos
+    
+    // Determinar si el empleado es de Los Años Locos (deberías tener esta info)
+    const esAñosLocos = empleado.local?.includes('Los Años Locos') || false;
+    
+    // Calcular pagos
+    let ordinarias = 0, extras = 0, nocturnas = 0, extrasNocturnas = 0;
+    
+    if (esAñosLocos) {
+        // Para Los Años Locos: jornada nocturna
+        ordinarias = horas.ordinarias * valorHoraNocturna; // Horas dentro de la jornada de 6h
+        extras = horas.extras * valorHoraNocturna * 1.5;   // Horas extra sobre la jornada nocturna
+        nocturnas = 0; // Ya están incluidas en ordinarias si es jornada nocturna
+        extrasNocturnas = 0; // Ya están incluidas en extras si corresponde
+        
+        // Nota: Si necesitas diferenciar, ajusta según cómo registras las horas
+        // Por ejemplo, si "nocturnas" son horas fuera de la jornada regular, ajústalo
+        
+    } else {
+        // Para locales diurnos
+        ordinarias = horas.ordinarias * valorHoraDiurna;
+        extras = horas.extras * valorHoraDiurna * 1.5;
+        nocturnas = horas.nocturnas * valorHoraNocturna; // Si trabajaron de noche ocasionalmente
+        extrasNocturnas = horas.extrasNocturnas * valorHoraNocturna * 1.5;
+    }
     
     return {
         ordinarias: ordinarias,
@@ -621,12 +642,9 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
     const title = document.getElementById('empleadoModalTitle');
     const subtitle = document.getElementById('empleadoModalSubtitle');
     const submitBtn = document.getElementById('empleadoSubmitBtn');
-    
     const campoLocalEditable = document.getElementById('campoLocalEditable');
     const campoLocalSoloLectura = document.getElementById('campoLocalSoloLectura');
     const localDisplay = document.getElementById('empleadoLocalDisplay');
-    const localSelect = document.getElementById('empleadoLocal');
-    
     const campoNocturnoNuevo = document.getElementById('campoNocturnoNuevo');
     const campoActivoEdicion = document.getElementById('campoActivoEdicion');
     const mensajeActivoNuevo = document.getElementById('mensajeActivoNuevo');
@@ -639,16 +657,22 @@ function mostrarModalEmpleado(editLocal = null, editId = null) {
     document.getElementById('empleadoNocturno').checked = false;
     document.getElementById('empleadoActivo').checked = true;
     
+    const localSelect = document.getElementById('empleadoLocal');
+    if (!localSelect) {
+        console.error('❌ No se encontró el elemento empleadoLocal');
+        return;
+    }
+
     localSelect.innerHTML = '<option value="">Seleccionar local...</option>';
     localSelect.disabled = false;
-    
+
     let localesAMostrar = [];
     if (esGerencia()) {
         localesAMostrar = AppState.locales;
     } else {
         localesAMostrar = AppState.locales.filter(l => l.nombre === AppState.usuario?.local);
     }
-    
+
     localesAMostrar.forEach(local => {
         localSelect.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
     });

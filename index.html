@@ -47,6 +47,7 @@
             </div>
 
             <nav class="sidebar-nav">
+                <!-- ADMINISTRACIÓN -->
                 <div class="nav-section">
                     <span class="nav-section-title">ADMINISTRACIÓN</span>
                     <a href="#" onclick="cambiarModulo('usuarios'); return false;" class="nav-item admin-only" data-module="usuarios">
@@ -55,6 +56,7 @@
                     </a>
                 </div>
 
+                <!-- PRINCIPAL -->
                 <div class="nav-section">
                     <span class="nav-section-title">PRINCIPAL</span>
                     <a href="#" onclick="cambiarModulo('dashboard'); return false;" class="nav-item active" data-module="dashboard">
@@ -71,6 +73,7 @@
                     </a>
                 </div>
 
+                <!-- OPERACIONES -->
                 <div class="nav-section">
                     <span class="nav-section-title">OPERACIONES</span>
                     <a href="#" onclick="cambiarModulo('planilla'); return false;" class="nav-item" data-module="planilla">
@@ -89,27 +92,29 @@
                         <i class="fas fa-truck"></i>
                         <span>Logística</span>
                     </a>
+                    <a href="#" onclick="cambiarModulo('facturacion'); return false;" class="nav-item" data-module="facturacion">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Facturación Bodegas</span>
+                    </a>
+                    <a href="#" onclick="cambiarModulo('prestamo'); return false;" class="nav-item" data-module="prestamo">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Préstamo Colaboradores</span>
+                    </a>
+                    <a href="#" onclick="cambiarModulo('compras'); return false;" class="nav-item" data-module="compras">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span>Compras Externas</span>
+                    </a>
                 </div>
 
+                <!-- FINANZAS -->
                 <div class="nav-section">
                     <span class="nav-section-title">FINANZAS</span>
-                    <a href="#" onclick="cambiarModulo('pyg'); return false;" class="nav-item" data-module="pyg">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                        <span>P&G</span>
+                    <a href="#" onclick="cambiarModulo('resumen'); return false;" class="nav-item" data-module="resumen">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Resumen</span>
                     </a>
                 </div>
             </nav>
-
-            <div class="sidebar-footer">
-                <button class="footer-btn" onclick="exportarDatos()">
-                    <i class="fas fa-download"></i>
-                    <span>Exportar</span>
-                </button>
-                <button class="footer-btn" onclick="importarDatos()">
-                    <i class="fas fa-upload"></i>
-                    <span>Importar</span>
-                </button>
-            </div>
         </aside>
 
         <!-- Main Content -->
@@ -141,19 +146,6 @@
                         <input type="date" id="filtroFechaPersonalizado" class="filter-input" placeholder="YYYY-MM-DD">
                     </div>
                 </div>
-
-                <div class="header-actions">
-                    <button class="header-btn" onclick="refrescarDatos()">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="header-btn" onclick="generarReporte()">
-                        <i class="fas fa-file-pdf"></i>
-                    </button>
-                    <button class="header-btn" onclick="mostrarNotificaciones()">
-                        <i class="fas fa-bell"></i>
-                        <span class="notification-badge">3</span>
-                    </button>
-                </div>
             </header>
 
             <div class="modules">
@@ -184,6 +176,10 @@
                     <div class="module-header"><h1 class="module-title">Logística</h1></div>
                     <div class="module-content" id="logisticaContent"></div>
                 </section>
+                <section id="facturacion" class="module">
+                    <div class="module-header"><h1 class="module-title">Facturación de Bodegas</h1></div>
+                    <div class="module-content" id="facturacionContent"></div>
+                </section>
                 <section id="pyg" class="module">
                     <div class="module-header"><h1 class="module-title">Pérdidas y Ganancias</h1></div>
                     <div class="module-content" id="pygContent"></div>
@@ -191,6 +187,18 @@
                 <section id="usuarios" class="module">
                     <div class="module-header"><h1 class="module-title">Gestión de Usuarios</h1></div>
                     <div class="module-content" id="usuariosContent"></div>
+                </section>
+                <section id="prestamo" class="module">
+                    <div class="module-header"><h1 class="module-title">Préstamo de Colaboradores</h1></div>
+                    <div class="module-content" id="prestamoContent"></div>
+                </section>
+                <section id="compras" class="module">
+                    <div class="module-header"><h1 class="module-title">Compras Externas</h1></div>
+                    <div class="module-content" id="comprasContent"></div>
+                </section>
+                <section id="resumen" class="module">
+                    <div class="module-header"><h1 class="module-title">Resumen Financiero</h1></div>
+                    <div class="module-content" id="resumenContent"></div>
                 </section>
             </div>
 
@@ -239,15 +247,13 @@
         </div>
     </div>
     
-    <!-- Modal de Usuario - VERSIÓN ÚNICA Y CORRECTA -->
+    <!-- Modal de Usuario -->
     <div class="modal" id="usuarioModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
-        <!-- Header con icono sin cuadro -->
         <div class="modal-header" id="usuarioModalHeader" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <!-- ÍCONO SIN CUADRO (exactamente como lo quieres) -->
                 <i class="fas" id="usuarioModalIcon" style="font-size: 2rem; color: white;"></i>
                 <div>
-                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.3px;" id="usuarioModalTitle">Nuevo Usuario</h2>
+                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;" id="usuarioModalTitle">Nuevo Usuario</h2>
                     <p style="margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem;" id="usuarioModalSubtitle">Complete los datos del nuevo usuario</p>
                 </div>
             </div>
@@ -256,24 +262,22 @@
         <div class="modal-body" style="padding: 30px; background: #f8fafd;">
             <form id="usuarioForm" onsubmit="event.preventDefault(); document.getElementById('usuarioModal').dataset.editUid ? actualizarUsuario() : guardarUsuario();">
                 
-                <!-- Campo LOCAL editable -->
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
-                        <i class="fas fa-store" style="color: #3498db; font-size: 1rem;"></i> Local asignado
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-store" style="color: #3498db;"></i> Local asignado
                     </label>
-                    <select id="usuarioLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px; font-size: 0.95rem; background: white; transition: all 0.2s; outline: none; color: #1e293b;">
+                    <select id="usuarioLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px;">
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
                 
-                <!-- Campo LOCAL solo lectura (edición) -->
                 <div id="campoLocalSoloLectura" style="background: linear-gradient(135deg, #f8fafc, #ffffff); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #eef2f6; display: none;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div style="background: #f1f5f9; width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-store" style="color: #3498db; font-size: 1.4rem;"></i>
                         </div>
                         <div style="flex: 1;">
-                            <div style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">LOCAL ASIGNADO</div>
+                            <div style="color: #64748b; font-size: 0.75rem;">LOCAL ASIGNADO</div>
                             <div style="font-weight: 600; font-size: 1.1rem; color: #1e293b;" id="usuarioLocalDisplay">-</div>
                         </div>
                         <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 30px; color: #64748b; font-size: 0.8rem;">
@@ -282,67 +286,52 @@
                     </div>
                 </div>
                 
-                <!-- Nombre -->
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
-                        <i class="fas fa-user" style="color: #3498db; font-size: 1rem;"></i> Nombre
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-user" style="color: #3498db;"></i> Nombre
                     </label>
-                    <input type="text" id="usuarioNombre" placeholder="Ej: Ignacio Calderón" style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px; font-size: 0.95rem; transition: all 0.2s; outline: none;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #64748b; font-size: 0.8rem;">
-                        <i class="fas fa-info-circle" style="color: #3498db;"></i>
-                        <span>Nombre real de la persona</span>
-                    </div>
+                    <input type="text" id="usuarioNombre" placeholder="Ej: Ignacio Calderón" style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px;">
                 </div>
                 
-                <!-- Correo electrónico -->
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
-                        <i class="fas fa-envelope" style="color: #3498db; font-size: 1rem;"></i> Correo electrónico
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-envelope" style="color: #3498db;"></i> Correo electrónico
                     </label>
                     <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
                         <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
                             <i class="fas fa-at"></i>
                         </span>
-                        <input type="email" id="usuarioEmail" required placeholder="ej: gerencia@parrillita.com" style="flex: 1; padding: 14px 16px; border: none; font-size: 0.95rem; outline: none; background: transparent;">
+                        <input type="email" id="usuarioEmail" required placeholder="ej: gerencia@parrillita.com" style="flex: 1; padding: 14px 16px; border: none; outline: none; background: transparent;">
                     </div>
                 </div>
                 
-                <!-- Contraseña -->
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase;">
-                        <i class="fas fa-lock" style="color: #3498db; font-size: 1rem;"></i> Contraseña
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-lock" style="color: #3498db;"></i> Contraseña
                     </label>
                     <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
                         <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
                             <i class="fas fa-key"></i>
                         </span>
-                        <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)" style="flex: 1; padding: 14px 16px; border: none; font-size: 0.95rem; outline: none; background: transparent;">
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #64748b; font-size: 0.8rem;" id="passwordHelp">
-                        <i class="fas fa-shield-alt" style="color: #3498db;"></i>
-                        <span>Mínimo 6 caracteres</span>
+                        <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)" style="flex: 1; padding: 14px 16px; border: none; outline: none; background: transparent;">
                     </div>
                 </div>
                 
-                <!-- Checkbox -->
-                <div style="background: white; border-radius: 20px; padding: 16px 20px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);">
+                <div style="background: white; border-radius: 20px; padding: 16px 20px; margin-bottom: 25px;">
                     <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <div style="position: relative;">
-                            <input type="checkbox" id="usuarioActivo" checked style="width: 20px; height: 20px; accent-color: #3498db;">
-                        </div>
+                        <input type="checkbox" id="usuarioActivo" checked style="width: 20px; height: 20px; accent-color: #3498db;">
                         <div>
                             <span style="font-weight: 500; color: #1e293b;">Usuario activo</span>
-                            <span style="display: block; font-size: 0.8rem; color: #64748b; margin-top: 2px;">El usuario podrá acceder al sistema</span>
+                            <span style="display: block; font-size: 0.8rem; color: #64748b;">El usuario podrá acceder al sistema</span>
                         </div>
                     </label>
                 </div>
                 
-                <!-- Botones -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" onclick="cerrarModal('usuarioModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-times"></i> Cancelar
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button type="button" onclick="cerrarModal('usuarioModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer;">
+                        Cancelar
                     </button>
-                    <button type="submit" id="usuarioSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                    <button type="submit" id="usuarioSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);">
                         <i class="fas fa-save"></i> Guardar Usuario
                     </button>
                 </div>
@@ -350,152 +339,160 @@
         </div>
     </div>
 
-    <!-- Modal de Venta - VERSIÓN HORIZONTAL -->
-    <div class="modal" id="ventaModal" style="max-width: 900px; width: 95%;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border-bottom: none; padding: 20px 25px;">
-            <h2 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-shopping-cart" style="font-size: 1.8rem;"></i>
-                Registrar Nueva Venta
-            </h2>
-            <button class="modal-close" onclick="cerrarModal('ventaModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-times"></i>
-            </button>
+    <!-- Modal de Venta - VERSIÓN COMPACTA CON BOTONES VISIBLES -->
+    <div class="modal" id="ventaModal" style="max-width: 1100px; width: 95%; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        
+        <!-- Header elegante -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-shopping-cart" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Registrar Nueva Venta</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.8;">Complete los datos de la venta del día</p>
+                </div>
+            </div>
         </div>
         
-        <div class="modal-body" style="padding: 25px; background: #f8fafc;">
+        <!-- Body con scroll y padding -->
+        <div class="modal-body" style="padding: 25px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
             <form id="ventaForm" onsubmit="event.preventDefault(); guardarVenta();">
-                <!-- Fecha y Local en la misma fila -->
+                
+                <!-- Fila 1: Fecha y Local -->
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 25px;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="ventaFecha" style="display: block; margin-bottom: 8px; font-weight: 600; color: #334155; font-size: 0.9rem;">
-                            <i class="fas fa-calendar-alt" style="color: #2563eb; margin-right: 5px;"></i> Fecha
+                    
+                    <!-- Fecha -->
+                    <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <i class="fas fa-calendar-alt" style="color: #3b82f6;"></i> Fecha
                         </label>
-                        <input type="date" id="ventaFecha" required style="width: 100%; padding: 12px 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: white;">
+                        <input type="date" id="ventaFecha" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem;">
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="ventaLocal" style="display: block; margin-bottom: 8px; font-weight: 600; color: #334155; font-size: 0.9rem;">
-                            <i class="fas fa-store" style="color: #2563eb; margin-right: 5px;"></i> Local
+                    <!-- Local -->
+                    <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <i class="fas fa-store" style="color: #10b981;"></i> Local
                         </label>
-                        <select id="ventaLocal" required style="width: 100%; padding: 12px 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: white;">
+                        <select id="ventaLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: white;">
                             <option value="">Seleccionar local...</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- SECCIÓN PRINCIPAL EN DOS COLUMNAS -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <!-- Fila 2: Tres columnas -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px;">
                     
-                    <!-- Columna Izquierda: Mostrador y Gastos -->
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <!-- Ventas en mostrador -->
-                        <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                            <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-cash-register" style="color: #2563eb; font-size: 1.2rem;"></i> Ventas en mostrador
-                            </h3>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <div>
-                                    <label for="ventaEfectivo" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">Efectivo</label>
-                                    <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                        <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                        <input type="number" id="ventaEfectivo" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <label for="ventaBAC" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">BAC</label>
-                                    <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                        <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                        <input type="number" id="ventaBAC" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <label for="ventaPersonal" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">Personal</label>
-                                    <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                        <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                        <input type="number" id="ventaPersonal" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                    </div>
-                                </div>
+                    <!-- Columna 1: Mostrador -->
+                    <div style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-cash-register" style="color: #3b82f6;"></i> Mostrador
+                        </h3>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">Efectivo</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaEfectivo" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
                             </div>
                         </div>
-
-                        <!-- Gastos -->
-                        <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                            <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-receipt" style="color: #ef4444; font-size: 1.2rem;"></i> Gastos
-                            </h3>
-                            
-                            <div>
-                                <label for="ventaGastos" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">Gastos operativos</label>
-                                <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                    <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                    <input type="number" id="ventaGastos" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">BAC</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaBAC" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">Personal</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaPersonal" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
                             </div>
                         </div>
                     </div>
-
-                    <!-- Columna Derecha: Delivery -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    
+                    <!-- Columna 2: Delivery -->
+                    <div style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                         <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-motorcycle" style="color: #2563eb; font-size: 1.2rem;"></i> Delivery
+                            <i class="fas fa-motorcycle" style="color: #f59e0b;"></i> Delivery
                         </h3>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 12px;">
-                            <div>
-                                <label for="ventaPedidosYa" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">PedidosYa</label>
-                                <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                    <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                    <input type="number" id="ventaPedidosYa" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">PedidosYa</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaPedidosYa" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
                             </div>
-                            
-                            <div>
-                                <label for="ventaDidi" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">Didi</label>
-                                <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                    <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                    <input type="number" id="ventaDidi" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                </div>
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">Didi</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaDidi" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
                             </div>
-                            
-                            <div>
-                                <label for="ventaUber" style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569; font-size: 0.9rem;">Uber</label>
-                                <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                    <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600; color: #64748b;">₡</span>
-                                    <input type="number" id="ventaUber" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px 12px; border: none; outline: none;">
-                                </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">Uber</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaUber" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Columna 3: Gastos -->
+                    <div style="background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-receipt" style="color: #ef4444;"></i> Gastos
+                        </h3>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b; margin-bottom: 4px; display: block;">Gastos operativos</label>
+                            <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <span style="background: #f1f5f9; padding: 10px 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="ventaGastos" value="0" min="0" oninput="calcularTotalesVenta()" style="flex: 1; padding: 10px; border: none; outline: none;">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Totales -->
-                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                <!-- Fila 3: Resumen y Botones (SIEMPRE VISIBLE) -->
+                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; padding: 20px; color: white;">
+                    
+                    <!-- Totales en grid -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.8;">Ventas Brutas</div>
-                            <div style="font-size: 1.5rem; font-weight: 700;" id="ventasBrutas">₡0</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Ventas Brutas</div>
+                            <div style="font-size: 1.4rem; font-weight: 700;" id="ventasBrutas">₡0</div>
                         </div>
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.8;">Total Comisiones</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;" id="totalComisiones">₡0</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Comisión BAC</div>
+                            <div style="font-size: 1.2rem; font-weight: 600; color: #fcd34d;" id="comisionBac">₡0</div>
                         </div>
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.8;">Gastos</div>
-                            <div style="font-size: 1.5rem; font-weight: 700;" id="totalGastos">₡0</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Comisiones Delivery</div>
+                            <div style="font-size: 1.2rem; font-weight: 600; color: #f87171;" id="totalComisiones">₡0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">Gastos</div>
+                            <div style="font-size: 1.2rem; font-weight: 600; color: #f59e0b;" id="totalGastos">₡0</div>
                         </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                    <!-- Ventas Netas destacadas y Botones -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 20px;">
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.8;">Comisión BAC (2.25%)</div>
-                            <div style="font-size: 1.2rem; font-weight: 600; color: #fcd34d;" id="comisionBac">₡0</div>
+                            <div style="font-size: 1rem; font-weight: 500; opacity: 0.8;">VENTAS NETAS</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: #10b981;" id="ventasNetas">₡0</div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.9rem; opacity: 0.9;">Ventas Netas</div>
-                            <div style="font-size: 1.8rem; font-weight: 700; color: #10b981;" id="ventasNetas">₡0</div>
+                        
+                        <!-- BOTONES SIEMPRE VISIBLES -->
+                        <div style="display: flex; gap: 12px;">
+                            <button type="button" onclick="cerrarModal('ventaModal')" style="padding: 12px 28px; border: 2px solid rgba(255,255,255,0.2); background: transparent; color: white; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="guardarVentaBtn" style="padding: 12px 32px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3); display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-save"></i> Guardar Venta
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -506,252 +503,178 @@
                     <span id="comisionDidi"></span>
                     <span id="comisionUber"></span>
                 </div>
-
-                <!-- Botones de acción -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-outline" onclick="cerrarModal('ventaModal')" style="padding: 12px 24px; border-radius: 12px; font-weight: 600; border: 2px solid #e2e8f0; background: white;">
-                        <i class="fas fa-times"></i> Cancelar
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="guardarVentaBtn" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
-                        <i class="fas fa-save"></i> Guardar Venta
-                    </button>
-                </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Costos - VERSIÓN PROFESIONAL -->
+    <!-- Modal de Costos -->
     <div class="modal" id="costoModal" style="max-width: 550px; border-radius: 24px; overflow: hidden;">
-        <!-- Header con gradiente -->
-        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px 30px; border-bottom: none;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-coins" style="font-size: 1.8rem;"></i>
-                </div>
-                <div>
-                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Nuevo Costo Fijo</h2>
-                    <p style="margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem;">Ingrese los detalles del costo</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="cerrarModal('costoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px 30px;">
+            <h2 style="margin: 0;">Nuevo Costo Fijo</h2>
         </div>
-        
-        <!-- Body con padding mejorado -->
         <div class="modal-body" style="padding: 30px; background: #f8fafc;">
             <form id="costoForm" onsubmit="event.preventDefault(); guardarCosto();">
-                <!-- Local - Tarjeta -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <div style="background: #e0f2fe; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-store" style="color: #0284c7;"></i>
-                        </div>
-                        <span style="font-weight: 600; color: #1e293b;">Seleccionar Local</span>
-                    </div>
-                    <select id="costoLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                <div style="margin-bottom: 20px;">
+                    <label>Local</label>
+                    <select id="costoLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
-                
-                <!-- Categoría - Tarjeta -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <div style="background: #fef9c3; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-tag" style="color: #a16207;"></i>
-                        </div>
-                        <span style="font-weight: 600; color: #1e293b;">Categoría del Costo</span>
-                    </div>
-                    <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                <div style="margin-bottom: 20px;">
+                    <label>Categoría</label>
+                    <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                         <option value="">Seleccionar categoría...</option>
-                        <option value="restaurante">🍽️ Restaurante</option>
-                        <option value="planta">🏭 Planta de Producción</option>
-                        <option value="oficinas">🏢 Oficinas</option>
-                        <option value="transporte">🚚 Transporte</option>
-                        <option value="planilla">👥 Planilla</option>
+                        <option value="restaurante">Restaurante</option>
+                        <option value="planta">Planta</option>
+                        <option value="oficinas">Oficinas</option>
+                        <option value="transporte">Transporte</option>
+                        <option value="planilla">Planilla</option>
                     </select>
                 </div>
-                
-                <!-- Concepto - Tarjeta -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <div style="background: #dcfce7; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-list" style="color: #166534;"></i>
-                        </div>
-                        <span style="font-weight: 600; color: #1e293b;">Concepto</span>
-                    </div>
-                    <select id="costoConcepto" required style="width: 100%; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s; outline: none;">
+                <div style="margin-bottom: 20px;">
+                    <label>Concepto</label>
+                    <select id="costoConcepto" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                         <option value="">Seleccionar concepto...</option>
                     </select>
                 </div>
-                
-                <!-- Monto - Tarjeta -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <div style="background: #fee2e2; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-dollar-sign" style="color: #991b1b;"></i>
-                        </div>
-                        <span style="font-weight: 600; color: #1e293b;">Monto</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="background: #2563eb; color: white; padding: 14px 20px; border-radius: 14px; font-weight: 600;">₡</span>
-                        <input type="number" id="costoMonto" min="0" step="100" placeholder="0" required style="flex: 1; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; transition: all 0.2s; outline: none;">
-                    </div>
+                <div style="margin-bottom: 20px;">
+                    <label>Monto (₡)</label>
+                    <input type="number" id="costoMonto" min="0" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                
-                <!-- Botones de acción -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 10px;">
-                    <button type="button" onclick="cerrarModal('costoModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #4b5563; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-times"></i>
-                        Cancelar
-                    </button>
-                    <button type="submit" style="padding: 14px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
-                        <i class="fas fa-save"></i>
-                        Guardar Costo
-                    </button>
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button type="button" onclick="cerrarModal('costoModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 8px;">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Empleado - VERSIÓN ÚNICA CORREGIDA (SIN X DUPLICADA) -->
-    <div class="modal" id="empleadoModal" style="max-width: 950px; width: 95%; border-radius: 32px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-                <!-- Header dinámico con badge que no parece X -->
-        <div class="modal-header" id="empleadoModalHeader" style="background: linear-gradient(145deg, #0B5E42 0%, #1A8F6E 100%); color: white; padding: 0;">
-            <div style="display: flex; align-items: stretch; min-height: 120px;">
-                <!-- Lado izquierdo con icono -->
-                <div style="background: rgba(0,0,0,0.1); padding: 30px; display: flex; align-items: center; justify-content: center; width: 160px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 40px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas" id="empleadoModalIcon" style="font-size: 3rem;"></i>
-                    </div>
-                </div>
-                <!-- Lado derecho con título -->
-                <div style="padding: 30px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-                        <span style="padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 5px;" id="empleadoModalBadge">
-                            <i class="fas fa-plus-circle"></i> NUEVO
-                        </span>
-                    </div>
-                    <h2 style="margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.5px;" id="empleadoModalTitle">Incorporar Empleado</h2>
-                    <p style="margin: 5px 0 0; opacity: 0.9;" id="empleadoModalSubtitle">Complete los datos para agregar un nuevo colaborador</p>
+    <!-- Modal de Empleado - VERSIÓN COMPLETA -->
+    <div class="modal" id="empleadoModal" style="max-width: 950px; width: 95%; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        
+        <!-- Header con todos los elementos que busca planilla.js -->
+        <div class="modal-header" id="empleadoModalHeader" style="background: linear-gradient(145deg, #0B5E42 0%, #1A8F6E 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i class="fas fa-user-plus" id="empleadoModalIcon" style="font-size: 2rem; color: white;"></i>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;" id="empleadoModalTitle">Incorporar Empleado</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.8; font-size: 0.9rem;" id="empleadoModalSubtitle">Complete los datos para agregar un nuevo colaborador</p>
                 </div>
             </div>
+            <span id="empleadoModalBadge" style="background: #FFD966; color: #0B5E42; padding: 6px 16px; border-radius: 30px; font-weight: 600; font-size: 0.8rem;">
+                <i class="fas fa-plus-circle"></i> NUEVO
+            </span>
         </div>
         
-        <div class="modal-body" style="padding: 35px; background: #f5f7fb; max-height: 70vh; overflow-y: auto;">
+        <div class="modal-body" style="padding: 30px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
             <form id="empleadoForm" onsubmit="event.preventDefault(); guardarEmpleado();">
                 
-                <!-- Campo LOCAL editable (solo en nuevo) -->
-                <div id="campoLocalEditable" style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                <!-- CAMPO LOCAL MODO EDICIÓN (solo lectura) -->
+                <div id="campoLocalSoloLectura" style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; display: none;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #f1f5f9; width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-store" style="color: #0B5E42; font-size: 1.4rem;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="color: #64748b; font-size: 0.8rem;">LOCAL ASIGNADO</div>
+                            <div style="font-weight: 600; font-size: 1.2rem; color: #1e293b;" id="empleadoLocalDisplay">-</div>
+                        </div>
+                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 30px; color: #64748b; font-size: 0.8rem;">
+                            <i class="fas fa-lock"></i> No editable
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CAMPO LOCAL MODO NUEVO (editable) -->
+                <div id="campoLocalEditable" style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-store" style="color: #0B5E42;"></i> Local
                     </label>
-                    <select id="empleadoLocal" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; background: white; font-size: 1rem;">
+                    <select id="empleadoLocal" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem; background: white;">
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
                 
-                <!-- Campo LOCAL solo lectura (solo en edición) -->
-                <div id="campoLocalSoloLectura" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #E2E8F0; display: none;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="background: #F1F5F9; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-store" style="color: #475569;"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="color: #64748B; font-size: 0.8rem;">LOCAL</div>
-                            <div style="font-weight: 600; font-size: 1.1rem;" id="empleadoLocalDisplay">-</div>
-                        </div>
-                        <div style="color: #94A3B8;">
-                            <i class="fas fa-lock" title="No editable"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Grid de 2 columnas -->
+                <!-- Nombre y Puesto en grid -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div>
-                        <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                    <div style="background: white; border-radius: 20px; padding: 20px;">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <i class="fas fa-user" style="color: #0B5E42;"></i> Nombre completo
                         </label>
-                        <input type="text" id="empleadoNombre" placeholder="Ej: Juan Pérez" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                        <input type="text" id="empleadoNombre" placeholder="Ej: Juan Pérez" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem;">
                     </div>
-                    <div>
-                        <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
+                    
+                    <div style="background: white; border-radius: 20px; padding: 20px;">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <i class="fas fa-briefcase" style="color: #0B5E42;"></i> Puesto
                         </label>
-                        <input type="text" id="empleadoPuesto" placeholder="Ej: Cocinero" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                        <input type="text" id="empleadoPuesto" placeholder="Ej: Cocinero" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem;">
                     </div>
                 </div>
                 
-                <!-- Salario -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
-                        <i class="fas fa-dollar-sign" style="color: #0B5E42;"></i> Salario mensual (₡)
-                    </label>
-                    <div style="position: relative;">
-                        <span style="position: absolute; left: 14px; top: 14px; color: #0B5E42; font-weight: 600;">₡</span>
-                        <input type="text" id="empleadoSalario" placeholder="399,204.10" required style="width: 100%; padding: 14px 14px 14px 40px; border: 2px solid #e2e8f0; border-radius: 16px;">
-                    </div>
-                    <small style="color: #64748B; display: block; margin-top: 8px;">
-                        <i class="fas fa-info-circle" style="color: #0B5E42;"></i> Use punto o coma para decimales
-                    </small>
-                </div>
-                
-                <!-- Fecha ingreso -->
-                <div style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #334155; display: block; margin-bottom: 8px;">
-                        <i class="fas fa-calendar-alt" style="color: #0B5E42;"></i> Fecha de ingreso
-                    </label>
-                    <input type="date" id="empleadoFechaIngreso" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px;">
-                </div>
-                
-                <!-- Opciones adicionales -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px;">
-                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                        
-                        <!-- Horas nocturnas - SOLO EN NUEVO -->
-                        <div id="campoNocturnoNuevo" style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 44px; height: 44px; background: #E8F4F0; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-moon" style="color: #0B5E42;"></i>
-                            </div>
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                <input type="checkbox" id="empleadoNocturno" style="width: 20px; height: 20px;">
-                                <span>Aplica horas nocturnas</span>
-                            </label>
+                <!-- Salario y Fecha de ingreso en grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div style="background: white; border-radius: 20px; padding: 20px;">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <i class="fas fa-dollar-sign" style="color: #0B5E42;"></i> Salario mensual (₡)
+                        </label>
+                        <div style="display: flex; align-items: center; border: 2px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
+                            <span style="background: #f1f5f9; padding: 14px 16px; font-weight: 600; color: #475569;">₡</span>
+                            <input type="text" id="empleadoSalario" placeholder="0.00" required style="flex: 1; padding: 14px; border: none; outline: none; font-size: 1rem;">
                         </div>
-                        
-                        <!-- Estado activo - SOLO EN EDICIÓN (en nuevo siempre activo) -->
-                        <div id="campoActivoEdicion" style="display: flex; align-items: center; gap: 12px; display: none;">
-                            <div style="width: 44px; height: 44px; background: #F3E8FF; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-toggle-on" style="color: #9333ea;"></i>
-                            </div>
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                <input type="checkbox" id="empleadoActivo" style="width: 20px; height: 20px;">
-                                <span>Empleado activo</span>
-                            </label>
-                        </div>
-                        
                     </div>
                     
-                    <!-- Mensaje para nuevo empleado (activo por defecto) -->
-                    <div id="mensajeActivoNuevo" style="margin-top: 15px; padding: 10px; background: #E8F4F0; border-radius: 10px; color: #0B5E42; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-info-circle"></i>
-                        <span>El empleado se creará como <strong>ACTIVO</strong> por defecto</span>
-                    </div>
-                    
-                    <!-- Mensaje para edición (nocturnas no editables) -->
-                    <div id="mensajeNocturnoEdicion" style="margin-top: 15px; padding: 10px; background: #F3E8FF; border-radius: 10px; color: #9333ea; display: flex; align-items: center; gap: 10px; display: none;">
-                        <i class="fas fa-lock"></i>
-                        <span>La configuración de horas nocturnas no se puede modificar</span>
+                    <div style="background: white; border-radius: 20px; padding: 20px;">
+                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <i class="fas fa-calendar-alt" style="color: #0B5E42;"></i> Fecha de ingreso
+                        </label>
+                        <input type="date" id="empleadoFechaIngreso" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem;">
                     </div>
                 </div>
                 
-                <!-- Botones - SIN X, SOLO CANCELAR Y GUARDAR -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; padding-top: 10px; border-top: 2px solid #e2e8f0;">
-                    <button type="button" onclick="cerrarModal('empleadoModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
+                <!-- CAMPO NOCTURNO (solo para nuevos empleados) -->
+                <div id="campoNocturnoNuevo" style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="empleadoNocturno" style="width: 20px; height: 20px; accent-color: #0B5E42;">
+                        <div>
+                            <span style="font-weight: 600; color: #1e293b;">Trabajador nocturno</span>
+                            <span style="display: block; font-size: 0.85rem; color: #64748b;">Aplica para Los Años Locos (recargo 20%)</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- CAMPO ACTIVO (para edición) -->
+                <div id="campoActivoEdicion" style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; display: none;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="empleadoActivo" checked style="width: 20px; height: 20px; accent-color: #9333ea;">
+                        <div>
+                            <span style="font-weight: 600; color: #1e293b;">Empleado activo</span>
+                            <span style="display: block; font-size: 0.85rem; color: #64748b;">Puede registrar horas y aparecer en planilla</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- MENSAJES INFORMATIVOS -->
+                <div id="mensajeActivoNuevo" style="background: #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-info-circle" style="color: #0B5E42;"></i>
+                        <span style="color: #475569;">Los nuevos empleados se crean como <strong>activos</strong> por defecto.</span>
+                    </div>
+                </div>
+                
+                <div id="mensajeNocturnoEdicion" style="background: #f3e8ff; border-radius: 16px; padding: 15px; margin-bottom: 20px; display: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-moon" style="color: #8b5cf6;"></i>
+                        <span style="color: #475569;">La condición de <strong>nocturno</strong> se maneja desde el registro de horas.</span>
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" onclick="cerrarModal('empleadoModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer;">
                         Cancelar
                     </button>
-                    <button type="submit" id="empleadoSubmitBtn" style="padding: 14px 40px; color: white; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(11, 94, 66, 0.3); font-size: 1.1rem;">
+                    <button type="submit" id="empleadoSubmitBtn" style="padding: 14px 36px; background: linear-gradient(135deg, #0B5E42, #1A8F6E); color: white; border: none; border-radius: 18px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(11, 94, 66, 0.3);">
                         <i class="fas fa-check-circle"></i> CONFIRMAR NUEVO EMPLEADO
                     </button>
                 </div>
@@ -759,134 +682,68 @@
         </div>
     </div>
 
-    <!-- Modal de Registro de Horas - VERSIÓN CORREGIDA -->
-    <div class="modal" id="horasModal" style="max-width: 900px; width: 95%; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-        <!-- Header -->
-        <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-clock" style="font-size: 1.8rem;"></i>
-                </div>
-                <div>
-                    <h2 style="margin: 0; font-size: 1.6rem;">Registrar Horas</h2>
-                    <p style="margin: 2px 0 0; opacity: 0.9;">Ingrese las horas trabajadas</p>
-                </div>
-            </div>
+    <!-- Modal de Horas -->
+    <div class="modal" id="horasModal" style="max-width: 900px; width: 95%; border-radius: 24px; overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px 30px;">
+            <h2 style="margin: 0;">Registrar Horas</h2>
         </div>
-        
-        <div class="modal-body" style="padding: 25px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+        <div class="modal-body" style="padding: 25px; background: #f8fafc;">
             <form id="horasForm" onsubmit="event.preventDefault(); guardarHoras();">
-                
-                <!-- Info del empleado -->
-                <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user" style="color: white; font-size: 1.4rem;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.2rem;" id="horasEmpleadoNombre">Nombre</h3>
-                            <p style="margin: 4px 0 0; color: #64748b;">
-                                <i class="fas fa-store"></i> <span id="horasEmpleadoLocal">—</span>
-                            </p>
-                        </div>
-                    </div>
+                <div style="margin-bottom: 20px;">
+                    <h3 id="horasEmpleadoNombre">Nombre</h3>
+                    <p id="horasEmpleadoLocal">Local</p>
                 </div>
-                
-                <!-- Grid Fecha + Atajos -->
-                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <!-- Fecha -->
-                    <div style="background: white; border-radius: 16px; padding: 18px;">
-                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">
-                            <i class="fas fa-calendar-alt" style="color: #11998e;"></i> Fecha
-                        </label>
-                        <input type="date" id="horasFecha" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
-                    </div>
-                    
-                    <!-- Atajos -->
-                    <div style="background: white; border-radius: 16px; padding: 18px;">
-                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Atajos rápidos</label>
-                        <div style="display: flex; gap: 8px;">
-                            <button type="button" onclick="setFechaRapida('ayer')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Ayer</button>
-                            <button type="button" onclick="setFechaRapida('hoy')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Hoy</button>
-                            <button type="button" onclick="setFechaRapida('manana')" style="flex:1; padding:10px; background:#f1f5f9; border:none; border-radius:10px; cursor:pointer;">Mañana</button>
-                        </div>
-                    </div>
+                <div style="margin-bottom: 20px;">
+                    <label>Fecha</label>
+                    <input type="date" id="horasFecha" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                
-                <!-- Grid de 2 columnas para horas -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <!-- Columna 1: Ordinarias y Extra -->
                     <div>
-                        <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px;">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
-                                <i class="fas fa-sun" style="color: #11998e;"></i> Horas ordinarias
-                            </label>
-                            <input type="number" id="horasOrdinarias" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
-                        </div>
-                        
-                        <div style="background: white; border-radius: 16px; padding: 18px;">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
-                                <i class="fas fa-star" style="color: #f59e0b;"></i> Horas extra (x1.5)
-                            </label>
-                            <input type="number" id="horasExtras" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
-                        </div>
+                        <label>Horas ordinarias</label>
+                        <input type="number" id="horasOrdinarias" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                     </div>
-                    
-                    <!-- Columna 2: Nocturnas (visible solo para Los Años Locos) -->
-                    <div id="nocturnoField">
-                        <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px;">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
-                                <i class="fas fa-moon" style="color: #3b82f6;"></i> Horas nocturnas (x1.2)
-                            </label>
-                            <input type="number" id="horasNocturnas" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
-                        </div>
-                        
-                        <div style="background: white; border-radius: 16px; padding: 18px;">
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">
-                                <i class="fas fa-bolt" style="color: #ef4444;"></i> Horas extra nocturnas (x1.8)
-                            </label>
-                            <input type="number" id="horasExtrasNocturnas" min="0" max="24" step="0.5" value="0" oninput="actualizarResumenHoras()" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;">
-                        </div>
+                    <div>
+                        <label>Horas extra</label>
+                        <input type="number" id="horasExtras" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label>Horas nocturnas</label>
+                        <input type="number" id="horasNocturnas" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label>Horas extra nocturnas</label>
+                        <input type="number" id="horasExtrasNocturnas" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                     </div>
                 </div>
-                
-                <!-- Resumen -->
-                <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; padding: 20px; margin: 20px 0; color: white;">
+                <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border-radius: 12px;">
                     <div style="display: flex; justify-content: space-between;">
-                        <div>
-                            <div>Total horas</div>
-                            <div style="font-size: 2rem; font-weight:700;" id="resumenTotalHoras">0.0</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div>Pago estimado</div>
-                            <div style="font-size: 2rem; font-weight:700;" id="resumenPago">₡0.00</div>
-                        </div>
+                        <div>Total horas: <span id="resumenTotalHoras">0.0</span></div>
+                        <div>Pago estimado: <span id="resumenPago">₡0.00</span></div>
                     </div>
                 </div>
-                
-                <!-- Botones -->
                 <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                    <button type="button" onclick="cerrarModal('horasModal')" style="padding:12px 28px; border:2px solid #e2e8f0; background:white; border-radius:14px; cursor:pointer;">
-                        <i class="fas fa-times"></i> Cancelar
-                    </button>
-                    <button type="submit" style="padding:12px 32px; background:linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color:white; border:none; border-radius:14px; cursor:pointer; box-shadow:0 4px 6px rgba(17,153,142,0.3);">
-                        <i class="fas fa-save"></i> Guardar Horas
-                    </button>
+                    <button type="button" onclick="cerrarModal('horasModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 8px;">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Servicio - VERSIÓN ESPECÍFICA PARA AGUA, LUZ Y GAS -->
+    <!-- Modal de Servicio - VERSIÓN COMPLETA CON TODOS LOS CAMPOS -->
     <div class="modal" id="servicioModal" style="max-width: 800px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        
+        <!-- Header -->
         <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <i class="fas fa-bolt" id="servicioModalIcon" style="font-size: 2rem;"></i>
                 <div>
                     <h2 style="margin: 0; font-size: 1.5rem;" id="servicioModalTitle">Registrar Servicio</h2>
-                    <p style="margin: 4px 0 0; opacity: 0.8;" id="servicioModalSubtitle">Agua, electricidad o gas</p>
+                    <p style="margin: 4px 0 0; opacity: 0.8;">Agua, electricidad o gas</p>
                 </div>
             </div>
+            <button class="modal-close" onclick="cerrarModal('servicioModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         
         <div class="modal-body" style="padding: 30px; background: #f8fafd; max-height: 80vh; overflow-y: auto;">
@@ -894,29 +751,32 @@
                 
                 <!-- Fecha y Local -->
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 20px;">
+                    
+                    <!-- Fecha -->
                     <div style="background: white; border-radius: 16px; padding: 15px;">
-                        <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <i class="fas fa-calendar-alt" style="color: #f59e0b;"></i> Fecha
                         </label>
-                        <input type="date" id="servicioFecha" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                        <input type="date" id="servicioFecha" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                     </div>
                     
+                    <!-- Local -->
                     <div style="background: white; border-radius: 16px; padding: 15px;">
-                        <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <i class="fas fa-store" style="color: #f59e0b;"></i> Local
                         </label>
-                        <select id="servicioLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                        <select id="servicioLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem; background: white;">
                             <option value="">Seleccionar local...</option>
                         </select>
                     </div>
                 </div>
                 
-                <!-- Tipo de servicio (SOLO 3 OPCIONES) -->
+                <!-- Tipo de servicio -->
                 <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                         <i class="fas fa-tag" style="color: #f59e0b;"></i> Tipo de servicio
                     </label>
-                    <select id="servicioTipo" required onchange="cambiarTipoServicio()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                    <select id="servicioTipo" required onchange="cambiarTipoServicio()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                         <option value="">Seleccionar tipo...</option>
                         <option value="Agua">💧 Agua</option>
                         <option value="Electricidad">⚡ Electricidad</option>
@@ -926,13 +786,13 @@
                 
                 <!-- Número de medidor (opcional) -->
                 <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: block; margin-bottom: 8px;">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                         <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de medidor
                     </label>
-                    <input type="text" id="servicioMedidor" placeholder="Ej: 12345678" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                    <input type="text" id="servicioMedidor" placeholder="Ej: 12345678" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                 </div>
                 
-                <!-- SECCIÓN PARA AGUA (6 lecturas: Apertura y Cierre para 3 períodos) -->
+                <!-- SECCIÓN PARA AGUA (6 lecturas) -->
                 <div id="seccionAgua" style="display: none;">
                     <div style="background: linear-gradient(135deg, #3b82f610, #3b82f620); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
@@ -957,7 +817,6 @@
                                     <input type="number" id="aguaMiscCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
                                 </div>
                             </div>
-                            <!-- Consumo parcial de este período -->
                             <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
                                 Consumo: <span id="aguaConsumoMisc">0.000</span> M³
                             </div>
@@ -996,11 +855,11 @@
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                 <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
                                     <input type="number" id="aguaCerradoApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
                                 </div>
                                 <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
+                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
                                     <input type="number" id="aguaCerradoCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
                                 </div>
                             </div>
@@ -1009,7 +868,7 @@
                             </div>
                         </div>
                         
-                        <!-- Totales -->
+                        <!-- Totales Agua -->
                         <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 15px; border: 2px solid #3b82f620;">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                                 <div>
@@ -1025,11 +884,11 @@
                     </div>
                 </div>
                 
-                <!-- SECCIÓN PARA ELECTRICIDAD/GAS (2 lecturas) -->
+                <!-- SECCIÓN PARA ELECTRICIDAD -->
                 <div id="seccionElectricidad" style="display: none;">
                     <div style="background: linear-gradient(135deg, #f59e0b10, #f59e0b20); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas" id="energiaIcon" style="color: #f59e0b;"></i> Lecturas <span id="energiaUnidad">(kWh)</span>
+                            <i class="fas fa-bolt" style="color: #f59e0b;"></i> Lecturas de Electricidad (kWh)
                         </h3>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
@@ -1058,7 +917,7 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN PARA GAS (recarga) -->
+                <!-- SECCIÓN PARA GAS -->
                 <div id="seccionGas" style="display: none;">
                     <div style="background: linear-gradient(135deg, #ef444410, #ef444420); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
@@ -1101,7 +960,7 @@
                     </div>
                 </div>
                 
-                <!-- Precio por unidad (solo lectura) -->
+                <!-- Precios (solo lectura) -->
                 <div style="background: #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                         <i class="fas fa-dollar-sign" style="color: #f59e0b;"></i>
@@ -1109,7 +968,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <!-- Agua - Solo lectura -->
+                        <!-- Agua -->
                         <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <i class="fas fa-water" style="color: #3b82f6; font-size: 1.2rem;"></i>
                             <div>
@@ -1121,7 +980,7 @@
                             </div>
                         </div>
                         
-                        <!-- Electricidad - Solo lectura -->
+                        <!-- Electricidad -->
                         <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <i class="fas fa-bolt" style="color: #f59e0b; font-size: 1.2rem;"></i>
                             <div>
@@ -1140,12 +999,10 @@
                     </div>
                 </div>
 
-<!-- Inputs ocultos para mantener compatibilidad con el código existente -->
-<input type="hidden" id="precioAgua">
-<input type="hidden" id="precioElectricidad">
-<input type="hidden" id="precioGas">
-                
-                <!-- Monto final (automático) -->
+                <!-- Inputs ocultos -->
+                <input type="hidden" id="precioAgua">
+                <input type="hidden" id="precioElectricidad">
+                <input type="hidden" id="precioGas">
                 <input type="hidden" id="servicioConsumo">
                 <input type="hidden" id="servicioMonto">
                 
@@ -1164,315 +1021,103 @@
 
     <!-- Modal de Producto -->
     <div class="modal" id="productoModal" style="max-width: 550px; border-radius: 24px;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
-            <h2 id="productoModalTitle"><i class="fas fa-box"></i> Nuevo Producto</h2>
-            <button class="modal-close" onclick="cerrarModal('productoModal')">&times;</button>
-        </div>
-        <div class="modal-body">
+        <div class="modal-body" style="padding: 20px;">
             <form id="productoForm" onsubmit="event.preventDefault(); guardarProducto();">
-                <div class="form-group">
+                <div style="margin-bottom: 15px;">
                     <label>Familia</label>
-                    <input type="text" id="productoFamilia" required placeholder="Ej: VEGETALES, LICOR, PROTEINAS">
+                    <input type="text" id="productoFamilia" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                <div class="form-group">
-                    <label>Nombre del Producto</label>
-                    <input type="text" id="productoNombre" required placeholder="Ej: ZUQUINI, WHISKY J&B">
+                <div style="margin-bottom: 15px;">
+                    <label>Nombre</label>
+                    <input type="text" id="productoNombre" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                <div class="form-group">
-                    <label>Presentación (cantidad)</label>
-                    <input type="number" id="productoPresentacion" step="0.001" placeholder="Ej: 1000, 33.81">
+                <div style="margin-bottom: 15px;">
+                    <label>Presentación</label>
+                    <input type="number" id="productoPresentacion" value="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                <div class="form-group">
+                <div style="margin-bottom: 15px;">
                     <label>Unidad</label>
-                    <select id="productoUnidad" required>
-                        <option value="GR">Gramos (GR)</option>
-                        <option value="KG">Kilogramos (KG)</option>
-                        <option value="ML">Mililitros (ML)</option>
-                        <option value="L">Litros (L)</option>
-                        <option value="UD">Unidad (UD)</option>
-                        <option value="onz">Onzas (onz)</option>
+                    <select id="productoUnidad" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        <option value="GR">Gramos</option>
+                        <option value="KG">Kilogramos</option>
+                        <option value="ML">Mililitros</option>
+                        <option value="L">Litros</option>
+                        <option value="UD">Unidad</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div style="margin-bottom: 15px;">
                     <label>Precio (₡)</label>
-                    <input type="number" id="productoPrecio" step="0.01" required placeholder="0.00">
+                    <input type="number" id="productoPrecio" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn btn-outline" onclick="cerrarModal('productoModal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="productoSubmitBtn">Guardar Producto</button>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="cerrarModal('productoModal')" style="padding: 10px 20px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px;">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
-        <!-- Modal de Catálogo de Productos (ÚNICO) -->
-    <div class="modal" id="catalogoModal" style="max-width: 1100px; width: 95%; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
-        <!-- Header -->
-        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-boxes" style="font-size: 1.8rem;"></i>
-                </div>
-                <div>
-                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Catálogo de Productos</h2>
-                    <p style="margin: 4px 0 0; opacity: 0.9;">Gestione los productos para control de mermas</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="cerrarModal('catalogoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-times"></i>
-            </button>
+    <!-- Modal de Catálogo -->
+    <div class="modal" id="catalogoModal" style="max-width: 1100px; width: 95%; border-radius: 28px; overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px;">
+            <h2 style="margin: 0;">Catálogo de Productos</h2>
         </div>
-        
-        <!-- Body -->
-        <div class="modal-body" style="padding: 30px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
-            <!-- Barra de búsqueda y botón nuevo -->
-            <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
-                <div style="flex: 1; position: relative;">
-                    <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                    <input type="text" 
-                        id="buscarProductoCatalogo" 
-                        placeholder="Buscar por nombre o familia..." 
-                        oninput="filtrarCatalogo()"
-                        style="width: 100%; padding: 14px 14px 14px 45px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem; background: white;">
-                </div>
-                <button class="btn btn-primary" onclick="window.mostrarModalProducto()" style="padding: 14px 28px; border-radius: 16px; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: white; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
-                    <i class="fas fa-plus-circle"></i> Nuevo Producto
-                </button>
-            </div>
-
-            <!-- Contenedor de productos -->
-            <div style="background: white; border-radius: 20px; padding: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <div id="catalogoProductos" style="min-height: 300px;">
-                    <!-- Se llena dinámicamente con JavaScript -->
-                    <div style="display: flex; justify-content: center; align-items: center; height: 300px;">
-                        <div style="text-align: center;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: #3b82f6;"></i>
-                            <p style="color: #64748b; margin-top: 15px;">Cargando productos...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resumen -->
-            <div style="margin-top: 20px; background: white; border-radius: 16px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border: 2px solid #eef2f6;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="background: #e0f2fe; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-cubes" style="color: #0284c7;"></i>
-                    </div>
-                    <div>
-                        <span style="color: #64748b;">Total de productos</span>
-                        <div style="font-size: 1.4rem; font-weight: 700;" id="totalProductosCatalogo">0</div>
-                    </div>
-                </div>
-                <div style="color: #64748b; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle"></i> Haga clic en un producto para editar
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Producto Individual (ÚNICO) -->
-    <div class="modal" id="productoModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
-        <!-- Header dinámico -->
-        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-box" style="font-size: 1.8rem;"></i>
-                </div>
-                <h2 id="productoModalTitle" style="margin: 0; font-size: 1.5rem;">Nuevo Producto</h2>
-            </div>
-            <button class="modal-close" onclick="cerrarModal('productoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
         <div class="modal-body" style="padding: 30px; background: #f8fafc;">
-            <form id="productoForm" onsubmit="event.preventDefault(); guardarProducto();">
-                
-                <!-- Familia -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-tag" style="color: #3b82f6;"></i> Familia del Producto
-                    </label>
-                    <input type="text" 
-                        id="productoFamilia" 
-                        required 
-                        placeholder="Ej: VEGETALES, LICOR, PROTEINAS, LACTEOS"
-                        style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
-                </div>
-
-                <!-- Nombre del producto -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-box" style="color: #3b82f6;"></i> Nombre del Producto
-                    </label>
-                    <input type="text" 
-                        id="productoNombre" 
-                        required 
-                        placeholder="Ej: ZUQUINI, WHISKY J&B, LOMO COMPLETO"
-                        style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
-                </div>
-
-                <!-- Presentación y Unidad en grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <!-- Presentación -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <i class="fas fa-weight-hanging" style="color: #3b82f6;"></i> Presentación
-                        </label>
-                        <input type="number" 
-                            id="productoPresentacion" 
-                            step="0.001" 
-                            placeholder="Ej: 1000, 33.81, 1"
-                            value="1"
-                            style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
-                        <small style="color: #64748b; display: block; margin-top: 5px;">Cantidad por unidad</small>
-                    </div>
-
-                    <!-- Unidad -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <i class="fas fa-ruler" style="color: #3b82f6;"></i> Unidad
-                        </label>
-                        <select id="productoUnidad" required style="width: 100%; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem; background: white;">
-                            <option value="GR">Gramos (GR)</option>
-                            <option value="KG">Kilogramos (KG)</option>
-                            <option value="ML">Mililitros (ML)</option>
-                            <option value="L">Litros (L)</option>
-                            <option value="UD">Unidad (UD)</option>
-                            <option value="ONZ">Onzas (ONZ)</option>
-                            <option value="LB">Libras (LB)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Precio -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-dollar-sign" style="color: #3b82f6;"></i> Precio (₡)
-                    </label>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="background: #3b82f6; color: white; padding: 14px 20px; border-radius: 14px; font-weight: 600;">₡</span>
-                        <input type="number" 
-                            id="productoPrecio" 
-                            step="0.01" 
-                            required 
-                            placeholder="0.00"
-                            style="flex: 1; padding: 14px; border: 2px solid #eef2f6; border-radius: 14px; font-size: 1rem;">
-                    </div>
-                    <small style="color: #64748b; display: block; margin-top: 8px;">
-                        <i class="fas fa-info-circle"></i> Este es el precio por la presentación completa
-                    </small>
-                </div>
-
-                <!-- Precio unitario calculado (solo lectura) -->
-                <div style="background: #f1f5f9; border-radius: 14px; padding: 15px; margin-bottom: 25px; border: 2px dashed #94a3b8;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #475569;">Precio por unidad:</span>
-                        <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioUnitarioCalculado">₡0.00 / unidad</span>
-                    </div>
-                </div>
-
-                <!-- Botones -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px;">
-                    <button type="button" onclick="cerrarModal('productoModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
-                        Cancelar
-                    </button>
-                    <button type="submit" id="productoSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);">
-                        <i class="fas fa-save"></i> Guardar Producto
-                    </button>
-                </div>
-            </form>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="buscarProductoCatalogo" placeholder="Buscar productos..." oninput="filtrarCatalogo()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+            </div>
+            <div id="catalogoProductos"></div>
         </div>
     </div>
 
-    <!-- Modal de Merma (ÚNICO) -->
+    <!-- Modal de Merma -->
     <div class="modal" id="mermaModal" style="max-width: 550px; border-radius: 24px;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
-            <h2 id="mermaModalTitle"><i class="fas fa-trash-alt"></i> Registrar Merma</h2>
-        </div>
-        <div class="modal-body">
+        <div class="modal-body" style="padding: 20px;">
             <form id="mermaForm" onsubmit="event.preventDefault(); guardarMerma();">
-                
-                <!-- Fecha -->
-                <div class="form-group">
-                    <label><i class="fas fa-calendar-alt"></i> Fecha</label>
-                    <input type="date" id="mermaFecha" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                <div style="margin-bottom: 15px;">
+                    <label>Fecha</label>
+                    <input type="date" id="mermaFecha" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                
-                <!-- Local -->
-                <div class="form-group">
-                    <label><i class="fas fa-store"></i> Local</label>
-                    <select id="mermaLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                <div style="margin-bottom: 15px;">
+                    <label>Local</label>
+                    <select id="mermaLocal" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
-                
-                <!-- BUSCADOR DE PRODUCTOS -->
-                <div class="form-group">
-                    <label><i class="fas fa-search" style="color: #ef4444;"></i> Buscar Producto</label>
-                    <input type="text" 
-                        id="buscadorProducto" 
-                        placeholder="Escriba para buscar (ej: platano, carne, arroz...)" 
-                        oninput="buscarProductos()"
-                        style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem;">
-                    
-                    <!-- Resultados de búsqueda -->
-                    <div id="resultadosBusqueda" style="display: none; margin-top: 10px; max-height: 300px; overflow-y: auto; border: 2px solid #e2e8f0; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    </div>
-                    
-                    <!-- Producto seleccionado -->
-                    <div id="productoSeleccionado" style="display: none; background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 12px; padding: 15px; margin-top: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: #3b82f6;">PRODUCTO SELECCIONADO</div>
-                                <div style="font-size: 1.2rem; font-weight: 600;" id="productoSeleccionadoNombre">-</div>
-                                <div style="font-size: 0.9rem; color: #64748b;" id="productoSeleccionadoDetalle">-</div>
-                            </div>
-                            <button type="button" onclick="limpiarSeleccionProducto()" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 8px;">
-                                <i class="fas fa-times"></i> Cambiar
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Input oculto para el ID del producto -->
+                <div style="margin-bottom: 15px;">
+                    <label>Buscar Producto</label>
+                    <input type="text" id="buscadorProducto" placeholder="Buscar..." oninput="buscarProductos()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <div id="resultadosBusqueda" style="display: none;"></div>
+                    <div id="productoSeleccionado" style="display: none;"></div>
                     <input type="hidden" id="mermaProductoId">
                 </div>
-                
-                <!-- Cantidad -->
-                <div class="form-group">
-                    <label><i class="fas fa-weight-hanging"></i> Cantidad</label>
-                    <input type="number" id="mermaCantidad" step="0.001" required oninput="calcularCostoMerma()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                <div style="margin-bottom: 15px;">
+                    <label>Cantidad</label>
+                    <input type="number" id="mermaCantidad" step="0.001" required oninput="calcularCostoMerma()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                
-                <!-- Motivo -->
-                <div class="form-group">
-                    <label><i class="fas fa-comment"></i> Motivo (opcional)</label>
-                    <input type="text" id="mermaMotivo" placeholder="Ej: Se quemó, se cayó, etc." style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+                <div style="margin-bottom: 15px;">
+                    <label>Motivo</label>
+                    <input type="text" id="mermaMotivo" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
                 </div>
-                
-                <!-- Resumen de costos -->
-                <div style="background: #f3f4f6; border-radius: 12px; padding: 15px; margin: 15px 0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <div style="margin: 15px 0; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between;">
                         <span>Costo unitario:</span>
-                        <strong id="mermaCostoUnitario">₡0 / unidad</strong>
+                        <strong id="mermaCostoUnitario">₡0</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 1.2rem;">
+                    <div style="display: flex; justify-content: space-between;">
                         <span>Costo total:</span>
-                        <strong style="color: #ef4444;" id="mermaCostoTotal">₡0</strong>
+                        <strong id="mermaCostoTotal">₡0</strong>
                     </div>
                 </div>
-                
-                <!-- Botones -->
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-outline" onclick="cerrarModal('mermaModal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="mermaSubmitBtn" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Guardar Merma</button>
+                    <button type="button" onclick="cerrarModal('mermaModal')" style="padding: 10px 20px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" style="padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 8px;">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Firebase SDKs (SIEMPRE PRIMERO) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -1480,19 +1125,24 @@
     <!-- Configuración de Firebase -->
     <script src="firebase-config.js"></script>
 
-    <!-- App principal (AppState y funciones globales) -->
+    <!-- App principal -->
     <script src="app.js"></script>
 
     <!-- Login -->
     <script src="login.js"></script>
 
-    <!-- Módulos (EN ESTE ORDEN) -->
+    <!-- Módulos -->
     <script src="modules/dashboard.js"></script>
     <script src="modules/ventas.js"></script>
     <script src="modules/costos.js"></script>
     <script src="modules/usuarios.js"></script>
     <script src="modules/planilla.js"></script>
     <script src="modules/servicios.js"></script>
-    <script src="modules/merma.js"></script>  <!-- ÚLTIMO para asegurar que todo lo demás está cargado -->
+    <script src="modules/merma.js"></script>
+    <script src="modules/logistica.js"></script>
+    <script src="modules/facturacion.js"></script>
+    <script src="modules/prestamo.js"></script>
+    <script src="modules/compras.js"></script>
+    <script src="modules/resumen.js"></script>
 </body>
 </html>
