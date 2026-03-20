@@ -1,5 +1,6 @@
 // modules/compras.js
 // Módulo para registro de compras externas por día
+// VERSIÓN MEJORADA - Incluye campo local
 
 console.log('🛒 Cargando módulo de Compras Externas...');
 
@@ -31,9 +32,6 @@ function initCompras() {
     }
 }
 
-// ============================================
-// CARGAR COMPRAS DESDE FIREBASE
-// ============================================
 function cargarCompras() {
     console.log('📥 Cargando compras externas...');
     
@@ -55,6 +53,15 @@ function cargarCompras() {
         
         console.log(`✅ ${compras.length} compras cargadas`);
         
+        // ✅ ACTUALIZAR LA VARIABLE GLOBAL
+        window.comprasExternas = compras;
+        
+        // ✅ NOTIFICAR AL RESUMEN SI ESTÁ ACTIVO
+        if (document.getElementById('resumen').classList.contains('active') && window.renderResumen) {
+            console.log('🔄 Actualizando resumen desde compras.js');
+            window.renderResumen();
+        }
+        
         if (document.getElementById('compras').classList.contains('active')) {
             renderCompras();
         }
@@ -62,7 +69,7 @@ function cargarCompras() {
 }
 
 // ============================================
-// RENDERIZAR VISTA PRINCIPAL
+// RENDERIZAR VISTA PRINCIPAL (CORREGIDO)
 // ============================================
 function renderCompras() {
     console.log('📊 Renderizando Compras Externas...');
@@ -82,17 +89,27 @@ function renderCompras() {
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
     
-    // Filtrar compras
+    // Filtrar compras por LOCAL y FECHA
     const comprasFiltradas = compras.filter(c => {
+        // Filtro por fecha
         if (!c.fecha) return false;
         
-        if (filtroTiempo === 'todos') return true;
-        if (filtroTiempo === 'ayer') return c.fecha === ayerStr;
-        if (filtroTiempo === 'mes') return c.fecha.substring(0, 7) === mesActual;
-        if (filtroTiempo === 'anio') return c.fecha.substring(0, 4) === anioActual;
-        if (filtroTiempo === 'personalizado') return c.fecha === AppState.filtros?.fechaPersonalizada;
+        let pasaFecha = true;
+        if (filtroTiempo === 'ayer') pasaFecha = c.fecha === ayerStr;
+        else if (filtroTiempo === 'mes') pasaFecha = c.fecha.substring(0, 7) === mesActual;
+        else if (filtroTiempo === 'anio') pasaFecha = c.fecha.substring(0, 4) === anioActual;
+        else if (filtroTiempo === 'personalizado') pasaFecha = c.fecha === AppState.filtros?.fechaPersonalizada;
         
-        return true;
+        if (!pasaFecha) return false;
+        
+        // Filtro por local (con permisos)
+        if (!c.local) return false; // Si no tiene local, no se muestra
+        
+        if (filtroLocal === 'Todos') {
+            return puedeVerLocal(c.local);
+        } else {
+            return c.local === filtroLocal && puedeVerLocal(c.local);
+        }
     });
     
     // Calcular total general
@@ -167,6 +184,7 @@ function renderCompras() {
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th>Local</th>
                                         <th>Proveedor</th>
                                         <th>N° Factura</th>
                                         <th>Monto</th>
@@ -179,6 +197,7 @@ function renderCompras() {
             comprasDia.forEach(c => {
                 html += `
                     <tr>
+                        <td><span style="background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem;">${c.local || '—'}</span></td>
                         <td><strong>${c.proveedor || '—'}</strong></td>
                         <td>${c.numeroFactura || '—'}</td>
                         <td style="color: #f59e0b; font-weight: 600;">₡${(c.monto || 0).toLocaleString()}</td>
@@ -210,12 +229,16 @@ function renderCompras() {
 }
 
 // ============================================
-// MOSTRAR MODAL DE NUEVA COMPRA
+// MOSTRAR MODAL DE NUEVA COMPRA (VERSIÓN CON ESTILOS FORZADOS)
 // ============================================
 function mostrarModalCompra(editId = null) {
     console.log('📝 Abriendo modal de compra externa');
     
     const overlay = document.getElementById('modalOverlay');
+    if (!overlay) {
+        console.error('❌ No se encontró el overlay');
+        return;
+    }
     
     // Crear modal dinámico
     const modalExistente = document.getElementById('compraModal');
@@ -224,9 +247,20 @@ function mostrarModalCompra(editId = null) {
     const modal = document.createElement('div');
     modal.id = 'compraModal';
     modal.className = 'modal';
-    modal.style.maxWidth = '500px';
+    
+    // ✅ ESTILOS FORZADOS PARA ASEGURAR VISIBILIDAD
+    modal.style.position = 'fixed';
+    modal.style.top = '50%';
+    modal.style.left = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.zIndex = '1000';
+    modal.style.backgroundColor = 'white';
+    modal.style.maxWidth = '550px';
+    modal.style.width = '95%';
+    modal.style.maxHeight = '80vh';
+    modal.style.overflowY = 'auto';
     modal.style.borderRadius = '24px';
-    modal.style.overflow = 'hidden';
+    modal.style.boxShadow = '0 30px 60px -15px rgba(0, 0, 0, 0.4)';
     
     // Si es edición, buscar la compra
     let compraEdit = null;
@@ -265,6 +299,28 @@ function mostrarModalCompra(editId = null) {
                     <input type="date" id="compraFecha" value="${compraEdit?.fecha || fechaHoy}" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                 </div>
                 
+                <!-- Local -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fas fa-store" style="color: #f59e0b;"></i> Local
+                    </label>
+                    <select id="compraLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                        <option value="">Seleccionar local...</option>
+    `;
+    
+    // Generar opciones de locales
+    const localesPermitidos = getLocalesPermitidos();
+    AppState.locales.forEach(local => {
+        if (localesPermitidos.includes(local.nombre)) {
+            const selected = compraEdit?.local === local.nombre ? 'selected' : '';
+            html += `<option value="${local.nombre}" ${selected}>${local.nombre}</option>`;
+        }
+    });
+    
+    html += `
+                    </select>
+                </div>
+                
                 <!-- Proveedor -->
                 <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -293,12 +349,50 @@ function mostrarModalCompra(editId = null) {
                 </div>
                 
                 <!-- Botones -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px;">
-                    <button type="button" onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" style="padding: 12px 24px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 12px; font-weight: 600; cursor: pointer;">
+                <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px; margin-top: 10px;">
+                    
+                    <!-- Botón Cancelar -->
+                    <button type="button" 
+                            onclick="(function(){ 
+                                const modal = document.getElementById('compraModal'); 
+                                if(modal) modal.remove(); 
+                                document.getElementById('modalOverlay').classList.remove('active'); 
+                            })();" 
+                            style="padding: 14px 28px; 
+                                   border: 2px solid #e2e8f0; 
+                                   background: white; 
+                                   color: #475569; 
+                                   border-radius: 14px; 
+                                   font-weight: 600; 
+                                   font-size: 1rem; 
+                                   cursor: pointer; 
+                                   transition: all 0.2s;
+                                   display: inline-flex;
+                                   align-items: center;
+                                   justify-content: center;
+                                   min-width: 120px;">
                         Cancelar
                     </button>
-                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);">
-                        <i class="fas fa-save"></i> ${editId ? 'Actualizar' : 'Guardar'} Compra
+                    
+                    <!-- Botón Guardar/Actualizar -->
+                    <button type="submit" 
+                            style="padding: 14px 32px; 
+                                   background: linear-gradient(135deg, #f59e0b, #d97706); 
+                                   color: white; 
+                                   border: none; 
+                                   border-radius: 14px; 
+                                   font-weight: 700; 
+                                   font-size: 1rem; 
+                                   cursor: pointer; 
+                                   box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3); 
+                                   transition: all 0.2s;
+                                   display: inline-flex;
+                                   align-items: center;
+                                   justify-content: center;
+                                   gap: 8px;
+                                   min-width: 160px;">
+                        <i class="fas fa-save"></i> 
+                        ${editId ? 'Actualizar' : 'Guardar'} Compra
                     </button>
                 </div>
             </form>
@@ -309,24 +403,28 @@ function mostrarModalCompra(editId = null) {
     document.body.appendChild(modal);
     overlay.classList.add('active');
     modal.classList.add('active');
+    
+    console.log('✅ Modal de compra agregado al DOM');
 }
 
 // ============================================
-// GUARDAR COMPRA
+// GUARDAR COMPRA (CORREGIDO - CON LOCAL)
 // ============================================
 async function guardarCompra(editId = null) {
     const fecha = document.getElementById('compraFecha').value;
+    const local = document.getElementById('compraLocal').value;
     const proveedor = document.getElementById('compraProveedor').value.trim();
     const numeroFactura = document.getElementById('compraNumero').value.trim();
     const monto = parseFloat(document.getElementById('compraMonto').value) || 0;
     
-    if (!fecha || !proveedor || monto === 0) {
-        alert('Complete los campos obligatorios (fecha, proveedor y monto)');
+    if (!fecha || !local || !proveedor || monto === 0) {
+        alert('Complete los campos obligatorios (fecha, local, proveedor y monto)');
         return;
     }
     
     const data = {
         fecha,
+        local,
         proveedor,
         numeroFactura: numeroFactura || null,
         monto,
@@ -377,7 +475,7 @@ function eliminarCompra(id) {
 }
 
 // ============================================
-// EXPORTAR FUNCIONES
+// EXPORTAR FUNCIONES Y VARIABLES
 // ============================================
 window.initCompras = initCompras;
 window.renderCompras = renderCompras;
@@ -386,4 +484,7 @@ window.guardarCompra = guardarCompra;
 window.editarCompra = editarCompra;
 window.eliminarCompra = eliminarCompra;
 
-console.log('✅ compras.js cargado - Módulo simple');
+// ✅ EXPORTAR LA VARIABLE GLOBAL
+window.comprasExternas = compras;
+
+console.log('✅ compras.js cargado - Versión con campo local');

@@ -344,6 +344,19 @@ function filtrarProductos() {
     }
 }
 
+function ajustarSidebarMobile() {
+    const sidebar = document.getElementById('sidebar');
+    if (window.innerWidth <= 768) { // Solo en móvil
+        sidebar.style.minHeight = window.innerHeight + 'px';
+    } else {
+        sidebar.style.minHeight = ''; // Restablece en escritorio
+    }
+}
+
+// Ejecutar al cargar y al cambiar tamaño de ventana
+window.addEventListener('load', ajustarSidebarMobile);
+window.addEventListener('resize', ajustarSidebarMobile);
+
 // Event listener para filtro local
 document.addEventListener('change', function(e) {
     if (e.target.id === 'filtroLocal') {

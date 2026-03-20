@@ -63,9 +63,6 @@ function cargarProductos() {
     });
 }
 
-// ============================================
-// CARGAR MERMAS
-// ============================================
 function cargarMermas() {
     console.log('📋 Cargando registros de merma...');
     
@@ -80,6 +77,14 @@ function cargarMermas() {
         }
         
         console.log(`✅ ${mermas.length} registros de merma cargados`);
+        
+        // ✅ ACTUALIZAR VARIABLE GLOBAL
+        window.mermas = mermas;
+        
+        // ✅ NOTIFICAR AL RESUMEN
+        if (document.getElementById('resumen').classList.contains('active') && window.renderResumen) {
+            window.renderResumen();
+        }
         
         if (document.getElementById('merma').classList.contains('active')) {
             renderMerma();
@@ -335,20 +340,12 @@ function renderMerma() {
 }
 
 // ============================================
-// MOSTRAR MODAL DE REGISTRO DE MERMA
+// MOSTRAR MODAL DE REGISTRO DE MERMA (CORREGIDO)
 // ============================================
 function mostrarModalMerma(editId = null) {
     console.log('📝 Abriendo modal de registro de merma');
     
-    // CERRAR CUALQUIER OTRO MODAL PRIMERO
     const overlay = document.getElementById('modalOverlay');
-    const catalogoModal = document.getElementById('catalogoModal');
-    const productoModal = document.getElementById('productoModal');
-    
-    if (catalogoModal) catalogoModal.classList.remove('active');
-    if (productoModal) productoModal.classList.remove('active');
-    
-    // AHORA ABRIR EL MODAL DE MERMA
     const modal = document.getElementById('mermaModal');
     
     if (!modal || !overlay) {
@@ -356,18 +353,23 @@ function mostrarModalMerma(editId = null) {
         return;
     }
     
-    // CONFIGURAR FECHA CORRECTA (CORREGIDO)
+    // CONFIGURAR FECHA CORRECTA
     const hoy = new Date();
-    // Ajustar por zona horaria de Costa Rica (UTC-6)
     const año = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
     const dia = String(hoy.getDate()).padStart(2, '0');
     const fechaCorrecta = `${año}-${mes}-${dia}`;
     
-    document.getElementById('mermaFecha').value = fechaCorrecta;
-    document.getElementById('mermaCantidad').value = '';
-    document.getElementById('mermaMotivo').value = '';
+    const fechaInput = document.getElementById('mermaFecha');
+    if (fechaInput) fechaInput.value = fechaCorrecta;
     
+    const cantidadInput = document.getElementById('mermaCantidad');
+    if (cantidadInput) cantidadInput.value = '';
+    
+    const motivoInput = document.getElementById('mermaMotivo');
+    if (motivoInput) motivoInput.value = '';
+    
+    // Limpiar selección de producto (con validaciones)
     limpiarSeleccionProducto();
     
     // Configurar selector de local
@@ -392,10 +394,16 @@ function mostrarModalMerma(editId = null) {
     }
     
     modal.dataset.editId = editId || '';
-    document.getElementById('mermaModalTitle').textContent = editId ? 'Editar Merma' : 'Registrar Merma';
-    document.getElementById('mermaSubmitBtn').innerHTML = editId ? 
-        '<i class="fas fa-save"></i> Actualizar Merma' : 
-        '<i class="fas fa-save"></i> Guardar Merma';
+    
+    const titleEl = document.getElementById('mermaModalTitle');
+    if (titleEl) titleEl.textContent = editId ? 'Editar Merma' : 'Registrar Merma';
+    
+    const btnEl = document.getElementById('mermaSubmitBtn');
+    if (btnEl) {
+        btnEl.innerHTML = editId ? 
+            '<i class="fas fa-save"></i> Actualizar Merma' : 
+            '<i class="fas fa-save"></i> Guardar Merma';
+    }
     
     // Activar modal
     modal.classList.add('active');
@@ -523,27 +531,60 @@ function seleccionarProducto(productoId) {
 }
 
 // ============================================
-// LIMPIAR SELECCIÓN
+// LIMPIAR SELECCIÓN (CORREGIDO - CON VALIDACIONES)
 // ============================================
 function limpiarSeleccionProducto() {
-    document.getElementById('mermaProductoId').value = '';
-    document.getElementById('productoSeleccionado').style.display = 'none';
-    document.getElementById('resultadosBusqueda').style.display = 'none';
-    document.getElementById('buscadorProducto').value = '';
-    document.getElementById('mermaCostoUnitario').textContent = '₡0 / unidad';
-    document.getElementById('mermaCostoTotal').textContent = '₡0';
+    console.log('🧹 Limpiando selección de producto...');
+    
+    const mermaProductoId = document.getElementById('mermaProductoId');
+    if (mermaProductoId) mermaProductoId.value = '';
+    
+    const productoSeleccionado = document.getElementById('productoSeleccionado');
+    if (productoSeleccionado) productoSeleccionado.style.display = 'none';
+    
+    const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+    if (resultadosBusqueda) resultadosBusqueda.style.display = 'none';
+    
+    const buscadorProducto = document.getElementById('buscadorProducto');
+    if (buscadorProducto) buscadorProducto.value = '';
+    
+    // ✅ VERIFICAR QUE LOS ELEMENTOS EXISTEN ANTES DE USARLOS
+    const costoUnitarioEl = document.getElementById('mermaCostoUnitario');
+    if (costoUnitarioEl) {
+        costoUnitarioEl.textContent = '₡0 / unidad';
+    } else {
+        console.log('⚠️ Elemento mermaCostoUnitario no encontrado (esto es normal si el modal no está completamente cargado)');
+    }
+    
+    const costoTotalEl = document.getElementById('mermaCostoTotal');
+    if (costoTotalEl) {
+        costoTotalEl.textContent = '₡0';
+    } else {
+        console.log('⚠️ Elemento mermaCostoTotal no encontrado');
+    }
 }
 
 // ============================================
-// CALCULAR COSTO
+// CALCULAR COSTO (CORREGIDO)
 // ============================================
 function calcularCostoMerma() {
+    console.log('🧮 Calculando costo de merma...');
+    
     const productoId = document.getElementById('mermaProductoId')?.value;
     const cantidad = parseFloat(document.getElementById('mermaCantidad')?.value) || 0;
     
+    const costoUnitarioEl = document.getElementById('mermaCostoUnitario');
+    const costoTotalEl = document.getElementById('mermaCostoTotal');
+    
+    // Si los elementos no existen, salir silenciosamente
+    if (!costoUnitarioEl || !costoTotalEl) {
+        console.log('⚠️ Elementos de costo no disponibles aún');
+        return;
+    }
+    
     if (!productoId || cantidad === 0) {
-        document.getElementById('mermaCostoUnitario').textContent = '₡0 / unidad';
-        document.getElementById('mermaCostoTotal').textContent = '₡0';
+        costoUnitarioEl.textContent = '₡0 / unidad';
+        costoTotalEl.textContent = '₡0';
         return;
     }
     
@@ -553,8 +594,8 @@ function calcularCostoMerma() {
     const precioPorUnidad = producto.precio / (producto.presentacion || 1);
     const costoTotal = precioPorUnidad * cantidad;
     
-    document.getElementById('mermaCostoUnitario').textContent = `₡${precioPorUnidad.toFixed(2)} / ${producto.unidad || 'UD'}`;
-    document.getElementById('mermaCostoTotal').textContent = `₡${costoTotal.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+    costoUnitarioEl.textContent = `₡${precioPorUnidad.toFixed(2)} / ${producto.unidad || 'UD'}`;
+    costoTotalEl.textContent = `₡${costoTotal.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
 }
 
 // ============================================
@@ -1178,7 +1219,7 @@ async function eliminarProducto(id) {
 }
 
 // ============================================
-// EXPORTAR FUNCIONES - VERSIÓN CORREGIDA
+// EXPORTAR FUNCIONES Y VARIABLES
 // ============================================
 window.initMerma = initMerma;
 window.renderMerma = renderMerma;
@@ -1196,7 +1237,11 @@ window.limpiarSeleccionProducto = limpiarSeleccionProducto;
 window.calcularCostoMerma = calcularCostoMerma;
 window.filtrarCatalogo = filtrarCatalogo;
 window.calcularPrecioUnitario = calcularPrecioUnitario;
-window.mostrarModalImportarProductos = mostrarModalImportarProductos;
+
+// ✅ EXPORTAR LA VARIABLE GLOBAL
+window.mermas = mermas;
+
+console.log('✅ merma.js cargado');
 
 console.log('✅ merma.js cargado - Funciones exportadas:', {
     guardarProducto: typeof window.guardarProducto,

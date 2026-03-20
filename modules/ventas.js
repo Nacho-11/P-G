@@ -460,3 +460,5 @@ window.eliminarVenta = eliminarVenta;
 window.verDetalleVenta = verDetalleVenta;
 window.initVentas = initVentas;
 window.cargarVentasDesdeFirebase = cargarVentasDesdeFirebase;
+
+console.log('Ventas:', window.ventasData);

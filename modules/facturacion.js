@@ -10,7 +10,7 @@ console.log('📦 Cargando módulo de Facturación...');
 let facturas = [];
 
 // ============================================
-// INICIALIZAR MÓDULO
+// INICIALIZAR MÓDULO (CORREGIDO)
 // ============================================
 function initFacturacion() {
     console.log('🚀 Inicializando módulo de Facturación...');
@@ -20,14 +20,10 @@ function initFacturacion() {
         return;
     }
     
-    // En lugar de cargar de nuevo, usar los datos de window.facturacionBodegas
-    if (window.facturacionBodegas) {
-        facturas = window.facturacionBodegas;
-        console.log(`✅ Usando ${facturas.length} facturas de window.facturacionBodegas`);
-    } else {
-        // Si no existe, cargar normalmente
-        cargarFacturas();
-    }
+    // ✅ SIEMPRE cargar desde Firebase para tener los datos más recientes
+    cargarFacturas();
+    
+    // Si ya hay datos en window.facturacionBodegas, se actualizarán cuando llegue la respuesta de Firebase
     
     if (document.getElementById('facturacion').classList.contains('active')) {
         renderFacturacion();
@@ -35,14 +31,16 @@ function initFacturacion() {
 }
 
 // ============================================
-// CARGAR FACTURAS DESDE FIREBASE
+// CARGAR FACTURAS DESDE FIREBASE (CORREGIDO)
 // ============================================
 function cargarFacturas() {
     console.log('📥 Cargando facturas desde Firebase...');
     
     firebase.database().ref('facturacionBodegas').on('value', (snapshot) => {
         const data = snapshot.val();
-        facturas = [];
+        
+        // ✅ Limpiar el array global, NO crear uno nuevo
+        facturas = [];  // Esta es la variable GLOBAL declarada al inicio
         
         if (data) {
             Object.keys(data).forEach(key => {
@@ -54,13 +52,14 @@ function cargarFacturas() {
             
             // Ordenar por fecha descendente
             facturas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-            
-            // Actualizar la variable global para que logistica también la use
-            window.facturacionBodegas = facturas;
         }
         
         console.log(`✅ ${facturas.length} facturas cargadas`);
         
+        // ✅ Actualizar la variable global que espera logistica.js
+        window.facturacionBodegas = facturas;
+        
+        // ✅ Renderizar si el módulo está activo
         if (document.getElementById('facturacion').classList.contains('active')) {
             renderFacturacion();
         }
@@ -68,7 +67,7 @@ function cargarFacturas() {
 }
 
 // ============================================
-// RENDERIZAR VISTA PRINCIPAL
+// RENDERIZAR VISTA PRINCIPAL (CORREGIDO)
 // ============================================
 function renderFacturacion() {
     console.log('📊 Renderizando Facturación...');
@@ -77,6 +76,11 @@ function renderFacturacion() {
     if (!content) return;
     
     const filtroLocal = AppState.filtros?.local || 'Todos';
+    
+    // ✅ USAR LA VARIABLE GLOBAL window.facturacionBodegas
+    const facturas = window.facturacionBodegas || [];
+    
+    console.log('📦 Facturas a renderizar:', facturas.length);
     
     // Filtrar facturas por local
     const facturasFiltradas = facturas.filter(f => {
@@ -298,7 +302,7 @@ function agregarFactura(editId = null) {
 }
 
 // ============================================
-// GUARDAR FACTURA
+// GUARDAR FACTURA (CORREGIDO)
 // ============================================
 async function guardarFactura(editId = null) {
     const fecha = document.getElementById('facturaFecha').value;
@@ -331,9 +335,11 @@ async function guardarFactura(editId = null) {
             alert('✅ Factura agregada');
         }
         
-        // Cerrar modal
+        // ✅ Cerrar modal
         document.getElementById('facturaModal').remove();
         document.getElementById('modalOverlay').classList.remove('active');
+        
+        // ✅ No necesitas hacer nada más, el listener de Firebase actualizará automáticamente
         
     } catch (error) {
         console.error('Error:', error);

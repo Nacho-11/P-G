@@ -1140,6 +1140,8 @@ window.initServicios = initServicios;
 window.guardarPreciosModal = guardarPreciosModal;
 window.guardarTodosLosPrecios = guardarTodosLosPrecios;
 
+console.log('Servicios:', window.serviciosData);
+
 // Crear alias por si acaso
 window.mostrarModalService = mostrarModalServicio;
 

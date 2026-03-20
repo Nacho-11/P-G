@@ -160,12 +160,12 @@ function renderDashboard() {
                 <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h3 style="margin-bottom: 20px; color: #333;">
                         <i class="fas fa-chart-bar" style="color: #2563eb; margin-right: 10px;"></i>
-                        Ventas Mensuales
+                        ${filtroLocal === 'Todos' ? 'Ventas por Local' : `Ventas Diarias - ${filtroLocal}`}
                     </h3>
                     <div style="height: 300px;">
                         <canvas id="graficoVentasMensuales"></canvas>
                     </div>
-                    ${meses.length === 0 ? '<p style="text-align: center; color: #666; margin-top: 20px;">No hay datos para mostrar en el gráfico</p>' : ''}
+                    ${ventasFiltradas.length === 0 ? '<p style="text-align: center; color: #666; margin-top: 20px;">No hay datos para mostrar en el gráfico</p>' : ''}
                 </div>
                 
                 <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -255,63 +255,242 @@ function renderDashboard() {
     `;
     
     dashboardContent.innerHTML = dashboardHTML;
-    
-    if (meses.length > 0) {
+
+    // ✅ Llamar al nuevo gráfico inteligente
+    if (ventasFiltradas.length > 0) {
         setTimeout(() => {
-            crearGraficoVentasMensuales(meses, valoresMensuales);
+            crearGraficoInteligente();
         }, 100);
     }
+    
 }
 
 // ============================================
-// CREAR GRÁFICO DE VENTAS MENSUALES
+// CREAR GRÁFICO INTELIGENTE (CORREGIDO - CON VALIDACIÓN DE DATOS)
 // ============================================
-function crearGraficoVentasMensuales(meses, valores) {
-    const ctx = document.getElementById('graficoVentasMensuales');
-    if (!ctx) return;
-    
-    if (window.ventasChart) {
-        window.ventasChart.destroy();
+function crearGraficoInteligente() {
+    const canvas = document.getElementById('graficoVentasMensuales');
+    if (!canvas) {
+        console.log('⚠️ No se encontró el elemento canvas');
+        return;
     }
     
-    const mesesFormateados = meses.map(m => {
-        const [año, mes] = m.split('-');
-        const mesesNombre = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-        return `${mesesNombre[parseInt(mes)-1]} ${año}`;
+    // Obtener el contexto 2D
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.log('⚠️ No se pudo obtener el contexto del canvas');
+        return;
+    }
+    
+    // Destruir gráfico anterior si existe
+    if (window.ventasChart) {
+        try {
+            window.ventasChart.destroy();
+        } catch (e) {
+            console.log('⚠️ Error al destruir gráfico anterior:', e);
+        }
+        window.ventasChart = null;
+    }
+    
+    const filtroLocal = AppState.filtros?.local || 'Todos';
+    const ventas = window.ventasData || [];
+    
+    // Filtrar ventas según permisos y local seleccionado
+    const ventasFiltradas = ventas.filter(v => {
+        if (!puedeVerLocal(v.local)) return false;
+        if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
+        return true;
     });
     
-    window.ventasChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: mesesFormateados,
-            datasets: [{
-                label: 'Ventas',
-                data: valores,
-                backgroundColor: '#2563eb',
-                borderRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
-                    }
+    // ✅ SI NO HAY VENTAS, NO CREAR GRÁFICO
+    if (ventasFiltradas.length === 0) {
+        console.log('📊 No hay ventas para mostrar en el gráfico');
+        
+        // Limpiar el canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Mostrar mensaje en el canvas
+        ctx.font = '14px Inter, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.fillText('No hay datos para mostrar', canvas.width/2, canvas.height/2);
+        return;
+    }
+    
+    // ========================================
+    // CASO 1: LOCAL ESPECÍFICO → GRÁFICO POR DÍA
+    // ========================================
+    if (filtroLocal !== 'Todos') {
+        console.log('📊 Mostrando ventas por día para:', filtroLocal);
+        
+        // Agrupar ventas por día (últimos 30 días)
+        const ventasPorDia = {};
+        const hoy = new Date();
+        
+        // Inicializar últimos 30 días con 0
+        for (let i = 29; i >= 0; i--) {
+            const fecha = new Date(hoy);
+            fecha.setDate(hoy.getDate() - i);
+            const fechaStr = fecha.toLocaleDateString('en-CA');
+            ventasPorDia[fechaStr] = 0;
+        }
+        
+        // Sumar ventas por día
+        ventasFiltradas.forEach(v => {
+            if (v.fecha) {
+                const fechaLimpia = limpiarFecha(v.fecha);
+                if (ventasPorDia.hasOwnProperty(fechaLimpia)) {
+                    ventasPorDia[fechaLimpia] += v.total || 0;
                 }
+            }
+        });
+        
+        // Preparar datos para el gráfico
+        const fechas = Object.keys(ventasPorDia).sort();
+        const valores = fechas.map(f => ventasPorDia[f]);
+        
+        // ✅ VERIFICAR QUE HAY ALGÚN VALOR > 0
+        const hayDatos = valores.some(v => v > 0);
+        if (!hayDatos) {
+            console.log('📊 No hay ventas en los últimos 30 días');
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'center';
+            ctx.fillText('No hay ventas en los últimos 30 días', canvas.width/2, canvas.height/2);
+            return;
+        }
+        
+        // Formatear fechas para mostrar
+        const fechasFormateadas = fechas.map(f => {
+            const [año, mes, dia] = f.split('-');
+            return `${dia}/${mes}`;
+        });
+        
+        // Crear gráfico de líneas
+        window.ventasChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: fechasFormateadas,
+                datasets: [{
+                    label: 'Ventas diarias',
+                    data: valores,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.1,
+                    fill: true
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: (value) => '₡' + Math.round(value).toLocaleString()
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Ventas diarias - ${filtroLocal} (últimos 30 días)`,
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => '₡' + Math.round(value).toLocaleString()
+                        }
                     }
                 }
             }
+        });
+    } 
+    
+    // ========================================
+    // CASO 2: TODOS LOS LOCALES → GRÁFICO POR LOCAL
+    // ========================================
+    else {
+        console.log('📊 Mostrando ventas por local (todos los locales)');
+        
+        // Agrupar ventas por local
+        const ventasPorLocal = {};
+        ventasFiltradas.forEach(v => {
+            if (v.local) {
+                ventasPorLocal[v.local] = (ventasPorLocal[v.local] || 0) + (v.total || 0);
+            }
+        });
+        
+        // Ordenar de mayor a menor
+        const localesOrdenados = Object.entries(ventasPorLocal)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10); // Top 10 locales
+        
+        // ✅ VERIFICAR QUE HAY LOCALES CON VENTAS
+        if (localesOrdenados.length === 0) {
+            console.log('📊 No hay ventas por local');
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'center';
+            ctx.fillText('No hay ventas para mostrar', canvas.width/2, canvas.height/2);
+            return;
         }
-    });
+        
+        const nombresLocales = localesOrdenados.map(([local]) => local);
+        const valores = localesOrdenados.map(([, valor]) => valor);
+        
+        // Generar colores diferentes para cada local
+        const colores = [
+            '#2563eb', '#dc2626', '#059669', '#8b5cf6', '#f59e0b',
+            '#0891b2', '#db2777', '#65a30d', '#4f46e5', '#b45309'
+        ];
+        
+        // Crear gráfico de barras
+        window.ventasChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: nombresLocales,
+                datasets: [{
+                    label: 'Ventas por local',
+                    data: valores,
+                    backgroundColor: colores.slice(0, nombresLocales.length),
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Ventas por local (top 10)',
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => '₡' + Math.round(value).toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 // ============================================
@@ -374,5 +553,4 @@ function obtenerFechaCR() {
 }
 
 window.renderDashboard = renderDashboard;
-window.crearGraficoVentasMensuales = crearGraficoVentasMensuales;
 window.initDashboardListeners = initDashboardListeners;

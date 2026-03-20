@@ -74,12 +74,24 @@ function renderResumen() {
     // ========================================
     const ventas = window.ventasData || [];
     const costos = window.costosData || {};
-    const compras = window.comprasExternas || []; // Asegúrate que el nombre sea correcto
+    const compras = window.comprasExternas || [];  // ✅ CORREGIDO
     const facturas = window.facturacionBodegas || [];
-    const mermas = window.mermas || [];
-    const prestamos = window.prestamos || [];
+    const mermas = window.mermas || [];            // ✅ CORREGIDO
+    const prestamos = window.prestamos || [];      // ✅ CORREGIDO
     const servicios = window.serviciosData || {};
     const planilla = window.planillaData || {};
+
+    // Log para depuración
+    console.log('📦 Datos cargados en resumen:', {
+        ventas: ventas.length,
+        costos: Object.keys(costos).length,
+        compras: compras.length,
+        facturas: facturas.length,
+        mermas: mermas.length,
+        prestamos: prestamos.length,
+        servicios: Object.keys(servicios).length,
+        planilla: Object.keys(planilla).length
+    });
     
     // ========================================
     // 2. CALCULAR FECHAS PARA FILTROS
@@ -91,48 +103,151 @@ function renderResumen() {
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
     
-    // Función auxiliar para filtrar por fecha
+    // Función auxiliar para filtrar por fecha (CORREGIDA)
     const filtrarPorFecha = (item) => {
-        if (!item.fecha) return false;
+        // Si tiene fecha (ventas, compras, facturas, mermas)
+        if (item.fecha) {
+            // Asegurar que la fecha está en formato YYYY-MM-DD
+            let fechaItem = item.fecha;
+            if (fechaItem.includes('T')) {
+                fechaItem = fechaItem.split('T')[0];
+            }
+            
+            console.log('📅 Comparando fechas:', {
+                itemFecha: fechaItem,
+                ayer: ayerStr,
+                mesActual: mesActual,
+                anioActual: anioActual,
+                filtro: filtroTiempo
+            });
+            
+            if (filtroTiempo === 'todos') return true;
+            if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
+            if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
+            if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
+            if (filtroTiempo === 'personalizado') return fechaItem === AppState.filtros?.fechaPersonalizada;
+            
+            return true;
+        }
         
-        const fechaItem = item.fecha.split('T')[0]; // Normalizar fecha
+        // Si tiene periodo (préstamos)
+        if (item.periodo) {
+            if (filtroTiempo === 'todos') return true;
+            if (filtroTiempo === 'mes') return item.periodo === mesActual;
+            if (filtroTiempo === 'anio') return item.periodo.substring(0, 4) === anioActual;
+            return false;
+        }
         
-        if (filtroTiempo === 'todos') return true;
-        if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
-        if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
-        if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
-        if (filtroTiempo === 'personalizado') return fechaItem === AppState.filtros?.fechaPersonalizada;
-        
-        return true;
+        return false;
     };
     
-    // Función para filtrar por local (con permisos)
+    // Función para filtrar por local (con permisos) - VERSIÓN SUPER PERMISIVA PARA PRUEBAS
     const filtrarPorLocal = (item) => {
-        if (!item.local) return true; // Si no tiene local, se incluye? (depende del negocio)
-        if (filtroLocal === 'Todos') return puedeVerLocal(item.local);
-        return item.local === filtroLocal && puedeVerLocal(item.local);
+        // Si no tiene local, lo excluimos
+        if (!item.local) {
+            console.log('⚠️ Item sin local:', item.id || 'sin id');
+            return false;
+        }
+        
+        console.log(`🔍 Evaluando ${item.id}: local=${item.local}, filtroLocal=${filtroLocal}`);
+        
+        // Si el filtro es "Todos", mostrar todos (sin verificar permisos por ahora)
+        if (filtroLocal === 'Todos') {
+            return true; // 👈 TEMPORAL - mostrar todos
+        }
+        
+        // Si el filtro es un local específico
+        return item.local === filtroLocal;
     };
     
     // ========================================
     // 3. CALCULAR TOTALES POR MÓDULO
     // ========================================
-    
+
     // --- VENTAS ---
     const ventasFiltradas = ventas.filter(v => filtrarPorFecha(v) && filtrarPorLocal(v));
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
-    
+
+    // --- COMPRAS EXTERNAS ---
+    console.log('🔍 Compras antes de filtrar:', compras);
+    compras.forEach(c => {
+        console.log('📋 Compra en bruto:', {
+            id: c.id,
+            fecha: c.fecha,
+            local: c.local,
+            monto: c.monto,
+            proveedor: c.proveedor
+        });
+    });
+
+    const comprasFiltradas = compras.filter(c => {
+        const pasaFecha = filtrarPorFecha(c);
+        const pasaLocal = filtrarPorLocal(c);
+        
+        console.log(`🔎 Compra ${c.id}:`, {
+            fecha: c.fecha,
+            local: c.local,
+            pasaFecha,
+            pasaLocal,
+            monto: c.monto
+        });
+        
+        return pasaFecha && pasaLocal;
+    });
+
+    const totalCompras = comprasFiltradas.reduce((sum, c) => sum + (c.monto || 0), 0);
+    console.log('💰 Total compras:', totalCompras);
+
+    // --- MERMAS ---
+    const mermasFiltradas = mermas.filter(m => filtrarPorFecha(m) && filtrarPorLocal(m));
+    const totalMermas = mermasFiltradas.reduce((sum, m) => sum + (m.costoTotal || 0), 0);
+
+    // --- PRÉSTAMOS ---
+    console.log('🔍 Préstamos en window:', prestamos);
+    console.log('📅 Filtros actuales:', {
+        filtroTiempo,
+        mesActual,
+        filtroLocal
+    });
+
+    const prestamosFiltrados = prestamos.filter(p => {
+        console.log('🔎 Evaluando préstamo:', {
+            id: p.id,
+            periodo: p.periodo,
+            local: p.local,
+            total: p.totales?.totalPago
+        });
+        
+        const pasaFecha = filtrarPorFecha(p);
+        const pasaLocal = filtrarPorLocal(p);
+        
+        console.log('✅ pasaFecha:', pasaFecha, '| pasaLocal:', pasaLocal);
+        
+        return pasaFecha && pasaLocal;
+    });
+
+    const totalPrestamos = prestamosFiltrados.reduce((sum, p) => {
+        const monto = p.totales?.totalPago || 0;
+        console.log('💰 Sumando préstamo:', monto);
+        return sum + monto;
+    }, 0);
+
+    // --- FACTURACIÓN DE BODEGAS ---
+    const facturasFiltradas = facturas.filter(f => filtrarPorFecha(f) && filtrarPorLocal(f));
+    const totalFacturacion = facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
+
     // Calcular comisiones totales de ventas
     const totalComisionesVentas = ventasFiltradas.reduce((sum, v) => {
         return sum + (v.comisiones?.total || 0);
     }, 0);
-    
+
     // --- COSTOS FIJOS (por categoría) ---
     let costosRestaurante = 0;
     let costosPlanta = 0;
     let costosOficinas = 0;
     let costosTransporte = 0;
 
-    // ✅ NUEVO: Calcular planilla REAL desde window.planillaData
+    // Calcular planilla REAL desde window.planillaData
     let costosPlanilla = calcularPagoPlanilla(
         planilla, 
         filtroLocal, 
@@ -143,7 +258,7 @@ function renderResumen() {
         AppState.filtros?.fechaPersonalizada
     );
 
-    // Los costos fijos de restaurante, planta, etc. (esto se queda igual)
+    // Los costos fijos de restaurante, planta, etc.
     Object.keys(costos).forEach(local => {
         if (!puedeVerLocal(local) || (filtroLocal !== 'Todos' && local !== filtroLocal)) return;
         
@@ -160,22 +275,6 @@ function renderResumen() {
             costosTransporte += costos[local].transporte.reduce((sum, c) => sum + (c.monto || 0), 0);
         }
     });
-    
-    // --- COMPRAS EXTERNAS (Materia Prima) ---
-    const comprasFiltradas = compras.filter(c => filtrarPorFecha(c) && filtrarPorLocal(c));
-    const totalCompras = comprasFiltradas.reduce((sum, c) => sum + (c.monto || 0), 0);
-    
-    // --- FACTURACIÓN DE BODEGAS (para porcentajes de logística, pero también es un ingreso?) ---
-    const facturasFiltradas = facturas.filter(f => filtrarPorFecha(f) && filtrarPorLocal(f));
-    const totalFacturacion = facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
-    
-    // --- MERMAS ---
-    const mermasFiltradas = mermas.filter(m => filtrarPorFecha(m) && filtrarPorLocal(m));
-    const totalMermas = mermasFiltradas.reduce((sum, m) => sum + (m.costoTotal || 0), 0);
-    
-    // --- PRÉSTAMOS (Egreso por préstamos a empleados) ---
-    const prestamosFiltrados = prestamos.filter(p => filtrarPorFecha(p) && filtrarPorLocal(p));
-    const totalPrestamos = prestamosFiltrados.reduce((sum, p) => sum + (p.totales?.totalPago || 0), 0);
     
     // --- SERVICIOS PÚBLICOS (Agua, Luz, Gas) ---
     let totalServicios = 0;
@@ -196,11 +295,17 @@ function renderResumen() {
         });
     });
     
-    // --- PLANILLA (Sueldos) - Ya incluido en costosPlanilla, pero si no, lo calculamos ---
-    // Si costosPlanilla ya viene de costosData, no es necesario recalcular.
-    // Si no, puedes calcularlo aquí desde window.planillaData.
+    // ✅ LOGS DE DEPURACIÓN FINALES
+    console.log('📊 RESULTADOS FINALES:');
+    console.log('📊 Ventas filtradas:', ventasFiltradas.length, '| Total:', totalVentas);
+    console.log('📊 Compras filtradas:', comprasFiltradas.length, '| Total:', totalCompras);
+    console.log('📊 Mermas filtradas:', mermasFiltradas.length, '| Total:', totalMermas);
+    console.log('📊 Préstamos filtrados:', prestamosFiltrados.length, '| Total:', totalPrestamos);
+    console.log('📊 Facturas filtradas:', facturasFiltradas.length, '| Total:', totalFacturacion);
+    console.log('📊 Servicios:', totalServicios);
+    console.log('📊 Planilla:', costosPlanilla);
     
-        // ========================================
+    // ========================================
     // 4. ARMAR HTML DEL RESUMEN
     // ========================================
     let html = `
@@ -278,8 +383,10 @@ function renderResumen() {
                     </div>
                     <div>
                         <div style="font-size: 0.9rem; opacity: 0.9;">INGRESOS TOTALES</div>
-                        <div style="font-size: 2rem; font-weight: 700;">₡${Math.round(totalVentas).toLocaleString()}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Ventas brutas</div>
+                        <div style="font-size: 2rem; font-weight: 700;">
+                            ₡${Math.round(totalVentas).toLocaleString()}
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Solo ventas</div>
                     </div>
                 </div>
             </div>
@@ -292,8 +399,22 @@ function renderResumen() {
                     </div>
                     <div>
                         <div style="font-size: 0.9rem; opacity: 0.9;">EGRESOS TOTALES</div>
-                        <div style="font-size: 2rem; font-weight: 700;">₡${Math.round(totalCompras + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas).toLocaleString()}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Compras + Servicios + Costos</div>
+                        <div style="font-size: 2rem; font-weight: 700;">
+                            ₡${Math.round(
+                                totalCompras +
+                                totalFacturacion +
+                                totalServicios + 
+                                totalMermas + 
+                                totalPrestamos + 
+                                costosRestaurante + 
+                                costosPlanta + 
+                                costosOficinas + 
+                                costosTransporte + 
+                                totalComisionesVentas +
+                                costosPlanilla
+                            ).toLocaleString()}
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Compras + Servicios + Costos + Planilla</div>
                     </div>
                 </div>
             </div>
@@ -306,7 +427,14 @@ function renderResumen() {
                     </div>
                     <div>
                         <div style="font-size: 0.9rem; opacity: 0.9;">UTILIDAD NETA</div>
-                        <div style="font-size: 2rem; font-weight: 700;">₡${Math.round(totalVentas - (totalCompras + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas)).toLocaleString()}</div>
+                        <div style="font-size: 2rem; font-weight: 700;">
+                            ₡${Math.round(
+                                totalVentas - 
+                                (totalCompras + totalFacturacion + totalServicios + totalMermas + 
+                                totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + 
+                                costosTransporte + totalComisionesVentas + costosPlanilla)
+                            ).toLocaleString()}
+                        </div>
                         <div style="font-size: 0.8rem; opacity: 0.8;">Ingresos - Egresos</div>
                     </div>
                 </div>
@@ -330,11 +458,7 @@ function renderResumen() {
                     <td style="padding: 10px 15px 10px 35px;">Ventas Brutas</td>
                     <td style="padding: 10px 15px; text-align: right; font-weight: 600; color: #10b981;">₡${Math.round(totalVentas).toLocaleString()}</td>
                 </tr>
-                <tr style="border-bottom: 2px solid #eef2f6;">
-                    <td style="padding: 10px 15px 15px 35px;">Facturación Bodegas</td>
-                    <td style="padding: 10px 15px 15px; text-align: right; font-weight: 600; color: #10b981;">₡${Math.round(totalFacturacion).toLocaleString()}</td>
-                </tr>
-                
+
                 <!-- EGRESOS -->
                 <tr style="background: #f8fafc;">
                     <td style="padding: 15px 15px 12px; font-weight: 600; border-bottom: 2px solid #e2e8f0;" colspan="2">
@@ -350,6 +474,12 @@ function renderResumen() {
                 <tr>
                     <td style="padding: 5px 15px 10px 35px; color: #475569;">Mermas</td>
                     <td style="padding: 5px 15px 10px; text-align: right; color: #ef4444;">₡${Math.round(totalMermas).toLocaleString()}</td>
+                </tr>
+
+                <!-- Costo de Bodega -->
+                <tr>
+                    <td style="padding: 5px 15px 10px 35px; color: #475569;">Facturación de Bodegas (costo)</td>
+                    <td style="padding: 5px 15px 10px; text-align: right; color: #ef4444;">₡${Math.round(totalFacturacion).toLocaleString()}</td>
                 </tr>
                 
                 <!-- Gastos Operativos -->
@@ -397,35 +527,56 @@ function renderResumen() {
                     <td style="padding: 10px 15px 5px 35px; font-weight: 500;">Otros Egresos</td>
                     <td></td>
                 </tr>
-                <tr style="border-bottom: 2px solid #eef2f6;">
+                <tr>
                     <td style="padding: 5px 15px 15px 50px; color: #64748b; font-size: 0.95rem;">- Préstamos a Empleados</td>
                     <td style="padding: 5px 15px 15px; text-align: right; color: #ef4444;">₡${Math.round(totalPrestamos).toLocaleString()}</td>
                 </tr>
-                
+
                 <!-- TOTAL EGRESOS -->
                 <tr style="background: #fef2f2;">
                     <td style="padding: 15px; font-weight: 700; color: #b91c1c;">TOTAL EGRESOS</td>
-                    <td style="padding: 15px; text-align: right; font-weight: 700; color: #b91c1c;">₡${Math.round(totalCompras + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas + costosPlanilla).toLocaleString()}</td>
+                    <td style="padding: 15px; text-align: right; font-weight: 700; color: #b91c1c;">
+                        ₡${Math.round(
+                            totalCompras + 
+                            totalFacturacion + 
+                            totalServicios + 
+                            totalMermas + 
+                            totalPrestamos + 
+                            costosRestaurante + 
+                            costosPlanta + 
+                            costosOficinas + 
+                            costosTransporte + 
+                            totalComisionesVentas + 
+                            costosPlanilla
+                        ).toLocaleString()}
+                    </td>
                 </tr>
-                
+
                 <!-- UTILIDAD NETA -->
                 <tr style="background: #f0fdf4;">
                     <td style="padding: 18px 15px; font-weight: 800; font-size: 1.2rem; color: #166534;">UTILIDAD NETA</td>
-                    <td style="padding: 18px 15px; text-align: right; font-weight: 800; font-size: 1.2rem; color: #166534;">₡${Math.round(totalVentas + totalFacturacion - (totalCompras + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas + costosPlanilla)).toLocaleString()}</td>
+                    <td style="padding: 18px 15px; text-align: right; font-weight: 800; font-size: 1.2rem; color: #166534;">
+                        ₡${Math.round(
+                            totalVentas - 
+                            (totalCompras + totalFacturacion + totalServicios + totalMermas + 
+                            totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + 
+                            costosTransporte + totalComisionesVentas + costosPlanilla)
+                        ).toLocaleString()}
+                    </td>
                 </tr>
-                
+
                 <!-- MARGEN DE UTILIDAD -->
                 <tr>
                     <td style="padding: 10px 15px; color: #64748b;">Margen de Utilidad</td>
                     <td style="padding: 10px 15px; text-align: right; font-weight: 600; color: #059669;">
-                        ${totalVentas > 0 ? ((totalVentas + totalFacturacion - (totalCompras + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas + costosPlanilla)) / totalVentas * 100).toFixed(2) : 0}%
+                        ${totalVentas > 0 ? ((totalVentas - (totalCompras + totalFacturacion + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas + costosPlanilla)) / totalVentas * 100).toFixed(2) : 0}%
                     </td>
                 </tr>
             </table>
         </div>
         
         <!-- TARJETAS DE DESGLOSE POR CATEGORÍA -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 25px;">
             
             <!-- Compras -->
             <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">

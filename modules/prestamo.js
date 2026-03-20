@@ -82,9 +82,6 @@ function cargarEmpleadosPrestamo() {
     console.log(`✅ ${empleadosPrestamo.length} empleados disponibles`);
 }
 
-// ============================================
-// CARGAR PRÉSTAMOS DESDE FIREBASE
-// ============================================
 function cargarPrestamos() {
     console.log('📥 Cargando registros de préstamo...');
     
@@ -102,6 +99,14 @@ function cargarPrestamos() {
         }
         
         console.log(`✅ ${prestamos.length} registros de préstamo cargados`);
+        
+        // ✅ ACTUALIZAR VARIABLE GLOBAL
+        window.prestamos = prestamos;
+        
+        // ✅ NOTIFICAR AL RESUMEN
+        if (document.getElementById('resumen').classList.contains('active') && window.renderResumen) {
+            window.renderResumen();
+        }
         
         if (document.getElementById('prestamo').classList.contains('active')) {
             renderPrestamo();
@@ -426,16 +431,12 @@ function calcularTotalPrestamo() {
     const extrasNocturnas = esAñosLocos ? (parseFloat(document.getElementById('prestamoExtrasNocturnas')?.value) || 0) : 0;
     
     // ✅ CÁLCULOS CORREGIDOS SEGÚN LEY
-    
-    // Horas diurnas (para empleados que trabajan de día)
     const valorHoraDiurna = salario / HORAS_MENSUALES.diurno;
     const valorHoraExtraDiurna = valorHoraDiurna * RECARGOS.extraDiurna;
-    
-    // Horas nocturnas (para Los Años Locos)
-    const valorHoraNocturna = salario / HORAS_MENSUALES.nocturno; // ¡Base 180, no 240!
+    const valorHoraNocturna = salario / HORAS_MENSUALES.nocturno;
     const valorHoraExtraNocturna = valorHoraNocturna * RECARGOS.extraNocturna;
     
-    // Calcular pagos
+    // Calcular pagos (CON NOMBRES CORRECTOS)
     const pagoOrdinariasDiurnas = ordinarias * valorHoraDiurna;
     const pagoExtrasDiurnas = extras * valorHoraExtraDiurna;
     const pagoNocturnas = nocturnas * valorHoraNocturna;
@@ -443,10 +444,15 @@ function calcularTotalPrestamo() {
     
     const total = pagoOrdinariasDiurnas + pagoExtrasDiurnas + pagoNocturnas + pagoExtrasNocturnas;
     
+    // ✅ LOG CORREGIDO (sin typos)
     console.log('📊 Cálculo corregido:', {
         ordinarias, extras, nocturnas, extrasNocturnas,
         valorHoraDiurna, valorHoraNocturna,
         valorHoraExtraDiurna, valorHoraExtraNocturna,
+        pagoOrdinariasDiurnas,  // ✅ Nombre correcto
+        pagoExtrasDiurnas,
+        pagoNocturnas,
+        pagoExtrasNocturnas,
         total
     });
     
@@ -731,6 +737,8 @@ function mostrarModalPrestamo(editId = null) {
 // GUARDAR PRÉSTAMO (CON NOCTURNAS) - VERSIÓN CORREGIDA
 // ============================================
 async function guardarPrestamo(editId = null) {
+    console.log('💾 Guardando préstamo...');
+    
     const empleadoId = document.getElementById('prestamoEmpleadoId').value;
     const empleadoNombre = document.getElementById('empleadoSeleccionadoNombre').textContent;
     const localOrigen = document.getElementById('prestamoEmpleadoLocal').value; // Local de planilla
@@ -759,23 +767,34 @@ async function guardarPrestamo(editId = null) {
         return;
     }
     
-    // Calcular pagos
-    const salarioHora = salario / 240;
-    const salarioHoraExtra = salarioHora * PORCENTAJES_PRESTAMO.extras;
-    const salarioHoraNocturna = salarioHora * PORCENTAJES_PRESTAMO.nocturnas;
-    const salarioHoraExtraNocturna = salarioHora * PORCENTAJES_PRESTAMO.extrasNocturnas;
+    // ✅ CÁLCULOS CORREGIDOS (usando HORAS_MENSUALES y RECARGOS)
+    const esAñosLocos = localTrabajo.includes('Los Años Locos');
     
-    const pagoOrdinarias = ordinarias * salarioHora;
-    const pagoExtras = extras * salarioHoraExtra;
-    const pagoNocturnas = nocturnas * salarioHoraNocturna;
-    const pagoExtrasNocturnas = extrasNocturnas * salarioHoraExtraNocturna;
+    // Calcular valores por hora según el tipo de jornada
+    const valorHoraDiurna = salario / HORAS_MENSUALES.diurno;
+    const valorHoraExtraDiurna = valorHoraDiurna * RECARGOS.extraDiurna;
+    
+    // Para horas nocturnas (si aplica)
+    let valorHoraNocturna = 0;
+    let valorHoraExtraNocturna = 0;
+    
+    if (esAñosLocos) {
+        valorHoraNocturna = salario / HORAS_MENSUALES.nocturno;
+        valorHoraExtraNocturna = valorHoraNocturna * RECARGOS.extraNocturna;
+    }
+    
+    // Calcular pagos
+    const pagoOrdinarias = ordinarias * valorHoraDiurna;
+    const pagoExtras = extras * valorHoraExtraDiurna;
+    const pagoNocturnas = nocturnas * valorHoraNocturna;
+    const pagoExtrasNocturnas = extrasNocturnas * valorHoraExtraNocturna;
     const totalPago = pagoOrdinarias + pagoExtras + pagoNocturnas + pagoExtrasNocturnas;
     
     const data = {
         empleadoId,
         empleadoNombre,
         localOrigen,      // Guardamos el local de planilla (para referencia)
-        local: localTrabajo, // ✅ Guardamos el local donde trabajó (para cálculos)
+        local: localTrabajo, // Guardamos el local donde trabajó (para cálculos)
         salario,
         periodo,
         horas: {
@@ -807,6 +826,13 @@ async function guardarPrestamo(editId = null) {
     }
     
     try {
+        // Deshabilitar botón mientras guarda
+        const btn = document.querySelector('#prestamoModal .btn-primary');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        }
+        
         if (editId) {
             await firebase.database().ref(`prestamos/${editId}`).update(data);
             alert('✅ Préstamo actualizado');
@@ -822,6 +848,13 @@ async function guardarPrestamo(editId = null) {
     } catch (error) {
         console.error('Error:', error);
         alert('Error al guardar: ' + error.message);
+        
+        // Re-habilitar botón en caso de error
+        const btn = document.querySelector('#prestamoModal .btn-primary');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar Préstamo';
+        }
     }
 }
 
@@ -847,7 +880,7 @@ function eliminarPrestamo(id) {
 }
 
 // ============================================
-// EXPORTAR FUNCIONES
+// EXPORTAR FUNCIONES Y VARIABLES
 // ============================================
 window.initPrestamo = initPrestamo;
 window.renderPrestamo = renderPrestamo;
@@ -860,4 +893,7 @@ window.limpiarSeleccionEmpleado = limpiarSeleccionEmpleado;
 window.editarPrestamo = editarPrestamo;
 window.eliminarPrestamo = eliminarPrestamo;
 
-console.log('✅ prestamo.js cargado - Incluye horas nocturnas para Los Años Locos');
+// ✅ EXPORTAR LA VARIABLE GLOBAL
+window.prestamos = prestamos;
+
+console.log('✅ prestamo.js cargado');
