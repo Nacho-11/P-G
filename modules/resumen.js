@@ -1,101 +1,403 @@
-// modules/resumen.js
-// Módulo de Resumen Financiero - Consolida datos de todos los módulos
+// modules/resumen.js - VERSIÓN CON ARRENDAMIENTO EN ESTILO NORMAL
 
 console.log('📊 Cargando módulo de Resumen Financiero...');
 
 // ============================================
-// VARIABLES GLOBALES DEL MÓDULO
+// FUNCIONES AUXILIARES DE FECHAS
 // ============================================
-// No necesita variables propias, usa los datos de los otros módulos (window.ventasData, etc.)
+
+function parseFechaDDMMYYYY(fechaStr) {
+    if (!fechaStr) return null;
+    if (fechaStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = fechaStr.split('-');
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    if (fechaStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const [day, month, year] = fechaStr.split('/');
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    const date = new Date(fechaStr);
+    if (!isNaN(date.getTime())) return date;
+    console.error('❌ No se pudo parsear la fecha:', fechaStr);
+    return new Date();
+}
+
+function formatFechaYYYYMMDD(fecha) {
+    if (!fecha || isNaN(fecha.getTime())) return '';
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatearMesAnio(fecha) {
+    if (!fecha || isNaN(fecha.getTime())) return 'Mes Desconocido';
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return `${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
+}
+
+function getDiasDelMes(fecha) {
+    if (!fecha || isNaN(fecha.getTime())) return 30;
+    const year = fecha.getFullYear();
+    const month = fecha.getMonth();
+    return new Date(year, month + 1, 0).getDate();
+}
+
+function getPrimerDiaDelMes(fecha) {
+    return new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+}
 
 function obtenerTextoPeriodo(filtro, fechaPersonalizada) {
     switch(filtro) {
-        case 'todos':
-            return 'Todo el historial';
+        case 'todos': return 'Todo el historial';
         case 'ayer': {
             const ayer = new Date();
             ayer.setDate(ayer.getDate() - 1);
             return `Ayer (${ayer.toLocaleDateString('es-CR')})`;
         }
         case 'mes': {
-            const hoy = new Date();
-            const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            return `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+            const fechaBase = getFechaBasePorFiltro('mes', fechaPersonalizada);
+            return formatearMesAnio(fechaBase);
         }
-        case 'anio':
-            return `Año ${new Date().getFullYear()}`;
+        case 'anio': return `Año ${new Date().getFullYear()}`;
         case 'personalizado':
             if (!fechaPersonalizada) return 'Fecha específica';
-            return new Date(fechaPersonalizada + 'T12:00:00').toLocaleDateString('es-CR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
+            const fecha = parseFechaDDMMYYYY(fechaPersonalizada);
+            return fecha.toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' });
+        default: return 'Todo el historial';
+    }
+}
+
+function filtrarPorFecha(item, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    if (!item.fecha) return false;
+    let fechaItem = item.fecha;
+    if (fechaItem.includes('T')) fechaItem = fechaItem.split('T')[0];
+    
+    if (filtroTiempo === 'todos') return true;
+    if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
+    if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
+    if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
+    if (filtroTiempo === 'personalizado') {
+        const fechaComp = parseFechaDDMMYYYY(fechaPersonalizada);
+        const fechaCompStr = formatFechaYYYYMMDD(fechaComp);
+        return fechaItem === fechaCompStr;
+    }
+    return true;
+}
+
+function filtrarPorLocal(item, filtroLocal) {
+    if (!item.local) return false;
+    if (filtroLocal === 'Todos') return true;
+    return item.local === filtroLocal;
+}
+
+function getFechaBasePorFiltro(filtroTiempo, fechaPersonalizada) {
+    if (filtroTiempo === 'mes') {
+        if (fechaPersonalizada) return parseFechaDDMMYYYY(fechaPersonalizada);
+        return new Date();
+    } else if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
+        return parseFechaDDMMYYYY(fechaPersonalizada);
+    } else if (filtroTiempo === 'ayer') {
+        const ayer = new Date();
+        ayer.setDate(ayer.getDate() - 1);
+        return ayer;
+    } else {
+        return new Date();
+    }
+}
+
+// ============================================
+// CÁLCULOS DE PLANILLA Y GASTOS
+// ============================================
+
+function calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    let totalPlanilla = 0;
+    let diasContados = new Set();
+    const PORCENTAJES = { ordinarias: 1.0, extras: 1.5, nocturnas: 1.2, extrasNocturnas: 1.8 };
+    
+    Object.keys(planillaData).forEach(local => {
+        if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
+        if (typeof puedeVerLocal === 'function' && !puedeVerLocal(local)) return;
+        
+        const empleados = planillaData[local] || [];
+        empleados.forEach(emp => {
+            if (!emp.horas || emp.activo === false) return;
+            const salarioMensual = emp.salario || 0;
+            const salarioHora = salarioMensual / 240;
+            const horasJornada = 8;
+            
+            Object.keys(emp.horas).forEach(fechaStr => {
+                const fecha = fechaStr.split('T')[0];
+                if (filtroTiempo === 'todos') {
+                    if (!diasContados.has(`${emp.id}-${local}`)) {
+                        diasContados.add(`${emp.id}-${local}`);
+                        totalPlanilla += salarioMensual;
+                    }
+                    return;
+                }
+                if (filtroTiempo === 'ayer' && fecha !== ayerStr) return;
+                if (filtroTiempo === 'mes' && fecha.substring(0, 7) !== mesActual) return;
+                if (filtroTiempo === 'anio' && fecha.substring(0, 4) !== anioActual) return;
+                if (filtroTiempo === 'personalizado') {
+                    const fechaComp = parseFechaDDMMYYYY(fechaPersonalizada);
+                    const fechaCompStr = formatFechaYYYYMMDD(fechaComp);
+                    if (fecha !== fechaCompStr) return;
+                }
+                
+                const horas = emp.horas[fechaStr];
+                const horasNormales = Math.min(horas.ordinarias || 0, horasJornada);
+                const horasExtras = (horas.ordinarias || 0) - horasNormales;
+                let pagoDia = horasNormales * salarioHora;
+                pagoDia += (horasExtras) * salarioHora * PORCENTAJES.extras;
+                pagoDia += (horas.nocturnas || 0) * salarioHora * PORCENTAJES.nocturnas;
+                pagoDia += (horas.extrasNocturnas || 0) * salarioHora * PORCENTAJES.extrasNocturnas;
+                totalPlanilla += pagoDia;
             });
-        default:
-            return 'Todo el historial';
-    }
+        });
+    });
+    return { salarioBase: totalPlanilla, horasExtras: 0, total: totalPlanilla };
+}
+
+function calcularCCSS(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    const planilla = calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    return planilla.total * 0.265;
+}
+
+function calcularCesantia(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    const planilla = calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    return planilla.total * 0.0533;
+}
+
+function calcularVacaciones(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    const planilla = calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    return planilla.salarioBase * 0.0416;
+}
+
+function calcularAguinaldos(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    const planilla = calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    return planilla.total * 0.0833;
+}
+
+function calcularPago10(ventasFiltradas) {
+    const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
+    return totalVentas * 0.10;
+}
+
+function calcularComisionesDelivery(ventasFiltradas, plataforma) {
+    const comisionMap = { uber: 0.25, pedidosYa: 0.25, didi: 0.25 };
+    return ventasFiltradas.reduce((sum, v) => sum + ((v[plataforma] || 0) * comisionMap[plataforma]), 0);
+}
+
+function calcularComisionDatafonos(ventasFiltradas) {
+    return ventasFiltradas.reduce((sum, v) => sum + ((v.bac || 0) * 0.0531), 0);
+}
+
+function calcularCostoMateriaPrima(comprasFiltradas) {
+    return comprasFiltradas.reduce((sum, c) => sum + (c.monto || 0), 0);
+}
+
+function calcularFacturacionBodegas(facturasFiltradas) {
+    return facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
+}
+
+function calcularMermas(mermasFiltradas) {
+    return mermasFiltradas.reduce((sum, m) => sum + (m.costoTotal || 0), 0);
+}
+
+function calcularReembolsoDelivery(ventasFiltradas) {
+    const totalDelivery = ventasFiltradas.reduce((sum, v) => sum + (v.pedidosYa || 0) + (v.didi || 0) + (v.uber || 0), 0);
+    return totalDelivery * 0.10;
+}
+
+function calcularPrestamos(prestamosFiltrados) {
+    return prestamosFiltrados.reduce((sum, p) => sum + (p.totales?.totalPago || 0), 0);
+}
+
+function calcularServicios(serviciosData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
+    let agua = 0, electricidad = 0, gas = 0, total = 0;
+    Object.keys(serviciosData).forEach(local => {
+        if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
+        if (typeof puedeVerLocal === 'function' && !puedeVerLocal(local)) return;
+        (serviciosData[local] || []).forEach(s => {
+            if (!filtrarPorFecha(s, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada)) return;
+            total += s.monto || 0;
+            if (s.servicio === 'Agua') agua += s.monto || 0;
+            if (s.servicio === 'Electricidad') electricidad += s.monto || 0;
+            if (s.servicio === 'Gas') gas += s.monto || 0;
+        });
+    });
+    return { agua, electricidad, gas, total };
 }
 
 // ============================================
-// INICIALIZAR MÓDULO
+// COSTOS FIJOS - CON CÁLCULO DE DÍAS CORRECTO
 // ============================================
-function initResumen() {
-    console.log('🚀 Inicializando módulo de Resumen...');
+
+function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaBase) {
+    console.log('🔧 [calcularCostosFijos] INICIANDO CÁLCULO');
+    console.log(`🔧 fechaBase recibida: ${fechaBase.toISOString()}`);
     
-    if (!AppState?.usuario) {
-        console.log('⏳ Esperando autenticación...');
-        return;
+    const categorias = {
+        alquilerLocal: 0, secsa: 0, softRestaurant: 0, internetKolbi: 0, televisionKolbi: 0,
+        adt: 0, fumigacion: 0, polizaRT: 0, depreciacionActivos: 0, patenteComercial: 0,
+        patenteLicores: 0, basuraMunicipal: 0, interesesMoraPatente: 0, certificacionGas: 0,
+        certificacionElectrica: 0, renovacionMinisterioSalud: 0, mantenimiento: 0, haciendaIVA: 0,
+        asesoriaLegalRH: 0, honorariosContabilidad: 0, publicidad: 0, otrosServiciosProfesionales: 0,
+        electricidadPlanta: 0, aguaPlanta: 0, adtPlanta: 0, fumigacionPlanta: 0, softwareSecsaPlanta: 0,
+        ivaHaciendaPlanta: 0, asesoriaLegalPlanta: 0, electricidadOficinas: 0, aguaOficinas: 0,
+        internetOficinas: 0, telefonoCelulares: 0, adtOficinas: 0, mantenimientoPapeleria: 0,
+        softwareHosting: 0, combustible: 0, electricidadBodegas: 0, aguaBodegas: 0, alquilerTaller: 0,
+        gpsNavsat: 0, marchamos: 0, dekra: 0, mantenimientoVehiculos: 0, planillaBodega: 0,
+        alexDuque: 0, polizaRTBodega: 0, ccssBodegaOficinas: 0, planillaOficinas: 0
+    };
+    
+    const diasEnMes = getDiasDelMes(fechaBase);
+    const mesSeleccionado = formatearMesAnio(fechaBase);
+    let multiplicador = 1;
+    let esVistaDiaria = false;
+    
+    if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
+        multiplicador = 1 / diasEnMes;
+        esVistaDiaria = true;
+        console.log(`📅 Vista diaria - Mes: ${mesSeleccionado} (${diasEnMes} días), Multiplicador: 1/${diasEnMes}`);
+    } else if (filtroTiempo === 'mes') {
+        multiplicador = 1;
+    } else if (filtroTiempo === 'anio' || filtroTiempo === 'todos') {
+        multiplicador = 12;
     }
     
-    // Escuchar cambios en los filtros para actualizar la vista
-    if (document.getElementById('resumen').classList.contains('active')) {
-        renderResumen();
-    }
+    if (!costosData || Object.keys(costosData).length === 0) return categorias;
+    
+    const idsProcesados = new Set();
+    let alquilerMensual = 0;
+    
+    Object.keys(costosData).forEach(localKey => {
+        const dataPorCategoria = costosData[localKey];
+        Object.keys(dataPorCategoria).forEach(categoriaFirebase => {
+            const costosArray = dataPorCategoria[categoriaFirebase];
+            if (!Array.isArray(costosArray)) return;
+            
+            costosArray.forEach(costo => {
+                if (costo.id && idsProcesados.has(costo.id)) return;
+                if (costo.id) idsProcesados.add(costo.id);
+                
+                const localDelCosto = costo.local || localKey;
+                if (filtroLocal !== 'Todos' && localDelCosto !== filtroLocal) return;
+                if (typeof puedeVerLocal === 'function' && !puedeVerLocal(localDelCosto)) return;
+                
+                const concepto = (costo.concepto || '').toLowerCase().trim();
+                const montoMensual = costo.monto || 0;
+                const montoAplicable = montoMensual * multiplicador;
+                if (montoMensual === 0) return;
+                
+                if (categoriaFirebase === 'restaurante') {
+                    if (concepto.includes('alquiler')) { alquilerMensual = montoMensual; categorias.alquilerLocal += montoAplicable; }
+                    else if (concepto.includes('secsa')) categorias.secsa += montoAplicable;
+                    else if (concepto.includes('soft restaurant')) categorias.softRestaurant += montoAplicable;
+                    else if (concepto.includes('internet')) categorias.internetKolbi += montoAplicable;
+                    else if (concepto.includes('televisión') || concepto.includes('tv')) categorias.televisionKolbi += montoAplicable;
+                    else if (concepto.includes('adt') || concepto.includes('alarma')) categorias.adt += montoAplicable;
+                    else if (concepto.includes('fumigación')) categorias.fumigacion += montoAplicable;
+                    else if (concepto.includes('póliza') || concepto.includes('rt')) categorias.polizaRT += montoAplicable;
+                    else if (concepto.includes('depreciación')) categorias.depreciacionActivos += montoAplicable;
+                    else if (concepto.includes('patente comercial')) categorias.patenteComercial += montoAplicable;
+                    else if (concepto.includes('patente licores')) categorias.patenteLicores += montoAplicable;
+                    else if (concepto.includes('basura')) categorias.basuraMunicipal += montoAplicable;
+                    else if (concepto.includes('interés') || concepto.includes('mora')) categorias.interesesMoraPatente += montoAplicable;
+                    else if (concepto.includes('certificación gas')) categorias.certificacionGas += montoAplicable;
+                    else if (concepto.includes('certificación eléctrica')) categorias.certificacionElectrica += montoAplicable;
+                    else if (concepto.includes('renovación') || concepto.includes('ministerio')) categorias.renovacionMinisterioSalud += montoAplicable;
+                    else if (concepto.includes('mantenimiento')) categorias.mantenimiento += montoAplicable;
+                    else if (concepto.includes('hacienda') || concepto.includes('iva')) categorias.haciendaIVA += montoAplicable;
+                    else if (concepto.includes('asesoría legal')) categorias.asesoriaLegalRH += montoAplicable;
+                    else if (concepto.includes('honorarios contabilidad')) categorias.honorariosContabilidad += montoAplicable;
+                    else if (concepto.includes('publicidad')) categorias.publicidad += montoAplicable;
+                    else if (concepto.includes('otros servicios')) categorias.otrosServiciosProfesionales += montoAplicable;
+                }
+                else if (categoriaFirebase === 'planta') {
+                    if (concepto.includes('electricidad')) categorias.electricidadPlanta += montoAplicable;
+                    else if (concepto.includes('agua')) categorias.aguaPlanta += montoAplicable;
+                    else if (concepto.includes('adt')) categorias.adtPlanta += montoAplicable;
+                    else if (concepto.includes('fumigación')) categorias.fumigacionPlanta += montoAplicable;
+                    else if (concepto.includes('software secsa')) categorias.softwareSecsaPlanta += montoAplicable;
+                    else if (concepto.includes('iva')) categorias.ivaHaciendaPlanta += montoAplicable;
+                    else if (concepto.includes('asesoría legal')) categorias.asesoriaLegalPlanta += montoAplicable;
+                }
+                else if (categoriaFirebase === 'oficinas') {
+                    if (concepto.includes('electricidad')) categorias.electricidadOficinas += montoAplicable;
+                    else if (concepto.includes('agua')) categorias.aguaOficinas += montoAplicable;
+                    else if (concepto.includes('internet')) categorias.internetOficinas += montoAplicable;
+                    else if (concepto.includes('teléfono') || concepto.includes('telefono') || concepto.includes('celular')) categorias.telefonoCelulares += montoAplicable;
+                    else if (concepto.includes('adt')) categorias.adtOficinas += montoAplicable;
+                    else if (concepto.includes('mantenimiento') || concepto.includes('papelería')) categorias.mantenimientoPapeleria += montoAplicable;
+                    else if (concepto.includes('software') || concepto.includes('hosting') || concepto.includes('office')) categorias.softwareHosting += montoAplicable;
+                }
+                else if (categoriaFirebase === 'transporte') {
+                    if (concepto.includes('combustible')) categorias.combustible += montoAplicable;
+                    else if (concepto.includes('electricidad') && concepto.includes('bodega')) categorias.electricidadBodegas += montoAplicable;
+                    else if (concepto.includes('agua') && concepto.includes('bodega')) categorias.aguaBodegas += montoAplicable;
+                    else if (concepto.includes('alquiler')) categorias.alquilerTaller += montoAplicable;
+                    else if (concepto.includes('gps') || concepto.includes('navsat')) categorias.gpsNavsat += montoAplicable;
+                    else if (concepto.includes('marchamo')) categorias.marchamos += montoAplicable;
+                    else if (concepto.includes('dekra')) categorias.dekra += montoAplicable;
+                    else if (concepto.includes('mantenimiento')) categorias.mantenimientoVehiculos += montoAplicable;
+                }
+                else if (categoriaFirebase === 'planilla') {
+                    if (concepto.includes('bodega') && !concepto.includes('alex')) categorias.planillaBodega += montoAplicable;
+                    else if (concepto.includes('alex duque')) categorias.alexDuque += montoAplicable;
+                    else if (concepto.includes('póliza') || concepto.includes('rt')) categorias.polizaRTBodega += montoAplicable;
+                    else if (concepto.includes('ccss')) categorias.ccssBodegaOficinas += montoAplicable;
+                    else if (concepto.includes('oficinas')) categorias.planillaOficinas += montoAplicable;
+                }
+            });
+        });
+    });
+    
+    console.log(`📊 COSTOS FIJOS para ${mesSeleccionado}: ${diasEnMes} días, Alquiler: ₡${alquilerMensual.toLocaleString()} → ₡${categorias.alquilerLocal.toLocaleString()}`);
+    return categorias;
 }
 
+function calcularGastosAdministrativos() { return { total: 0 }; }
+
 // ============================================
-// RENDERIZAR VISTA DE RESUMEN
+// RENDERIZAR RESUMEN - VERSIÓN COMPLETA
 // ============================================
+
 function renderResumen() {
     console.log('📊 Renderizando Resumen Financiero...');
     
     const resumenContent = document.getElementById('resumenContent');
-    if (!resumenContent) {
-        console.error('❌ No se encontró el elemento resumenContent');
-        return;
-    }
+    if (!resumenContent) { console.error('❌ No se encontró resumenContent'); return; }
     
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
+    const fechaPersonalizada = AppState.filtros?.fechaPersonalizada;
+    const periodoTexto = obtenerTextoPeriodo(filtroTiempo, fechaPersonalizada);
     
-    // ========================================
-    // 1. OBTENER DATOS DE TODOS LOS MÓDULOS
-    // ========================================
-    const ventas = window.ventasData || [];
-    const costos = window.costosData || {};
-    const compras = window.comprasExternas || [];  // ✅ CORREGIDO
-    const facturas = window.facturacionBodegas || [];
-    const mermas = window.mermas || [];            // ✅ CORREGIDO
-    const prestamos = window.prestamos || [];      // ✅ CORREGIDO
-    const servicios = window.serviciosData || {};
-    const planilla = window.planillaData || {};
-
-    // Log para depuración
-    console.log('📦 Datos cargados en resumen:', {
-        ventas: ventas.length,
-        costos: Object.keys(costos).length,
-        compras: compras.length,
-        facturas: facturas.length,
-        mermas: mermas.length,
-        prestamos: prestamos.length,
-        servicios: Object.keys(servicios).length,
-        planilla: Object.keys(planilla).length
-    });
+    // Fecha base para costos fijos
+    let fechaBaseCostos;
+    if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
+        fechaBaseCostos = parseFechaDDMMYYYY(fechaPersonalizada);
+    } else if (filtroTiempo === 'mes') {
+        fechaBaseCostos = fechaPersonalizada ? parseFechaDDMMYYYY(fechaPersonalizada) : new Date();
+        fechaBaseCostos = getPrimerDiaDelMes(fechaBaseCostos);
+    } else if (filtroTiempo === 'ayer') {
+        fechaBaseCostos = new Date();
+        fechaBaseCostos.setDate(fechaBaseCostos.getDate() - 1);
+    } else {
+        fechaBaseCostos = new Date();
+    }
+    if (isNaN(fechaBaseCostos.getTime())) fechaBaseCostos = new Date();
     
-    // ========================================
-    // 2. CALCULAR FECHAS PARA FILTROS
-    // ========================================
+    const diasDelMes = getDiasDelMes(fechaBaseCostos);
+    const mesTexto = formatearMesAnio(fechaBaseCostos);
+    const esVistaDiaria = (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado');
+    const textoVista = esVistaDiaria ? `Diario (${diasDelMes} días/mes)` : 'Mensual';
+    
+    console.log(`📅 Mes de referencia: ${mesTexto}, Días: ${diasDelMes}, Vista: ${textoVista}`);
+    
+    // Fechas para filtrar
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
     const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
@@ -103,594 +405,214 @@ function renderResumen() {
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
     
-    // Función auxiliar para filtrar por fecha (CORREGIDA)
-    const filtrarPorFecha = (item) => {
-        // Si tiene fecha (ventas, compras, facturas, mermas)
-        if (item.fecha) {
-            // Asegurar que la fecha está en formato YYYY-MM-DD
-            let fechaItem = item.fecha;
-            if (fechaItem.includes('T')) {
-                fechaItem = fechaItem.split('T')[0];
-            }
-            
-            console.log('📅 Comparando fechas:', {
-                itemFecha: fechaItem,
-                ayer: ayerStr,
-                mesActual: mesActual,
-                anioActual: anioActual,
-                filtro: filtroTiempo
-            });
-            
-            if (filtroTiempo === 'todos') return true;
-            if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
-            if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
-            if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
-            if (filtroTiempo === 'personalizado') return fechaItem === AppState.filtros?.fechaPersonalizada;
-            
-            return true;
-        }
-        
-        // Si tiene periodo (préstamos)
-        if (item.periodo) {
-            if (filtroTiempo === 'todos') return true;
-            if (filtroTiempo === 'mes') return item.periodo === mesActual;
-            if (filtroTiempo === 'anio') return item.periodo.substring(0, 4) === anioActual;
-            return false;
-        }
-        
-        return false;
-    };
+    // Datos
+    const ventas = window.ventasData || [];
+    const costos = window.costosData || {};
+    const compras = window.comprasExternas || [];
+    const facturas = window.facturacionBodegas || [];
+    const mermas = window.mermas || [];
+    const prestamos = window.prestamos || [];
+    const servicios = window.serviciosData || {};
+    const planilla = window.planillaData || {};
     
-    // Función para filtrar por local (con permisos) - VERSIÓN SUPER PERMISIVA PARA PRUEBAS
-    const filtrarPorLocal = (item) => {
-        // Si no tiene local, lo excluimos
-        if (!item.local) {
-            console.log('⚠️ Item sin local:', item.id || 'sin id');
-            return false;
-        }
-        
-        console.log(`🔍 Evaluando ${item.id}: local=${item.local}, filtroLocal=${filtroLocal}`);
-        
-        // Si el filtro es "Todos", mostrar todos (sin verificar permisos por ahora)
-        if (filtroLocal === 'Todos') {
-            return true; // 👈 TEMPORAL - mostrar todos
-        }
-        
-        // Si el filtro es un local específico
-        return item.local === filtroLocal;
-    };
+    // Filtrar
+    const ventasFiltradas = ventas.filter(v => filtrarPorFecha(v, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) && filtrarPorLocal(v, filtroLocal));
+    const comprasFiltradas = compras.filter(c => filtrarPorFecha(c, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) && filtrarPorLocal(c, filtroLocal));
+    const facturasFiltradas = facturas.filter(f => filtrarPorFecha(f, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) && filtrarPorLocal(f, filtroLocal));
+    const mermasFiltradas = mermas.filter(m => filtrarPorFecha(m, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) && filtrarPorLocal(m, filtroLocal));
+    const prestamosFiltrados = prestamos.filter(p => filtrarPorFecha(p, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) && filtrarPorLocal(p, filtroLocal));
     
-    // ========================================
-    // 3. CALCULAR TOTALES POR MÓDULO
-    // ========================================
-
-    // --- VENTAS ---
-    const ventasFiltradas = ventas.filter(v => filtrarPorFecha(v) && filtrarPorLocal(v));
+    // Ingresos
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
-
-    // --- COMPRAS EXTERNAS ---
-    console.log('🔍 Compras antes de filtrar:', compras);
-    compras.forEach(c => {
-        console.log('📋 Compra en bruto:', {
-            id: c.id,
-            fecha: c.fecha,
-            local: c.local,
-            monto: c.monto,
-            proveedor: c.proveedor
-        });
-    });
-
-    const comprasFiltradas = compras.filter(c => {
-        const pasaFecha = filtrarPorFecha(c);
-        const pasaLocal = filtrarPorLocal(c);
-        
-        console.log(`🔎 Compra ${c.id}:`, {
-            fecha: c.fecha,
-            local: c.local,
-            pasaFecha,
-            pasaLocal,
-            monto: c.monto
-        });
-        
-        return pasaFecha && pasaLocal;
-    });
-
-    const totalCompras = comprasFiltradas.reduce((sum, c) => sum + (c.monto || 0), 0);
-    console.log('💰 Total compras:', totalCompras);
-
-    // --- MERMAS ---
-    const mermasFiltradas = mermas.filter(m => filtrarPorFecha(m) && filtrarPorLocal(m));
-    const totalMermas = mermasFiltradas.reduce((sum, m) => sum + (m.costoTotal || 0), 0);
-
-    // --- PRÉSTAMOS ---
-    console.log('🔍 Préstamos en window:', prestamos);
-    console.log('📅 Filtros actuales:', {
-        filtroTiempo,
-        mesActual,
-        filtroLocal
-    });
-
-    const prestamosFiltrados = prestamos.filter(p => {
-        console.log('🔎 Evaluando préstamo:', {
-            id: p.id,
-            periodo: p.periodo,
-            local: p.local,
-            total: p.totales?.totalPago
-        });
-        
-        const pasaFecha = filtrarPorFecha(p);
-        const pasaLocal = filtrarPorLocal(p);
-        
-        console.log('✅ pasaFecha:', pasaFecha, '| pasaLocal:', pasaLocal);
-        
-        return pasaFecha && pasaLocal;
-    });
-
-    const totalPrestamos = prestamosFiltrados.reduce((sum, p) => {
-        const monto = p.totales?.totalPago || 0;
-        console.log('💰 Sumando préstamo:', monto);
-        return sum + monto;
-    }, 0);
-
-    // --- FACTURACIÓN DE BODEGAS ---
-    const facturasFiltradas = facturas.filter(f => filtrarPorFecha(f) && filtrarPorLocal(f));
-    const totalFacturacion = facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
-
-    // Calcular comisiones totales de ventas
-    const totalComisionesVentas = ventasFiltradas.reduce((sum, v) => {
-        return sum + (v.comisiones?.total || 0);
-    }, 0);
-
-    // --- COSTOS FIJOS (por categoría) ---
-    let costosRestaurante = 0;
-    let costosPlanta = 0;
-    let costosOficinas = 0;
-    let costosTransporte = 0;
-
-    // Calcular planilla REAL desde window.planillaData
-    let costosPlanilla = calcularPagoPlanilla(
-        planilla, 
-        filtroLocal, 
-        filtroTiempo, 
-        ayerStr, 
-        mesActual, 
-        anioActual, 
-        AppState.filtros?.fechaPersonalizada
-    );
-
-    // Los costos fijos de restaurante, planta, etc.
-    Object.keys(costos).forEach(local => {
-        if (!puedeVerLocal(local) || (filtroLocal !== 'Todos' && local !== filtroLocal)) return;
-        
-        if (costos[local].restaurante) {
-            costosRestaurante += costos[local].restaurante.reduce((sum, c) => sum + (c.monto || 0), 0);
-        }
-        if (costos[local].planta) {
-            costosPlanta += costos[local].planta.reduce((sum, c) => sum + (c.monto || 0), 0);
-        }
-        if (costos[local].oficinas) {
-            costosOficinas += costos[local].oficinas.reduce((sum, c) => sum + (c.monto || 0), 0);
-        }
-        if (costos[local].transporte) {
-            costosTransporte += costos[local].transporte.reduce((sum, c) => sum + (c.monto || 0), 0);
-        }
-    });
+    const ventaEfectivo = ventasFiltradas.reduce((sum, v) => sum + (v.efectivo || 0), 0);
+    const ventaBAC = ventasFiltradas.reduce((sum, v) => sum + (v.bac || 0), 0);
+    const ventaUber = ventasFiltradas.reduce((sum, v) => sum + (v.uber || 0), 0);
+    const ventaPedidosYa = ventasFiltradas.reduce((sum, v) => sum + (v.pedidosYa || 0), 0);
+    const ventaDidi = ventasFiltradas.reduce((sum, v) => sum + (v.didi || 0), 0);
+    const ventaPersonal = ventasFiltradas.reduce((sum, v) => sum + (v.personal || 0), 0);
     
-    // --- SERVICIOS PÚBLICOS (Agua, Luz, Gas) ---
-    let totalServicios = 0;
-    let serviciosAgua = 0;
-    let serviciosLuz = 0;
-    let serviciosGas = 0;
+    // Gastos
+    const planillaCalc = calcularPlanilla(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const ccss = calcularCCSS(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const cesantia = calcularCesantia(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const vacaciones = calcularVacaciones(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const aguinaldos = calcularAguinaldos(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const pago10 = calcularPago10(ventasFiltradas);
+    const comisionUber = calcularComisionesDelivery(ventasFiltradas, 'uber');
+    const comisionPedidosYa = calcularComisionesDelivery(ventasFiltradas, 'pedidosYa');
+    const comisionDidi = calcularComisionesDelivery(ventasFiltradas, 'didi');
+    const comisionDatafonos = calcularComisionDatafonos(ventasFiltradas);
+    const costoMateriaPrima = calcularCostoMateriaPrima(comprasFiltradas);
+    const facturacionBodegas = calcularFacturacionBodegas(facturasFiltradas);
+    const mermasTotal = calcularMermas(mermasFiltradas);
+    const reembolsoDelivery = calcularReembolsoDelivery(ventasFiltradas);
+    const prestamosTotal = calcularPrestamos(prestamosFiltrados);
+    const serviciosCalc = calcularServicios(servicios, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada);
+    const costosFijos = calcularCostosFijos(costos, filtroLocal, filtroTiempo, fechaBaseCostos);
     
-    Object.keys(servicios).forEach(local => {
-        if (!puedeVerLocal(local) || (filtroLocal !== 'Todos' && local !== filtroLocal)) return;
-        
-        servicios[local].forEach(s => {
-            if (filtrarPorFecha(s)) {
-                totalServicios += s.monto || 0;
-                if (s.servicio === 'Agua') serviciosAgua += s.monto || 0;
-                if (s.servicio === 'Electricidad') serviciosLuz += s.monto || 0;
-                if (s.servicio === 'Gas') serviciosGas += s.monto || 0;
-            }
-        });
-    });
+    // Totales
+    const totalGastosOperativos = planillaCalc.total + ccss + cesantia + vacaciones + aguinaldos + pago10 +
+        comisionUber + comisionPedidosYa + comisionDidi + comisionDatafonos + costoMateriaPrima + 
+        facturacionBodegas + mermasTotal + reembolsoDelivery + prestamosTotal + serviciosCalc.total +
+        costosFijos.alquilerLocal + costosFijos.secsa + costosFijos.softRestaurant + costosFijos.internetKolbi +
+        costosFijos.televisionKolbi + costosFijos.adt + costosFijos.fumigacion + costosFijos.polizaRT +
+        costosFijos.depreciacionActivos + costosFijos.patenteComercial + costosFijos.patenteLicores +
+        costosFijos.basuraMunicipal + costosFijos.interesesMoraPatente + costosFijos.certificacionGas +
+        costosFijos.certificacionElectrica + costosFijos.renovacionMinisterioSalud + costosFijos.mantenimiento +
+        costosFijos.haciendaIVA + costosFijos.asesoriaLegalRH + costosFijos.honorariosContabilidad +
+        costosFijos.publicidad + costosFijos.otrosServiciosProfesionales + costosFijos.electricidadPlanta +
+        costosFijos.aguaPlanta + costosFijos.adtPlanta + costosFijos.fumigacionPlanta + costosFijos.softwareSecsaPlanta +
+        costosFijos.ivaHaciendaPlanta + costosFijos.asesoriaLegalPlanta + costosFijos.electricidadOficinas +
+        costosFijos.aguaOficinas + costosFijos.internetOficinas + costosFijos.telefonoCelulares + costosFijos.adtOficinas +
+        costosFijos.mantenimientoPapeleria + costosFijos.softwareHosting + costosFijos.combustible +
+        costosFijos.electricidadBodegas + costosFijos.aguaBodegas + costosFijos.alquilerTaller + costosFijos.gpsNavsat +
+        costosFijos.marchamos + costosFijos.dekra + costosFijos.mantenimientoVehiculos + costosFijos.planillaBodega +
+        costosFijos.alexDuque + costosFijos.polizaRTBodega + costosFijos.ccssBodegaOficinas + costosFijos.planillaOficinas;
     
-    // ✅ LOGS DE DEPURACIÓN FINALES
-    console.log('📊 RESULTADOS FINALES:');
-    console.log('📊 Ventas filtradas:', ventasFiltradas.length, '| Total:', totalVentas);
-    console.log('📊 Compras filtradas:', comprasFiltradas.length, '| Total:', totalCompras);
-    console.log('📊 Mermas filtradas:', mermasFiltradas.length, '| Total:', totalMermas);
-    console.log('📊 Préstamos filtrados:', prestamosFiltrados.length, '| Total:', totalPrestamos);
-    console.log('📊 Facturas filtradas:', facturasFiltradas.length, '| Total:', totalFacturacion);
-    console.log('📊 Servicios:', totalServicios);
-    console.log('📊 Planilla:', costosPlanilla);
+    const totalGastos = totalGastosOperativos;
+    const utilidadAntesImpuestos = totalVentas - totalGastos;
+    const iva = costosFijos.haciendaIVA;
+    const retencionTarjetaVenta = ventaBAC * 0.0531;
+    const utilidadAntesRenta = utilidadAntesImpuestos - iva - retencionTarjetaVenta;
+    const impuestoRenta = utilidadAntesRenta > 0 ? utilidadAntesRenta * 0.30 : 0;
+    const retencionTarjetaRenta = ventaBAC * 0.0171;
+    const utilidadNeta = utilidadAntesRenta - impuestoRenta - retencionTarjetaRenta;
+    const margenUtilidad = totalVentas > 0 ? (utilidadNeta / totalVentas * 100) : 0;
     
-    // ========================================
-    // 4. ARMAR HTML DEL RESUMEN
-    // ========================================
+    // HTML completo - CON ARRENDAMIENTO EN ESTILO NORMAL (sin negrita)
     let html = `
-        <!-- INDICADOR DE FILTROS ACTIVOS -->
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 20px; padding: 20px; margin-bottom: 25px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -2px rgba(0,0,0,0.05);">
-            
-            <!-- Título del indicador -->
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
-                <div style="background: #8b5cf6; width: 4px; height: 24px; border-radius: 4px;"></div>
-                <span style="font-weight: 600; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.85rem;">
-                    <i class="fas fa-sliders-h" style="color: #8b5cf6; margin-right: 8px;"></i>
-                    FILTROS ACTIVOS
-                </span>
-            </div>
-            
-            <!-- Pills de filtros -->
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                
-                <!-- Filtro de Local -->
-                <div style="display: flex; align-items: center; background: white; border-radius: 100px; padding: 8px 16px 8px 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="background: ${filtroLocal === 'Todos' ? '#8b5cf6' : '#10b981'}; width: 8px; height: 8px; border-radius: 8px; margin-right: 10px;"></div>
-                    <i class="fas fa-store" style="color: #64748b; font-size: 0.9rem; margin-right: 8px;"></i>
-                    <span style="font-weight: 500; color: #475569; margin-right: 8px;">Local:</span>
-                    <span style="font-weight: 700; color: ${filtroLocal === 'Todos' ? '#8b5cf6' : '#10b981'};">
-                        ${filtroLocal}
-                    </span>
+        <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 24px; padding: 20px 25px; margin-bottom: 25px; color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <div style="font-size: 0.85rem; opacity: 0.7;">ESTADO DE RESULTADOS</div>
+                    <div style="font-size: 1.4rem; font-weight: 700;">Pérdidas y Ganancias</div>
                 </div>
-                
-                <!-- Filtro de Período -->
-                <div style="display: flex; align-items: center; background: white; border-radius: 100px; padding: 8px 16px 8px 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="background: #8b5cf6; width: 8px; height: 8px; border-radius: 8px; margin-right: 10px;"></div>
-                    <i class="fas fa-calendar-alt" style="color: #64748b; font-size: 0.9rem; margin-right: 8px;"></i>
-                    <span style="font-weight: 500; color: #475569; margin-right: 8px;">Período:</span>
-                    <span style="font-weight: 700; color: #8b5cf6;">
-                        ${obtenerTextoPeriodo(filtroTiempo, AppState.filtros?.fechaPersonalizada)}
-                    </span>
-                </div>
-                
-                <!-- Total de registros -->
-                <div style="display: flex; align-items: center; background: #f1f4f9; border-radius: 100px; padding: 8px 16px; margin-left: auto;">
-                    <i class="fas fa-database" style="color: #64748b; font-size: 0.8rem; margin-right: 6px;"></i>
-                    <span style="color: #475569; font-size: 0.9rem;">
-                        <span style="font-weight: 700;">${ventasFiltradas.length + comprasFiltradas.length + mermasFiltradas.length + prestamosFiltrados.length}</span> registros
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Fecha específica (si es personalizado o ayer) -->
-            ${(filtroTiempo === 'personalizado' || filtroTiempo === 'ayer') ? `
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-clock" style="color: #8b5cf6; font-size: 0.8rem;"></i>
-                <span style="color: #64748b; font-size: 0.9rem;">
-                    Mostrando datos específicos de:
-                    <span style="font-weight: 600; color: #1e293b;">
-                        ${new Date(AppState.filtros?.fechaPersonalizada + 'T12:00:00').toLocaleDateString('es-CR', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                        })}
-                    </span>
-                </span>
-            </div>
-            ` : ''}
-        </div>
-        
-        <!-- TARJETAS DE TOTALES GENERALES -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
-            
-            <!-- Ingresos Totales -->
-            <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 20px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 18px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-shopping-cart" style="font-size: 2rem;"></i>
+                <div style="display: flex; gap: 20px;">
+                    <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 40px;">
+                        <i class="fas fa-store"></i> ${filtroLocal}
                     </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">INGRESOS TOTALES</div>
-                        <div style="font-size: 2rem; font-weight: 700;">
-                            ₡${Math.round(totalVentas).toLocaleString()}
-                        </div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Solo ventas</div>
+                    <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 40px;">
+                        <i class="fas fa-calendar"></i> ${periodoTexto} (${textoVista})
                     </div>
                 </div>
             </div>
-            
-            <!-- Egresos Totales -->
-            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 20px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 18px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-arrow-down" style="font-size: 2rem;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">EGRESOS TOTALES</div>
-                        <div style="font-size: 2rem; font-weight: 700;">
-                            ₡${Math.round(
-                                totalCompras +
-                                totalFacturacion +
-                                totalServicios + 
-                                totalMermas + 
-                                totalPrestamos + 
-                                costosRestaurante + 
-                                costosPlanta + 
-                                costosOficinas + 
-                                costosTransporte + 
-                                totalComisionesVentas +
-                                costosPlanilla
-                            ).toLocaleString()}
-                        </div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Compras + Servicios + Costos + Planilla</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Utilidad Neta -->
-            <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 20px; padding: 25px; color: white; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3);">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 18px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-chart-line" style="font-size: 2rem;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.9rem; opacity: 0.9;">UTILIDAD NETA</div>
-                        <div style="font-size: 2rem; font-weight: 700;">
-                            ₡${Math.round(
-                                totalVentas - 
-                                (totalCompras + totalFacturacion + totalServicios + totalMermas + 
-                                totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + 
-                                costosTransporte + totalComisionesVentas + costosPlanilla)
-                            ).toLocaleString()}
-                        </div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Ingresos - Egresos</div>
-                    </div>
-                </div>
+            <div style="margin-top: 12px; font-size: 0.8rem; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 12px;">
+                <i class="fas fa-chart-line"></i> Costos basados en el período: <strong>${mesTexto}</strong> (${diasDelMes} días)
+                ${esVistaDiaria ? `<span style="color: #fbbf24;"> | Costos diarios = Mensual ÷ ${diasDelMes}</span>` : ''}
             </div>
         </div>
         
-        <!-- ESTADO DE RESULTADOS DETALLADO -->
-        <div class="card" style="margin-bottom: 30px;">
-            <h3 style="margin-bottom: 20px; border-bottom: 2px solid #eef2f6; padding-bottom: 10px;">
-                <i class="fas fa-file-invoice-dollar" style="color: #8b5cf6;"></i> Estado de Resultados
-            </h3>
-            
-            <table style="width: 100%; border-collapse: collapse;">
-                <!-- INGRESOS -->
-                <tr style="background: #f8fafc;">
-                    <td style="padding: 12px 15px; font-weight: 600; border-bottom: 2px solid #e2e8f0;" colspan="2">
-                        <i class="fas fa-arrow-up" style="color: #10b981;"></i> INGRESOS
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 10px 15px 10px 35px;">Ventas Brutas</td>
-                    <td style="padding: 10px 15px; text-align: right; font-weight: 600; color: #10b981;">₡${Math.round(totalVentas).toLocaleString()}</td>
-                </tr>
-
-                <!-- EGRESOS -->
-                <tr style="background: #f8fafc;">
-                    <td style="padding: 15px 15px 12px; font-weight: 600; border-bottom: 2px solid #e2e8f0;" colspan="2">
-                        <i class="fas fa-arrow-down" style="color: #ef4444;"></i> EGRESOS
-                    </td>
-                </tr>
+        <div class="card" style="overflow-x: auto; padding: 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th colspan="2" style="padding: 15px 20px; text-align: left; font-size: 1rem; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-arrow-up" style="color: #10b981; margin-right: 10px;"></i> INGRESOS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (EFECTIVO)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaEfectivo).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (BAC)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaBAC).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (UBER)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaUber).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (PEDIDOS YA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaPedidosYa).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (DIDI FOOD)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaDidi).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (PERSONAL)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaPersonal).toLocaleString()}</td></tr>
+                    <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0;">
+                        <td style="padding: 12px 20px;">TOTAL GENERAL INGRESOS</td>
+                        <td style="padding: 12px 20px; text-align: right; color: #10b981;">₡${Math.round(totalVentas).toLocaleString()}</td>
+                    </tr>
+                </tbody>
                 
-                <!-- Costo de Ventas -->
-                <tr>
-                    <td style="padding: 10px 15px 10px 35px; color: #475569;">Costo de Ventas (Materia Prima)</td>
-                    <td style="padding: 10px 15px; text-align: right; color: #ef4444;">₡${Math.round(totalCompras).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 10px 35px; color: #475569;">Mermas</td>
-                    <td style="padding: 5px 15px 10px; text-align: right; color: #ef4444;">₡${Math.round(totalMermas).toLocaleString()}</td>
-                </tr>
-
-                <!-- Costo de Bodega -->
-                <tr>
-                    <td style="padding: 5px 15px 10px 35px; color: #475569;">Facturación de Bodegas (costo)</td>
-                    <td style="padding: 5px 15px 10px; text-align: right; color: #ef4444;">₡${Math.round(totalFacturacion).toLocaleString()}</td>
-                </tr>
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th colspan="2" style="padding: 15px 20px; text-align: left; font-size: 1rem; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-arrow-down" style="color: #ef4444; margin-right: 10px;"></i> GASTOS OPERATIVOS
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Planilla Base</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.salarioBase).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Horas Extras</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.horasExtras).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x CCSS (26.5%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ccss).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Cesantía (5.33%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(cesantia).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Vacaciones (4.16%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(vacaciones).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Aguinaldos (8.33%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(aguinaldos).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Pago 10%</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(pago10).toLocaleString()}</td></tr>
+                    <!-- Gasto x Arrendamiento - ESTILO NORMAL (sin negrita) -->
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Arrendamiento</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.alquilerLocal).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Eléctrico</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.electricidad).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Gas</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.gas).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Agua</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.agua).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x SOFTWARE SECSA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.secsa).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x SOFT-RESTAURANT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.softRestaurant).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">INTERNET</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.internetKolbi).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">TELEVISIÓN</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.televisionKolbi).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio ADT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.adt).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Fumigación</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.fumigacion).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Póliza RT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.polizaRT).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x DEPRECIACION ACTIVOS</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.depreciacionActivos).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x PATENTE COMERCIAL</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.patenteComercial).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x PATENTE LICORES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.patenteLicores).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">BASURA MUNICIPAL</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.basuraMunicipal).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">INTERESES x MORA PATENTE</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.interesesMoraPatente).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">CERTIFICACION DE GAS</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.certificacionGas).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">CERTIFICACION ELECTRICA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.certificacionElectrica).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x RENOVACIÓN SALUD</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.renovacionMinisterioSalud).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x MANTENIMIENTO</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.mantenimiento).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">HACIENDA IVA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.haciendaIVA).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">ASESORIA LEGAL RH</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.asesoriaLegalRH).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Honorarios Contabilidad</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.honorariosContabilidad).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">SERV. PROF PUBLICIDAD</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.publicidad).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">OTROS SERVICIOS PROFESIONALES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.otrosServiciosProfesionales).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión Datafonos (BAC)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisionDatafonos).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (UBER)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisionUber).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (PEDIDOS YA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisionPedidosYa).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (DIDI FOOD)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisionDidi).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x COMPRA PROVEEDORES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costoMateriaPrima).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Costo Diario (MATERIA PRIMA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(facturacionBodegas).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Merma</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(mermasTotal).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Reembolso Delivery</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(reembolsoDelivery).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Préstamos a Empleados</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(prestamosTotal).toLocaleString()}</td></tr>
+                </tbody>
                 
-                <!-- Gastos Operativos -->
-                <tr>
-                    <td style="padding: 10px 15px 5px 35px; font-weight: 500;">Gastos Operativos</td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Planilla (Restaurantes)</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(costosPlanilla).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Arrendamiento / Servicios (Luz, Agua, Gas)</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(totalServicios).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Comisiones por Ventas</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(totalComisionesVentas).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Otros Costos Fijos (Restaurante)</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(costosRestaurante).toLocaleString()}</td>
-                </tr>
-                
-                <!-- Gastos de Logística -->
-                <tr>
-                    <td style="padding: 15px 15px 5px 35px; font-weight: 500;">Gastos de Logística</td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Planta de Producción</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(costosPlanta).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 5px 50px; color: #64748b; font-size: 0.95rem;">- Oficinas</td>
-                    <td style="padding: 5px 15px; text-align: right; color: #ef4444;">₡${Math.round(costosOficinas).toLocaleString()}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 10px 50px; color: #64748b; font-size: 0.95rem;">- Bodegas y Transporte</td>
-                    <td style="padding: 5px 15px 10px; text-align: right; color: #ef4444;">₡${Math.round(costosTransporte).toLocaleString()}</td>
-                </tr>
-                
-                <!-- Otros Egresos -->
-                <tr>
-                    <td style="padding: 10px 15px 5px 35px; font-weight: 500;">Otros Egresos</td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 15px 15px 50px; color: #64748b; font-size: 0.95rem;">- Préstamos a Empleados</td>
-                    <td style="padding: 5px 15px 15px; text-align: right; color: #ef4444;">₡${Math.round(totalPrestamos).toLocaleString()}</td>
-                </tr>
-
-                <!-- TOTAL EGRESOS -->
-                <tr style="background: #fef2f2;">
-                    <td style="padding: 15px; font-weight: 700; color: #b91c1c;">TOTAL EGRESOS</td>
-                    <td style="padding: 15px; text-align: right; font-weight: 700; color: #b91c1c;">
-                        ₡${Math.round(
-                            totalCompras + 
-                            totalFacturacion + 
-                            totalServicios + 
-                            totalMermas + 
-                            totalPrestamos + 
-                            costosRestaurante + 
-                            costosPlanta + 
-                            costosOficinas + 
-                            costosTransporte + 
-                            totalComisionesVentas + 
-                            costosPlanilla
-                        ).toLocaleString()}
-                    </td>
-                </tr>
-
-                <!-- UTILIDAD NETA -->
-                <tr style="background: #f0fdf4;">
-                    <td style="padding: 18px 15px; font-weight: 800; font-size: 1.2rem; color: #166534;">UTILIDAD NETA</td>
-                    <td style="padding: 18px 15px; text-align: right; font-weight: 800; font-size: 1.2rem; color: #166534;">
-                        ₡${Math.round(
-                            totalVentas - 
-                            (totalCompras + totalFacturacion + totalServicios + totalMermas + 
-                            totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + 
-                            costosTransporte + totalComisionesVentas + costosPlanilla)
-                        ).toLocaleString()}
-                    </td>
-                </tr>
-
-                <!-- MARGEN DE UTILIDAD -->
-                <tr>
-                    <td style="padding: 10px 15px; color: #64748b;">Margen de Utilidad</td>
-                    <td style="padding: 10px 15px; text-align: right; font-weight: 600; color: #059669;">
-                        ${totalVentas > 0 ? ((totalVentas - (totalCompras + totalFacturacion + totalServicios + totalMermas + totalPrestamos + costosRestaurante + costosPlanta + costosOficinas + costosTransporte + totalComisionesVentas + costosPlanilla)) / totalVentas * 100).toFixed(2) : 0}%
-                    </td>
-                </tr>
+                <tbody>
+                    <tr style="background: #fef2f2;">
+                        <td style="padding: 15px 20px; font-weight: 700;">TOTAL GENERAL GASTOS</td>
+                        <td style="padding: 15px 20px; text-align: right; font-weight: 700; color: #b91c1c;">₡${Math.round(totalGastos).toLocaleString()}</td>
+                    </tr>
+                    <tr><td style="padding: 12px 20px;">Utilidad Antes de Impuestos</td><td style="padding: 12px 20px; text-align: right;">₡${Math.round(utilidadAntesImpuestos).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">IVA (Impuesto Valor Agregado)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(iva).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Retención de tarjeta (5.31%) - imp venta</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(retencionTarjetaVenta).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 12px 20px;">Utilidad antes del impuesto de renta</td><td style="padding: 12px 20px; text-align: right;">₡${Math.round(utilidadAntesRenta).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Impuesto de Renta (30%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(impuestoRenta).toLocaleString()}</td></tr>
+                    <tr><td style="padding: 10px 20px 10px 40px;">Retención de tarjeta (1.71%) - imp renta</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(retencionTarjetaRenta).toLocaleString()}</td></tr>
+                    <tr style="background: #f0fdf4;">
+                        <td style="padding: 18px 20px; font-weight: 800; font-size: 1.1rem;">UTILIDAD O PÉRDIDA NETA</td>
+                        <td style="padding: 18px 20px; text-align: right; font-weight: 800; font-size: 1.1rem; color: ${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">₡${Math.round(utilidadNeta).toLocaleString()}</td>
+                    </tr>
+                    <tr><td style="padding: 12px 20px;">Margen de Utilidad</td><td style="padding: 12px 20px; text-align: right; font-weight: 600;">${margenUtilidad.toFixed(2)}%</td></tr>
+                </tbody>
             </table>
         </div>
         
-        <!-- TARJETAS DE DESGLOSE POR CATEGORÍA -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 25px;">
-            
-            <!-- Compras -->
-            <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <div style="background: #fef3c7; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-truck" style="color: #f59e0b;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: #64748b;">COMPRAS</div>
-                        <div style="font-size: 1.2rem; font-weight: 700;">₡${Math.round(totalCompras).toLocaleString()}</div>
-                    </div>
-                </div>
-                <div style="font-size: 0.85rem; color: #475569;">${comprasFiltradas.length} facturas</div>
-            </div>
-            
-            <!-- Servicios -->
-            <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <div style="background: #dbeafe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-bolt" style="color: #3b82f6;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: #64748b;">SERVICIOS</div>
-                        <div style="font-size: 1.2rem; font-weight: 700;">₡${Math.round(totalServicios).toLocaleString()}</div>
-                    </div>
-                </div>
-                <div style="font-size: 0.85rem; color: #475569;">Agua: ₡${Math.round(serviciosAgua).toLocaleString()} | Luz: ₡${Math.round(serviciosLuz).toLocaleString()}</div>
-            </div>
-            
-            <!-- Mermas -->
-            <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <div style="background: #fee2e2; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-trash-alt" style="color: #ef4444;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: #64748b;">MERMAS</div>
-                        <div style="font-size: 1.2rem; font-weight: 700;">₡${Math.round(totalMermas).toLocaleString()}</div>
-                    </div>
-                </div>
-                <div style="font-size: 0.85rem; color: #475569;">${mermasFiltradas.length} registros</div>
-            </div>
-            
-            <!-- Préstamos -->
-            <div style="background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <div style="background: #f3e8ff; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-hand-holding-usd" style="color: #8b5cf6;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.8rem; color: #64748b;">PRÉSTAMOS</div>
-                        <div style="font-size: 1.2rem; font-weight: 700;">₡${Math.round(totalPrestamos).toLocaleString()}</div>
-                    </div>
-                </div>
-                <div style="font-size: 0.85rem; color: #475569;">${prestamosFiltrados.length} registros</div>
-            </div>
+        <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 16px; text-align: center; font-size: 0.8rem; color: #64748b;">
+            <i class="fas fa-chart-line"></i> Estado de Resultados al ${new Date().toLocaleDateString('es-CR')} | 
+            Costos basados en el período: <strong>${mesTexto}</strong> (${diasDelMes} días)
         </div>
     `;
     
     resumenContent.innerHTML = html;
 }
 
-function calcularPagoPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada) {
-    let totalPlanilla = 0;
-    
-    // PORCENTAJES (igual que en planilla.js)
-    const PORCENTAJES = {
-        ordinarias: 1.0,
-        extras: 1.5,
-        nocturnas: 1.2,
-        extrasNocturnas: 1.8
-    };
-    
-    Object.keys(planillaData).forEach(local => {
-        // Filtrar por local
-        if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
-        if (!puedeVerLocal(local)) return;
-        
-        const empleados = planillaData[local] || [];
-        
-        empleados.forEach(emp => {
-            if (!emp.horas) return;
-            
-            // Determinar qué fechas incluir según el filtro
-            Object.keys(emp.horas).forEach(fechaStr => {
-                const fecha = fechaStr.split('T')[0];
-                
-                // Aplicar filtro de tiempo
-                if (filtroTiempo === 'ayer' && fecha !== ayerStr) return;
-                if (filtroTiempo === 'mes' && fecha.substring(0, 7) !== mesActual) return;
-                if (filtroTiempo === 'anio' && fecha.substring(0, 4) !== anioActual) return;
-                if (filtroTiempo === 'personalizado' && fecha !== fechaPersonalizada) return;
-                
-                const horas = emp.horas[fechaStr];
-                const salarioHora = (emp.salario || 0) / 240;
-                
-                // Calcular cada tipo de hora con su porcentaje
-                const pagoOrdinarias = (horas.ordinarias || 0) * salarioHora * PORCENTAJES.ordinarias;
-                const pagoExtras = (horas.extras || 0) * salarioHora * PORCENTAJES.extras;
-                const pagoNocturnas = (horas.nocturnas || 0) * salarioHora * PORCENTAJES.nocturnas;
-                const pagoExtrasNocturnas = (horas.extrasNocturnas || 0) * salarioHora * PORCENTAJES.extrasNocturnas;
-                
-                totalPlanilla += pagoOrdinarias + pagoExtras + pagoNocturnas + pagoExtrasNocturnas;
-            });
-        });
-    });
-    
-    return totalPlanilla;
+function initResumen() {
+    console.log('🚀 Inicializando módulo de Resumen...');
+    setTimeout(() => {
+        if (AppState?.usuario) renderResumen();
+        else console.log('⏳ Esperando autenticación...');
+    }, 100);
 }
 
-// ============================================
-// EXPORTAR FUNCIONES
-// ============================================
 window.initResumen = initResumen;
 window.renderResumen = renderResumen;
-
-console.log('✅ resumen.js cargado - Módulo de resumen financiero');
+console.log('✅ resumen.js cargado - Versión completa con todos los gastos');

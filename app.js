@@ -236,22 +236,120 @@ function cargarLocalesEnVentas() {
     });
 }
 
-// ===== INICIALIZAR FILTROS =====
+// ===== FUNCIÓN PARA OBTENER NOMBRE DE MES =====
+function getNombreMes(numero) {
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return meses[numero - 1] || '';
+}
+
+// ===== FUNCIÓN PARA FORMATEAR FECHAS =====
+function formatearFechaCR(fechaStr) {
+    if (!fechaStr) return '';
+    const [year, month, day] = fechaStr.split('-');
+    return `${day}/${month}/${year}`;
+}
+
+// ===== OBTENER RANGO DE FECHAS SEGÚN FILTRO =====
+function obtenerRangoFechas() {
+    const filtroTiempo = AppState.filtros?.tiempo || 'todos';
+    const hoy = new Date();
+    let inicio = null;
+    let fin = null;
+    let nombre = '';
+    
+    // Ajustar zona horaria de Costa Rica
+    const crDate = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+    
+    switch(filtroTiempo) {
+        case 'ayer':
+            inicio = new Date(crDate);
+            inicio.setDate(crDate.getDate() - 1);
+            fin = new Date(inicio);
+            nombre = `Ayer (${inicio.toLocaleDateString('es-CR')})`;
+            break;
+            
+        case 'mes':
+            inicio = new Date(crDate.getFullYear(), crDate.getMonth(), 1);
+            fin = new Date(crDate.getFullYear(), crDate.getMonth() + 1, 0);
+            nombre = `${getNombreMes(crDate.getMonth() + 1)} ${crDate.getFullYear()}`;
+            break;
+            
+        case 'anio':
+            inicio = new Date(crDate.getFullYear(), 0, 1);
+            fin = new Date(crDate.getFullYear(), 11, 31);
+            nombre = `Año ${crDate.getFullYear()}`;
+            break;
+            
+        case 'rango':
+            const fechaInicio = document.getElementById('filtroFechaInicio')?.value;
+            const fechaFin = document.getElementById('filtroFechaFin')?.value;
+            if (fechaInicio && fechaFin) {
+                inicio = fechaInicio;
+                fin = fechaFin;
+                nombre = `${formatearFechaCR(fechaInicio)} → ${formatearFechaCR(fechaFin)}`;
+            }
+            break;
+            
+        case 'personalizado':
+            const fechaPer = AppState.filtros?.fechaPersonalizada;
+            if (fechaPer) {
+                inicio = fechaPer;
+                fin = fechaPer;
+                nombre = formatearFechaCR(fechaPer);
+            }
+            break;
+            
+        default:
+            inicio = null;
+            fin = null;
+            nombre = 'Todos los datos';
+            break;
+    }
+    
+    // Convertir a string YYYY-MM-DD
+    const formatoFecha = (date) => {
+        if (!date) return null;
+        if (typeof date === 'string') return date;
+        return date.toISOString().split('T')[0];
+    };
+    
+    const rango = {
+        inicio: formatoFecha(inicio),
+        fin: formatoFecha(fin),
+        nombre: nombre
+    };
+    
+    console.log('📅 Rango calculado:', rango);
+    return rango;
+}
+
+// ===== INICIALIZAR FILTROS CON SOPORTE PARA RANGO =====
 function inicializarFiltros() {
+    console.log('🎯 Inicializando filtros...');
     cargarLocalesEnFiltro();
     
     const filtroTiempo = document.getElementById('filtroTiempo');
-    const grupoFecha = document.getElementById('grupoFechaPersonalizado');
+    const grupoFechaPersonalizado = document.getElementById('grupoFechaPersonalizado');
+    const grupoRangoFechas = document.getElementById('grupoRangoFechas');
+    const filtroFechaInicio = document.getElementById('filtroFechaInicio');
+    const filtroFechaFin = document.getElementById('filtroFechaFin');
     const filtroFecha = document.getElementById('filtroFechaPersonalizado');
     
     if (filtroTiempo) {
         filtroTiempo.value = 'todos';
+        AppState.filtros.tiempo = 'todos';
         
         filtroTiempo.addEventListener('change', function(e) {
-            AppState.filtros.tiempo = e.target.value;
+            const valor = e.target.value;
+            AppState.filtros.tiempo = valor;
             
-            if (e.target.value === 'personalizado') {
-                grupoFecha.style.display = 'flex';
+            // Ocultar todos los grupos adicionales
+            if (grupoFechaPersonalizado) grupoFechaPersonalizado.style.display = 'none';
+            if (grupoRangoFechas) grupoRangoFechas.style.display = 'none';
+            
+            // Mostrar el grupo correspondiente
+            if (valor === 'personalizado') {
+                grupoFechaPersonalizado.style.display = 'flex';
                 if (!filtroFecha.value) {
                     const fechaActual = new Date();
                     const año = fechaActual.getFullYear();
@@ -260,30 +358,65 @@ function inicializarFiltros() {
                     filtroFecha.value = `${año}-${mes}-${dia}`;
                     AppState.filtros.fechaPersonalizada = `${año}-${mes}-${dia}`;
                 }
-            } else {
-                grupoFecha.style.display = 'none';
+            } else if (valor === 'rango') {
+                grupoRangoFechas.style.display = 'flex';
+                // Establecer fechas por defecto (últimos 30 días)
+                if (!filtroFechaInicio.value || !filtroFechaFin.value) {
+                    const hoy = new Date();
+                    const hace30Dias = new Date(hoy);
+                    hace30Dias.setDate(hoy.getDate() - 30);
+                    filtroFechaInicio.value = hace30Dias.toISOString().split('T')[0];
+                    filtroFechaFin.value = hoy.toISOString().split('T')[0];
+                }
             }
+            
             actualizarVistasPorFiltro();
         });
     }
     
+    // Eventos para rango de fechas
+    if (filtroFechaInicio) {
+        filtroFechaInicio.addEventListener('change', () => {
+            if (filtroFechaFin?.value) {
+                actualizarVistasPorFiltro();
+            }
+        });
+    }
+    if (filtroFechaFin) {
+        filtroFechaFin.addEventListener('change', () => {
+            if (filtroFechaInicio?.value) {
+                actualizarVistasPorFiltro();
+            }
+        });
+    }
+    
+    // Evento para fecha personalizada
     if (filtroFecha) {
-        filtroFecha.addEventListener('change', function(e) {
+        filtroFecha.addEventListener('change', (e) => {
             AppState.filtros.fechaPersonalizada = e.target.value;
             actualizarVistasPorFiltro();
         });
     }
     
-    const fechaActual = new Date();
-    const año = fechaActual.getFullYear();
-    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
-    const dia = String(fechaActual.getDate()).padStart(2, '0');
-    AppState.filtros.fechaPersonalizada = `${año}-${mes}-${dia}`;
+    // Inicializar rango
+    const rango = obtenerRangoFechas();
+    AppState.filtros.rango = rango;
+    console.log('✅ Filtros inicializados, rango:', rango);
 }
 
 // ===== ACTUALIZAR VISTAS SEGÚN FILTROS =====
 function actualizarVistasPorFiltro() {
     const moduloActivo = document.querySelector('.module.active')?.id;
+    
+    // Calcular y guardar rango actualizado
+    const rango = obtenerRangoFechas();
+    AppState.filtros.rango = rango;
+    
+    console.log('🔄 Actualizando vista:', moduloActivo);
+    console.log('   - Local:', AppState.filtros.local);
+    console.log('   - Tiempo:', AppState.filtros.tiempo);
+    console.log('   - Rango:', rango);
+    
     if (moduloActivo === 'ventas' && window.renderVentas) {
         window.renderVentas();
     } else if (moduloActivo === 'dashboard' && window.renderDashboard) {
@@ -294,19 +427,19 @@ function actualizarVistasPorFiltro() {
         window.renderUsuarios();
     } else if (moduloActivo === 'planilla' && window.renderPlanilla) {
         window.renderPlanilla();
-    }else if (moduloActivo === 'servicios' && window.renderServicios) {
+    } else if (moduloActivo === 'servicios' && window.renderServicios) {
         window.renderServicios();
-    }else if (moduloActivo === 'merma' && window.renderMerma) {
+    } else if (moduloActivo === 'merma' && window.renderMerma) {
         window.renderMerma();
-    }else if (moduloActivo === 'logistica' && window.renderLogistica) {
+    } else if (moduloActivo === 'logistica' && window.renderLogistica) {
         window.renderLogistica();
-    }else if (moduloActivo === 'facturacion' && window.renderFacturacion) {
+    } else if (moduloActivo === 'facturacion' && window.renderFacturacion) {
         window.renderFacturacion();
-    }else if (moduloActivo === 'prestamo' && window.renderPrestamo) {
+    } else if (moduloActivo === 'prestamo' && window.renderPrestamo) {
         window.renderPrestamo();
-    }else if (moduloActivo === 'compras' && window.renderCompras) {
+    } else if (moduloActivo === 'compras' && window.renderCompras) {
         window.renderCompras();
-    }else if (moduloActivo === 'resumen' && window.renderResumen) {
+    } else if (moduloActivo === 'resumen' && window.renderResumen) {
         window.renderResumen();
     }
 }  

@@ -1,4 +1,5 @@
-// modules/servicios.js
+// modules/servicios.js - VERSIÓN MODIFICADA
+// Gas ahora solo tiene FECHA y MONTO
 
 // ============================================
 // CONFIGURACIÓN DE SERVICIOS
@@ -13,7 +14,7 @@ const TIPOS_SERVICIO = {
 const PRECIOS_DEFAULT = {
     Agua: 1500,      // ₡ por M³
     Electricidad: 120 // ₡ por kWh
-    // Gas no tiene precio fijo
+    // Gas no tiene precio fijo, solo monto de factura
 };
 
 // ============================================
@@ -59,7 +60,7 @@ function cargarServiciosDesdeFirebase() {
 }
 
 // ============================================
-// RENDERIZAR VISTA DE SERVICIOS
+// RENDERIZAR VISTA DE SERVICIOS (MODIFICADO PARA GAS SIMPLE)
 // ============================================
 function renderServicios() {
     console.log('📊 Renderizando servicios...');
@@ -73,10 +74,6 @@ function renderServicios() {
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
     const serviciosData = window.serviciosData || {};
     
-    console.log('📍 Filtro Local:', filtroLocal);
-    console.log('📍 Filtro Tiempo:', filtroTiempo);
-    console.log('📦 Datos completos:', serviciosData);
-    
     // Calcular fechas para filtros
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
@@ -84,11 +81,6 @@ function renderServicios() {
     const ayerStr = ayer.toLocaleDateString('en-CA');
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
-    
-    console.log('📅 Hoy:', hoyStr);
-    console.log('📅 Ayer:', ayerStr);
-    console.log('📅 Mes:', mesActual);
-    console.log('📅 Año:', anioActual);
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
@@ -106,9 +98,7 @@ function renderServicios() {
         </div>
     `;
     
-    // Verificar si hay datos
     if (Object.keys(serviciosData).length === 0) {
-        console.log('📭 No hay servicios registrados en Firebase');
         html += `
             <div class="card" style="padding: 40px; text-align: center;">
                 <i class="fas fa-bolt" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
@@ -120,15 +110,10 @@ function renderServicios() {
         return;
     }
     
-    // Filtrar por permisos
     const localesPermitidos = getLocalesPermitidos();
-    console.log('🔑 Locales permitidos:', localesPermitidos);
-    
     const localesAMostrar = filtroLocal === 'Todos' 
         ? Object.keys(serviciosData).filter(local => puedeVerLocal(local))
         : [filtroLocal].filter(l => puedeVerLocal(l) && serviciosData[l]);
-    
-    console.log('🏢 Locales a mostrar:', localesAMostrar);
     
     if (localesAMostrar.length === 0) {
         html += `
@@ -146,43 +131,26 @@ function renderServicios() {
     let resumen = { 
         Agua: { consumo: 0, monto: 0 }, 
         Electricidad: { consumo: 0, monto: 0 }, 
-        Gas: { cantidad: 0, monto: 0 } 
+        Gas: { monto: 0 }  // Gas ya no tiene cantidad
     };
     let hayRegistrosVisibles = false;
     
     for (const local of localesAMostrar) {
         const servicios = serviciosData[local] || [];
-        console.log(`📍 ${local}: ${servicios.length} servicios totales`);
         
         // Filtrar por fecha
         const serviciosFiltrados = servicios.filter(s => {
             const fechaServicio = limpiarFecha(s.fecha);
-            if (!fechaServicio) {
-                console.log('⚠️ Servicio sin fecha:', s);
-                return false;
-            }
+            if (!fechaServicio) return false;
             
-            // Si el filtro es 'todos', mostrar todos
             if (filtroTiempo === 'todos') return true;
-            
-            // Aplicar filtros específicos
-            if (filtroTiempo === 'ayer') {
-                return fechaServicio === ayerStr;
-            }
-            if (filtroTiempo === 'mes') {
-                return fechaServicio.substring(0, 7) === mesActual;
-            }
-            if (filtroTiempo === 'anio') {
-                return fechaServicio.substring(0, 4) === anioActual;
-            }
-            if (filtroTiempo === 'personalizado') {
-                return fechaServicio === AppState.filtros?.fechaPersonalizada;
-            }
+            if (filtroTiempo === 'ayer') return fechaServicio === ayerStr;
+            if (filtroTiempo === 'mes') return fechaServicio.substring(0, 7) === mesActual;
+            if (filtroTiempo === 'anio') return fechaServicio.substring(0, 4) === anioActual;
+            if (filtroTiempo === 'personalizado') return fechaServicio === AppState.filtros?.fechaPersonalizada;
             
             return true;
         });
-        
-        console.log(`📊 ${local}: ${serviciosFiltrados.length} servicios después del filtro de fecha`);
         
         if (serviciosFiltrados.length === 0) continue;
         
@@ -225,7 +193,6 @@ function renderServicios() {
             let precioUnitario = '';
             
             if (s.servicio === 'Agua') {
-                // Mostrar los consumos parciales calculados (no las lecturas originales)
                 const consumoMisc = s.consumoMisc?.toFixed(3) || '0.000';
                 const consumoOp = s.consumoOp?.toFixed(3) || '0.000';
                 const consumoCerrado = s.consumoCerrado?.toFixed(3) || '0.000';
@@ -234,24 +201,24 @@ function renderServicios() {
                 cantidad = s.consumo || 0;
                 unidad = 'M³';
                 precioUnitario = s.precioUnitario ? `₡${s.precioUnitario}/M³` : '—';
-                precioUnitario = s.precioUnitario ? `₡${s.precioUnitario}/M³` : '—'; 
-            }   else if (s.servicio === 'Electricidad') {
-                    // Mostrar las lecturas originales y el consumo calculado
-                    const apertura = s.apertura?.toFixed(1) || '0.0';
-                    const cierre = s.cierre?.toFixed(1) || '0.0';
-                    const consumo = s.consumo?.toFixed(1) || '0.0';
-                    
-                    detalle = `📊 Apertura: ${apertura} kWh | Cierre: ${cierre} kWh | Consumo: ${consumo} kWh`;
-                    cantidad = s.consumo || 0;
-                    unidad = 'kWh';
-                    precioUnitario = s.precioUnitario ? `₡${s.precioUnitario}/kWh` : '—';
-                }else if (s.servicio === 'Gas') {
-                    // Gas es simple: solo cantidad y monto total
-                    detalle = `Recarga de gas`;  // Simple y directo
-                    cantidad = s.cantidad || 0;
-                    unidad = s.unidad || 'kg';
-                    precioUnitario = s.cantidad ? `₡${Math.round(s.monto / s.cantidad)}/${s.unidad || 'kg'}` : '—';
-                }
+            } 
+            else if (s.servicio === 'Electricidad') {
+                const apertura = s.apertura?.toFixed(1) || '0.0';
+                const cierre = s.cierre?.toFixed(1) || '0.0';
+                const consumo = s.consumo?.toFixed(1) || '0.0';
+                
+                detalle = `📊 Apertura: ${apertura} kWh | Cierre: ${cierre} kWh | Consumo: ${consumo} kWh`;
+                cantidad = s.consumo || 0;
+                unidad = 'kWh';
+                precioUnitario = s.precioUnitario ? `₡${s.precioUnitario}/kWh` : '—';
+            }
+            else if (s.servicio === 'Gas') {
+                // GAS SIMPLE: solo muestra el monto de la factura
+                detalle = `Factura de gas - ${s.proveedor || 'Proveedor no especificado'}`;
+                cantidad = 0;  // Ya no mostramos cantidad
+                unidad = '';   // Sin unidad
+                precioUnitario = '—';  // Sin precio unitario
+            }
             
             totalGeneral += (s.monto || 0);
             if (s.servicio === 'Agua') {
@@ -261,7 +228,6 @@ function renderServicios() {
                 resumen.Electricidad.consumo += (s.consumo || 0);
                 resumen.Electricidad.monto += (s.monto || 0);
             } else if (s.servicio === 'Gas') {
-                resumen.Gas.cantidad += (s.cantidad || 0);
                 resumen.Gas.monto += (s.monto || 0);
             }
             
@@ -278,18 +244,17 @@ function renderServicios() {
                     </td>
                     <td>${s.medidor || '—'}</td>
                     <td><small>${detalle}</small></td>
-                    <td><strong>${cantidad.toFixed(3)} ${unidad}</strong></td>
+                    <td>
+                        ${cantidad > 0 ? `<strong>${cantidad.toFixed(3)} ${unidad}</strong>` : '—'}
+                    </td>
                     <td style="font-weight: 600; color: #059669;">₡${(s.monto || 0).toLocaleString()}</td>
                     <td><small>${precioUnitario}</small></td>
                     <td>
                         <div style="display: flex; gap: 5px;">
-                            <!-- Todos pueden editar -->
                             <button class="btn btn-sm btn-outline" onclick="window.editarServicio('${local}', '${s.id}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            
                             ${esGerencia() ? `
-                                <!-- Solo gerencia puede eliminar -->
                                 <button class="btn btn-sm btn-danger" onclick="window.eliminarServicio('${local}', '${s.id}')" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -306,18 +271,16 @@ function renderServicios() {
         html += `<div style="text-align: right; margin-top: 10px;"><strong>Total ${local}: ₡${totalLocal.toLocaleString()}</strong></div>`;
     }
     
-    // Si no hay registros después del filtro
     if (!hayRegistrosVisibles) {
         html += `
             <div class="card" style="background: #f1f5f9; color: #64748b; text-align: center; padding: 30px;">
                 <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 10px;"></i>
                 <h3>No hay servicios para el período seleccionado</h3>
                 <p>Cambie los filtros de fecha para ver más registros.</p>
-                <p style="font-size: 0.9rem; margin-top: 10px;">Filtro actual: ${filtroTiempo === 'todos' ? 'Todos' : filtroTiempo}</p>
             </div>
         `;
     } else {
-        // Resumen general (solo si hay datos)
+        // Resumen general
         html += `
             <div class="card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-top: 20px;">
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center;">
@@ -337,7 +300,7 @@ function renderServicios() {
                     </div>
                     <div>
                         <div><i class="fas fa-fire"></i> GAS</div>
-                        <div>${resumen.Gas.cantidad.toFixed(1)} kg</div>
+                        <div>—</div>
                         <div>₡${resumen.Gas.monto.toLocaleString()}</div>
                     </div>
                 </div>
@@ -345,27 +308,11 @@ function renderServicios() {
         `;
     }
     
-    console.log('✅ HTML generado, actualizando contenido');
     serviciosContent.innerHTML = html;
-    
-    // Forzar asignación de eventos a los botones
-    setTimeout(() => {
-        const botones = document.querySelectorAll('button');
-        botones.forEach(btn => {
-            if (btn.innerHTML && btn.innerHTML.includes('Nuevo Servicio')) {
-                console.log('✅ Botón Nuevo Servicio asignado');
-                btn.onclick = function(e) {
-                    e.preventDefault();
-                    window.mostrarModalServicio();
-                    return false;
-                };
-            }
-        });
-    }, 100);
 }
 
 // ============================================
-// MOSTRAR MODAL NUEVO SERVICIO
+// MOSTRAR MODAL NUEVO SERVICIO (GAS SIMPLIFICADO)
 // ============================================
 function mostrarModalServicio(editLocal = null, editId = null) {
     console.log('📝 Mostrando modal servicio:', { editLocal, editId });
@@ -382,15 +329,11 @@ function mostrarModalServicio(editLocal = null, editId = null) {
     // Limpiar formulario
     const fechaInput = document.getElementById('servicioFecha');
     if (fechaInput) {
-        // CORREGIDO: Usar fecha local en lugar de ISO
         const hoy = new Date();
         const año = hoy.getFullYear();
         const mes = String(hoy.getMonth() + 1).padStart(2, '0');
         const dia = String(hoy.getDate()).padStart(2, '0');
-        const fechaCorrecta = `${año}-${mes}-${dia}`;
-        
-        fechaInput.value = fechaCorrecta;
-        console.log('📅 Fecha local correcta:', fechaCorrecta);
+        fechaInput.value = `${año}-${mes}-${dia}`;
     }
     
     const tipoInput = document.getElementById('servicioTipo');
@@ -399,39 +342,33 @@ function mostrarModalServicio(editLocal = null, editId = null) {
     const medidorInput = document.getElementById('servicioMedidor');
     if (medidorInput) medidorInput.value = '';
     
-    const consumoInput = document.getElementById('servicioConsumo');
-    if (consumoInput) consumoInput.value = '';
-    
     const montoInput = document.getElementById('servicioMonto');
     if (montoInput) montoInput.value = '';
     
     // Limpiar campos específicos
-    if (document.getElementById('aguaMiscelaneo')) document.getElementById('aguaMiscelaneo').value = '';
-    if (document.getElementById('aguaOperacion')) document.getElementById('aguaOperacion').value = '';
-    if (document.getElementById('aguaCerrado')) document.getElementById('aguaCerrado').value = '';
+    if (document.getElementById('aguaMiscApertura')) document.getElementById('aguaMiscApertura').value = '';
+    if (document.getElementById('aguaMiscCierre')) document.getElementById('aguaMiscCierre').value = '';
+    if (document.getElementById('aguaOpApertura')) document.getElementById('aguaOpApertura').value = '';
+    if (document.getElementById('aguaOpCierre')) document.getElementById('aguaOpCierre').value = '';
+    if (document.getElementById('aguaCerradoApertura')) document.getElementById('aguaCerradoApertura').value = '';
+    if (document.getElementById('aguaCerradoCierre')) document.getElementById('aguaCerradoCierre').value = '';
     if (document.getElementById('energiaApertura')) document.getElementById('energiaApertura').value = '';
     if (document.getElementById('energiaCierre')) document.getElementById('energiaCierre').value = '';
-    if (document.getElementById('gasCantidad')) document.getElementById('gasCantidad').value = '';
-    if (document.getElementById('gasUnidad')) document.getElementById('gasUnidad').value = 'kg';
-    if (document.getElementById('gasCostoTotal')) document.getElementById('gasCostoTotal').value = '';
     
-    if (document.getElementById('aguaConsumoTotal')) document.getElementById('aguaConsumoTotal').textContent = '0.000 M³';
-    if (document.getElementById('aguaMontoCalculado')) document.getElementById('aguaMontoCalculado').textContent = '₡0';
-    if (document.getElementById('energiaConsumoTotal')) document.getElementById('energiaConsumoTotal').textContent = '0.0 kWh';
-    if (document.getElementById('energiaMontoCalculado')) document.getElementById('energiaMontoCalculado').textContent = '₡0';
-    if (document.getElementById('gasMontoCalculado')) document.getElementById('gasMontoCalculado').textContent = '₡0';
-    if (document.getElementById('gasPrecioUnitario')) document.getElementById('gasPrecioUnitario').textContent = '₡0/kg';
+    // CAMPOS DE GAS SIMPLIFICADOS
+    if (document.getElementById('gasProveedor')) document.getElementById('gasProveedor').value = '';
+    if (document.getElementById('gasNumeroFactura')) document.getElementById('gasNumeroFactura').value = '';
+    if (document.getElementById('gasMonto')) document.getElementById('gasMonto').value = '';
     
     // Ocultar todas las secciones
     if (document.getElementById('seccionAgua')) document.getElementById('seccionAgua').style.display = 'none';
     if (document.getElementById('seccionElectricidad')) document.getElementById('seccionElectricidad').style.display = 'none';
     if (document.getElementById('seccionGas')) document.getElementById('seccionGas').style.display = 'none';
     
-    // Cargar locales según permisos
+    // Cargar locales
     const selectLocal = document.getElementById('servicioLocal');
     if (selectLocal) {
         selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
-        
         const localesPermitidos = getLocalesPermitidos();
         
         AppState.locales.forEach(local => {
@@ -440,7 +377,6 @@ function mostrarModalServicio(editLocal = null, editId = null) {
             }
         });
         
-        // Si es usuario, preseleccionar y deshabilitar
         if (!esGerencia() && AppState.usuario?.local) {
             selectLocal.value = AppState.usuario.local;
             selectLocal.disabled = true;
@@ -449,10 +385,7 @@ function mostrarModalServicio(editLocal = null, editId = null) {
         }
     }
     
-    // Cargar precios guardados (solo agua y electricidad)
     cargarPreciosEnModal();
-    
-    // Inicializar campos de agua con formato Excel
     inicializarCamposAgua();
     
     // Si es edición, cargar datos
@@ -483,30 +416,35 @@ function mostrarModalServicio(editLocal = null, editId = null) {
             
             if (medidorInput) medidorInput.value = servicio.medidor || '';
 
-            // Mostrar sección correspondiente y cargar datos
             if (servicio.servicio === 'Agua') {
                 if (document.getElementById('seccionAgua')) document.getElementById('seccionAgua').style.display = 'block';
-                if (document.getElementById('aguaMiscelaneo')) document.getElementById('aguaMiscelaneo').value = servicio.miscelaneo?.toFixed(3) || '0';
-                if (document.getElementById('aguaOperacion')) document.getElementById('aguaOperacion').value = servicio.operacion?.toFixed(3) || '0';
-                if (document.getElementById('aguaCerrado')) document.getElementById('aguaCerrado').value = servicio.cerrado?.toFixed(3) || '0';
+                if (document.getElementById('aguaMiscApertura')) document.getElementById('aguaMiscApertura').value = servicio.miscApertura || 0;
+                if (document.getElementById('aguaMiscCierre')) document.getElementById('aguaMiscCierre').value = servicio.miscCierre || 0;
+                if (document.getElementById('aguaOpApertura')) document.getElementById('aguaOpApertura').value = servicio.opApertura || 0;
+                if (document.getElementById('aguaOpCierre')) document.getElementById('aguaOpCierre').value = servicio.opCierre || 0;
+                if (document.getElementById('aguaCerradoApertura')) document.getElementById('aguaCerradoApertura').value = servicio.cerradoApertura || 0;
+                if (document.getElementById('aguaCerradoCierre')) document.getElementById('aguaCerradoCierre').value = servicio.cerradoCierre || 0;
                 calcularConsumoAgua();
-            } else if (servicio.servicio === 'Electricidad') {
+            } 
+            else if (servicio.servicio === 'Electricidad') {
                 if (document.getElementById('seccionElectricidad')) document.getElementById('seccionElectricidad').style.display = 'block';
                 if (document.getElementById('energiaApertura')) document.getElementById('energiaApertura').value = servicio.apertura || 0;
                 if (document.getElementById('energiaCierre')) document.getElementById('energiaCierre').value = servicio.cierre || 0;
                 calcularConsumoEnergia();
-            } else if (servicio.servicio === 'Gas') {
+            } 
+            else if (servicio.servicio === 'Gas') {
                 if (document.getElementById('seccionGas')) document.getElementById('seccionGas').style.display = 'block';
-                if (document.getElementById('gasCantidad')) document.getElementById('gasCantidad').value = servicio.cantidad || 0;
-                if (document.getElementById('gasUnidad')) document.getElementById('gasUnidad').value = servicio.unidad || 'kg';
-                if (document.getElementById('gasCostoTotal')) document.getElementById('gasCostoTotal').value = servicio.monto || 0;
-                calcularGas();
+                if (document.getElementById('gasProveedor')) document.getElementById('gasProveedor').value = servicio.proveedor || '';
+                if (document.getElementById('gasNumeroFactura')) document.getElementById('gasNumeroFactura').value = servicio.numeroFactura || '';
+                if (document.getElementById('gasMonto')) document.getElementById('gasMonto').value = servicio.monto || 0;
+                
+                // Actualizar monto en el campo principal
+                if (montoInput) montoInput.value = servicio.monto || 0;
             }
             
             modal.dataset.editLocal = editLocal;
             modal.dataset.editId = editId;
             
-            // Cambiar título del modal
             const modalTitle = document.getElementById('servicioModalTitle');
             if (modalTitle) modalTitle.textContent = 'Editar Servicio';
             
@@ -517,16 +455,13 @@ function mostrarModalServicio(editLocal = null, editId = null) {
         delete modal.dataset.editLocal;
         delete modal.dataset.editId;
         
-        // Habilitar campos para nuevo registro
         if (fechaInput) {
             fechaInput.disabled = false;
             fechaInput.style.background = 'white';
-            fechaInput.style.cursor = 'text';
         }
         if (tipoInput) {
             tipoInput.disabled = false;
             tipoInput.style.background = 'white';
-            tipoInput.style.cursor = 'pointer';
         }
         
         const modalTitle = document.getElementById('servicioModalTitle');
@@ -541,10 +476,336 @@ function mostrarModalServicio(editLocal = null, editId = null) {
 }
 
 // ============================================
-// INICIALIZAR CAMPOS DE AGUA CON 2 LECTURAS POR PERIODO
+// CAMBIAR TIPO DE SERVICIO EN MODAL (GAS SIMPLIFICADO)
+// ============================================
+function cambiarTipoServicio() {
+    const tipo = document.getElementById('servicioTipo')?.value;
+    const seccionAgua = document.getElementById('seccionAgua');
+    const seccionElectricidad = document.getElementById('seccionElectricidad');
+    const seccionGas = document.getElementById('seccionGas');
+    const icon = document.getElementById('servicioModalIcon');
+    
+    // Elementos del medidor
+    const medidorContainer = document.getElementById('servicioMedidor')?.closest('div[style*="background: white; border-radius: 16px;"]');
+    const medidorInput = document.getElementById('servicioMedidor');
+    
+    if (seccionAgua) seccionAgua.style.display = 'none';
+    if (seccionElectricidad) seccionElectricidad.style.display = 'none';
+    if (seccionGas) seccionGas.style.display = 'none';
+    
+    if (tipo === 'Agua') {
+        if (seccionAgua) seccionAgua.style.display = 'block';
+        if (icon) { icon.className = 'fas fa-water'; icon.style.color = '#3b82f6'; }
+        // Mostrar campo de medidor
+        if (medidorContainer) medidorContainer.style.display = 'block';
+        if (medidorInput) medidorInput.disabled = false;
+        inicializarCamposAgua();
+        calcularConsumoAgua();
+    } 
+    else if (tipo === 'Electricidad') {
+        if (seccionElectricidad) seccionElectricidad.style.display = 'block';
+        if (icon) { icon.className = 'fas fa-bolt'; icon.style.color = '#f59e0b'; }
+        // Mostrar campo de medidor
+        if (medidorContainer) medidorContainer.style.display = 'block';
+        if (medidorInput) medidorInput.disabled = false;
+        calcularConsumoEnergia();
+    } 
+    else if (tipo === 'Gas') {
+        if (seccionGas) seccionGas.style.display = 'block';
+        if (icon) { icon.className = 'fas fa-fire'; icon.style.color = '#ef4444'; }
+        // Ocultar campo de medidor para Gas
+        if (medidorContainer) medidorContainer.style.display = 'none';
+        if (medidorInput) {
+            medidorInput.disabled = true;
+            medidorInput.value = ''; // Limpiar valor
+        }
+        inicializarCamposGas();
+        // Gas no necesita cálculos automáticos
+    }
+}
+
+// ============================================
+// FUNCIÓN DE GAS - SIN RESTRICCIONES
+// ============================================
+function calcularGas() {
+    // Obtener el monto directamente, sin ninguna transformación
+    const montoInput = document.getElementById('gasMonto');
+    let monto = 0;
+    
+    if (montoInput) {
+        // Leer el valor como número, permitiendo decimales
+        monto = parseFloat(montoInput.value);
+        // Si no es un número válido, poner 0
+        if (isNaN(monto)) monto = 0;
+    }
+    
+    // Actualizar preview del monto (sin redondear, mostrar exacto)
+    const previewDiv = document.getElementById('gasMontoPreview');
+    const totalPreview = document.getElementById('gasTotalPreview');
+    
+    if (monto > 0) {
+        if (previewDiv) previewDiv.style.display = 'block';
+        if (totalPreview) totalPreview.textContent = '₡' + monto.toLocaleString('es-CR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    } else {
+        if (previewDiv) previewDiv.style.display = 'none';
+    }
+    
+    // Actualizar el campo oculto del monto total
+    const servicioMonto = document.getElementById('servicioMonto');
+    if (servicioMonto) servicioMonto.value = monto;
+    
+    return monto;
+}
+
+// ============================================
+// VALIDACIÓN - ACEPTA CUALQUIER NÚMERO POSITIVO
+// ============================================
+function validarMontoGas() {
+    const montoInput = document.getElementById('gasMonto');
+    if (!montoInput) return true;
+    
+    const monto = parseFloat(montoInput.value);
+    
+    // Acepta cualquier número positivo (incluye decimales)
+    // También acepta 0 (pero mostrará advertencia si es 0)
+    if (isNaN(monto)) {
+        montoInput.value = '';
+        return false;
+    }
+    
+    if (monto < 0) {
+        alert('El monto no puede ser negativo');
+        montoInput.value = 0;
+        calcularGas();
+        return false;
+    }
+    
+    // Si el monto es 0, mostrar advertencia pero permitir guardar
+    if (monto === 0) {
+        // Opcional: mostrar advertencia pero no bloquear
+        console.log('⚠️ El monto es 0');
+    }
+    
+    return true;
+}
+
+// ============================================
+// FORMATEAR MONTO - SOLO LIMPIA CARACTERES NO NUMÉRICOS
+// ============================================
+function formatearMontoGas() {
+    const montoInput = document.getElementById('gasMonto');
+    if (!montoInput) return;
+    
+    // Guardar la posición del cursor
+    const cursorPos = montoInput.selectionStart;
+    const valorOriginal = montoInput.value;
+    
+    // Limpiar todo excepto números, punto y guión
+    let valorLimpio = valorOriginal.replace(/[^\d.-]/g, '');
+    
+    // Si hay más de un punto, dejar solo el primero
+    const partes = valorLimpio.split('.');
+    if (partes.length > 2) {
+        valorLimpio = partes[0] + '.' + partes.slice(1).join('');
+    }
+    
+    // Si hay más de un guión, dejarlo al inicio
+    if (valorLimpio.indexOf('-') > 0) {
+        valorLimpio = valorLimpio.replace(/-/g, '');
+    }
+    
+    // Actualizar valor
+    if (valorLimpio !== valorOriginal) {
+        montoInput.value = valorLimpio;
+        // Restaurar cursor
+        const nuevaPos = Math.min(cursorPos, valorLimpio.length);
+        montoInput.setSelectionRange(nuevaPos, nuevaPos);
+    }
+    
+    // Calcular
+    calcularGas();
+}
+
+// ============================================
+// INICIALIZAR CAMPOS DE GAS
+// ============================================
+function inicializarCamposGas() {
+    const montoInput = document.getElementById('gasMonto');
+    if (!montoInput) return;
+    
+    // Remover event listeners anteriores
+    montoInput.removeEventListener('input', formatearMontoGas);
+    montoInput.removeEventListener('change', validarMontoGas);
+    montoInput.removeEventListener('blur', calcularGas);
+    
+    // Agregar nuevos event listeners
+    montoInput.addEventListener('input', formatearMontoGas);
+    montoInput.addEventListener('change', validarMontoGas);
+    montoInput.addEventListener('blur', calcularGas);
+    
+    // Remover cualquier atributo que pueda restringir valores
+    montoInput.removeAttribute('step');
+    montoInput.removeAttribute('pattern');
+    montoInput.removeAttribute('min');
+    montoInput.removeAttribute('max');
+    
+    // Inicializar
+    calcularGas();
+}
+
+// ============================================
+// GUARDAR SERVICIO (COMPLETA)
+// ============================================
+async function guardarServicio() {
+    console.log('💾 Guardando servicio...');
+    
+    // Validar campos obligatorios
+    const local = document.getElementById('servicioLocal')?.value;
+    const fecha = document.getElementById('servicioFecha')?.value;
+    const tipo = document.getElementById('servicioTipo')?.value;
+    const medidor = document.getElementById('servicioMedidor')?.value;
+    
+    if (!local) {
+        alert('Seleccione un local');
+        return;
+    }
+    if (!fecha) {
+        alert('Seleccione una fecha');
+        return;
+    }
+    if (!tipo) {
+        alert('Seleccione un tipo de servicio');
+        return;
+    }
+    
+    // Datos base del servicio
+    let servicioData = {
+        fecha: fecha,
+        servicio: tipo,
+        medidor: medidor || null,
+        monto: 0,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+    
+    // Datos según el tipo de servicio
+    if (tipo === 'Agua') {
+        const miscApertura = parseFloat(document.getElementById('aguaMiscApertura')?.value) || 0;
+        const miscCierre = parseFloat(document.getElementById('aguaMiscCierre')?.value) || 0;
+        const opApertura = parseFloat(document.getElementById('aguaOpApertura')?.value) || 0;
+        const opCierre = parseFloat(document.getElementById('aguaOpCierre')?.value) || 0;
+        const cerradoApertura = parseFloat(document.getElementById('aguaCerradoApertura')?.value) || 0;
+        const cerradoCierre = parseFloat(document.getElementById('aguaCerradoCierre')?.value) || 0;
+        
+        const consumoMisc = (miscCierre > miscApertura) ? (miscCierre - miscApertura) : 0;
+        const consumoOp = (opCierre > opApertura) ? (opCierre - opApertura) : 0;
+        const consumoCerrado = (cerradoCierre > cerradoApertura) ? (cerradoCierre - cerradoApertura) : 0;
+        const consumoTotal = consumoMisc + consumoOp + consumoCerrado;
+        
+        // Obtener precio unitario
+        const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
+        const precioUnitario = precios[local]?.Agua || PRECIOS_DEFAULT.Agua;
+        const monto = consumoTotal * precioUnitario;
+        
+        servicioData = {
+            ...servicioData,
+            miscApertura: miscApertura,
+            miscCierre: miscCierre,
+            opApertura: opApertura,
+            opCierre: opCierre,
+            cerradoApertura: cerradoApertura,
+            cerradoCierre: cerradoCierre,
+            consumoMisc: consumoMisc,
+            consumoOp: consumoOp,
+            consumoCerrado: consumoCerrado,
+            consumo: consumoTotal,
+            precioUnitario: precioUnitario,
+            monto: Math.round(monto)
+        };
+    } 
+    else if (tipo === 'Electricidad') {
+        const apertura = parseFloat(document.getElementById('energiaApertura')?.value) || 0;
+        const cierre = parseFloat(document.getElementById('energiaCierre')?.value) || 0;
+        
+        if (cierre <= apertura) {
+            alert('El cierre debe ser mayor que la apertura');
+            return;
+        }
+        
+        const consumo = cierre - apertura;
+        
+        // Obtener precio unitario
+        const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
+        const precioUnitario = precios[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad;
+        const monto = consumo * precioUnitario;
+        
+        servicioData = {
+            ...servicioData,
+            apertura: apertura,
+            cierre: cierre,
+            consumo: consumo,
+            precioUnitario: precioUnitario,
+            monto: Math.round(monto)
+        };
+    } 
+    else if (tipo === 'Gas') {
+        const proveedor = document.getElementById('gasProveedor')?.value?.trim() || '';
+        const numeroFactura = document.getElementById('gasNumeroFactura')?.value?.trim() || '';
+        const montoInput = document.getElementById('gasMonto')?.value;
+        
+        let monto = parseFloat(montoInput);
+        if (isNaN(monto)) monto = 0;
+        
+        if (monto === 0) {
+            const confirmar = confirm('El monto es 0. ¿Desea continuar?');
+            if (!confirmar) return;
+        }
+        
+        servicioData = {
+            ...servicioData,
+            proveedor: proveedor || null,
+            numeroFactura: numeroFactura || null,
+            monto: monto
+        };
+    }
+    
+    // Verificar si es edición o nuevo
+    const editLocal = document.getElementById('servicioModal')?.dataset?.editLocal;
+    const editId = document.getElementById('servicioModal')?.dataset?.editId;
+    
+    try {
+        if (editLocal && editId) {
+            // Actualizar
+            await firebase.database().ref(`servicios/${editLocal}/${editId}`).update(servicioData);
+            alert('✅ Servicio actualizado correctamente');
+        } else {
+            // Nuevo
+            const newRef = firebase.database().ref(`servicios/${local}`).push();
+            await newRef.set(servicioData);
+            alert('✅ Servicio guardado correctamente');
+        }
+        
+        // Cerrar modal
+        const modal = document.getElementById('servicioModal');
+        const overlay = document.getElementById('modalOverlay');
+        if (modal) modal.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        
+        // Limpiar dataset
+        if (modal) {
+            delete modal.dataset.editLocal;
+            delete modal.dataset.editId;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al guardar:', error);
+        alert('Error al guardar: ' + error.message);
+    }
+}
+
+// ============================================
+// RESTO DE FUNCIONES (sin cambios)
 // ============================================
 function inicializarCamposAgua() {
-    // Lista de TODOS los campos de entrada de agua (6 en total)
     const campos = [
         'aguaMiscApertura', 'aguaMiscCierre',
         'aguaOpApertura', 'aguaOpCierre',
@@ -554,128 +815,23 @@ function inicializarCamposAgua() {
     campos.forEach(campoId => {
         const campo = document.getElementById(campoId);
         if (campo) {
-            // Remover event listeners anteriores para evitar duplicados
             campo.removeEventListener('blur', handleAguaBlur);
             campo.removeEventListener('keypress', handleAguaKeypress);
-            
-            // Agregar nuevos event listeners
             campo.addEventListener('blur', handleAguaBlur);
             campo.addEventListener('keypress', handleAguaKeypress);
         }
     });
 }
 
-// Manejador para el evento blur (actualizado - ahora no formatea a 3 decimales)
 function handleAguaBlur(e) {
-    const campo = e.target;
-    // Podrías añadir validaciones de rango aquí si lo deseas
-    // Pero NO formateamos a 3 decimales porque son lecturas grandes
-    
-    // Recalcular consumo cada vez que un campo pierde el foco
     calcularConsumoAgua();
 }
 
-// Manejador para el evento keypress (Enter) - igual que antes
 function handleAguaKeypress(e) {
-    if (e.key === 'Enter') {
-        e.target.blur();
-    }
+    if (e.key === 'Enter') e.target.blur();
 }
 
-// ============================================
-// EDITAR SERVICIO
-// ============================================
-function editarServicio(local, id) {
-    console.log('✏️ Editando servicio:', local, id);
-    mostrarModalServicio(local, id);
-}
-
-// ============================================
-// CARGAR PRECIOS EN MODAL (solo agua y electricidad)
-// ============================================
-function cargarPreciosEnModal() {
-    const local = document.getElementById('servicioLocal')?.value;
-    
-    // Elementos de solo lectura para mostrar
-    const precioAguaDisplay = document.getElementById('precioAguaDisplay');
-    const precioElectricidadDisplay = document.getElementById('precioElectricidadDisplay');
-    
-    // Elementos ocultos para mantener compatibilidad
-    const precioAguaHidden = document.getElementById('precioAgua');
-    const precioElectricidadHidden = document.getElementById('precioElectricidad');
-    
-    if (!local) {
-        // Si no hay local seleccionado, mostrar valores por defecto
-        if (precioAguaDisplay) precioAguaDisplay.textContent = PRECIOS_DEFAULT.Agua;
-        if (precioElectricidadDisplay) precioElectricidadDisplay.textContent = PRECIOS_DEFAULT.Electricidad;
-        if (precioAguaHidden) precioAguaHidden.value = PRECIOS_DEFAULT.Agua;
-        if (precioElectricidadHidden) precioElectricidadHidden.value = PRECIOS_DEFAULT.Electricidad;
-        return;
-    }
-    
-    const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
-    const precioAgua = precios[local]?.Agua || PRECIOS_DEFAULT.Agua;
-    const precioElectricidad = precios[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad;
-    
-    // Actualizar displays
-    if (precioAguaDisplay) precioAguaDisplay.textContent = precioAgua;
-    if (precioElectricidadDisplay) precioElectricidadDisplay.textContent = precioElectricidad;
-    
-    // Actualizar campos ocultos (para compatibilidad con cálculos)
-    if (precioAguaHidden) precioAguaHidden.value = precioAgua;
-    if (precioElectricidadHidden) precioElectricidadHidden.value = precioElectricidad;
-}
-
-// ============================================
-// CAMBIAR TIPO DE SERVICIO EN MODAL
-// ============================================
-function cambiarTipoServicio() {
-    const tipo = document.getElementById('servicioTipo')?.value;
-    const seccionAgua = document.getElementById('seccionAgua');
-    const seccionElectricidad = document.getElementById('seccionElectricidad');
-    const seccionGas = document.getElementById('seccionGas');
-    const icon = document.getElementById('servicioModalIcon');
-    
-    // Ocultar todas las secciones
-    if (seccionAgua) seccionAgua.style.display = 'none';
-    if (seccionElectricidad) seccionElectricidad.style.display = 'none';
-    if (seccionGas) seccionGas.style.display = 'none';
-    
-    // Mostrar la sección correspondiente
-    if (tipo === 'Agua') {
-        if (seccionAgua) seccionAgua.style.display = 'block';
-        if (icon) {
-            icon.className = 'fas fa-water';
-            icon.style.color = '#3b82f6';
-        }
-        // Inicializar campos de agua
-        inicializarCamposAgua();
-        // Calcular inicial
-        calcularConsumoAgua();
-    } else if (tipo === 'Electricidad') {
-        if (seccionElectricidad) seccionElectricidad.style.display = 'block';
-        if (icon) {
-            icon.className = 'fas fa-bolt';
-            icon.style.color = '#f59e0b';
-        }
-        // Calcular inicial
-        calcularConsumoEnergia();
-    } else if (tipo === 'Gas') {
-        if (seccionGas) seccionGas.style.display = 'block';
-        if (icon) {
-            icon.className = 'fas fa-fire';
-            icon.style.color = '#ef4444';
-        }
-        // Calcular inicial
-        calcularGas();
-    }
-}
-
-// ============================================
-// CALCULAR CONSUMO DE AGUA (VERSIÓN EXCEL REAL)
-// ============================================
 function calcularConsumoAgua() {
-    // Obtener las 6 lecturas del medidor (valores absolutos)
     const miscApertura = parseFloat(document.getElementById('aguaMiscApertura')?.value) || 0;
     const miscCierre = parseFloat(document.getElementById('aguaMiscCierre')?.value) || 0;
     const opApertura = parseFloat(document.getElementById('aguaOpApertura')?.value) || 0;
@@ -683,44 +839,31 @@ function calcularConsumoAgua() {
     const cerradoApertura = parseFloat(document.getElementById('aguaCerradoApertura')?.value) || 0;
     const cerradoCierre = parseFloat(document.getElementById('aguaCerradoCierre')?.value) || 0;
 
-    // Calcular el consumo de CADA PERÍODO (Cierre - Apertura)
-    // Asegurarse de que no den negativo. Si es negativo, el consumo es 0.
     const consumoMisc = (miscCierre > miscApertura) ? (miscCierre - miscApertura) : 0;
     const consumoOp = (opCierre > opApertura) ? (opCierre - opApertura) : 0;
     const consumoCerrado = (cerradoCierre > cerradoApertura) ? (cerradoCierre - cerradoApertura) : 0;
-
-    // El consumo total del día es la SUMA de los 3 consumos parciales
     const consumoTotal = consumoMisc + consumoOp + consumoCerrado;
 
-    // Mostrar los consumos parciales en alguna parte (si tienes elementos para ello)
-    // Por ejemplo, podrías tener pequeños spans para mostrar esto.
     const spanConsumoMisc = document.getElementById('aguaConsumoMisc');
     if (spanConsumoMisc) spanConsumoMisc.textContent = consumoMisc.toFixed(3) + ' M³';
     const spanConsumoOp = document.getElementById('aguaConsumoOp');
     if (spanConsumoOp) spanConsumoOp.textContent = consumoOp.toFixed(3) + ' M³';
     const spanConsumoCerrado = document.getElementById('aguaConsumoCerrado');
     if (spanConsumoCerrado) spanConsumoCerrado.textContent = consumoCerrado.toFixed(3) + ' M³';
-
-    // Mostrar el consumo total (ahora sí, la suma de los parciales)
+    
     const consumoTotalSpan = document.getElementById('aguaConsumoTotal');
     if (consumoTotalSpan) consumoTotalSpan.textContent = consumoTotal.toFixed(3) + ' M³';
     
-    // Guardar el consumo total en el campo oculto (esto no cambia)
     const servicioConsumo = document.getElementById('servicioConsumo');
     if (servicioConsumo) servicioConsumo.value = consumoTotal;
 
-    // Calcular el monto total (basado en la suma de consumos)
     calcularMontoAgua(consumoTotal);
 }
 
-// ============================================
-// CALCULAR MONTO DE AGUA
-// ============================================
 function calcularMontoAgua(consumo) {
     const local = document.getElementById('servicioLocal')?.value;
     if (!local) return;
     
-    // Obtener el precio
     let precio = parseFloat(document.getElementById('precioAgua')?.value);
     if (!precio) {
         const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
@@ -735,9 +878,6 @@ function calcularMontoAgua(consumo) {
     if (servicioMonto) servicioMonto.value = monto;
 }
 
-// ============================================
-// CALCULAR CONSUMO DE ELECTRICIDAD
-// ============================================
 function calcularConsumoEnergia() {
     const apertura = parseFloat(document.getElementById('energiaApertura')?.value) || 0;
     const cierre = parseFloat(document.getElementById('energiaCierre')?.value) || 0;
@@ -755,18 +895,13 @@ function calcularConsumoEnergia() {
     const servicioConsumo = document.getElementById('servicioConsumo');
     if (servicioConsumo) servicioConsumo.value = consumo;
     
-    // Calcular monto
     calcularMontoEnergia(consumo);
 }
 
-// ============================================
-// CALCULAR MONTO DE ELECTRICIDAD
-// ============================================
 function calcularMontoEnergia(consumo) {
     const local = document.getElementById('servicioLocal')?.value;
     if (!local) return;
     
-    // Obtener el precio
     let precio = parseFloat(document.getElementById('precioElectricidad')?.value);
     if (!precio) {
         const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
@@ -781,226 +916,50 @@ function calcularMontoEnergia(consumo) {
     if (servicioMonto) servicioMonto.value = monto;
 }
 
-// ============================================
-// CALCULAR GAS (recarga)
-// ============================================
-function calcularGas() {
-    const cantidad = parseFloat(document.getElementById('gasCantidad')?.value) || 0;
-    const costoTotal = parseFloat(document.getElementById('gasCostoTotal')?.value) || 0;
-    const unidad = document.getElementById('gasUnidad')?.value || 'kg';
-    
-    const montoCalculado = document.getElementById('gasMontoCalculado');
-    if (montoCalculado) montoCalculado.textContent = '₡' + Math.round(costoTotal).toLocaleString();
-    
-    const servicioMonto = document.getElementById('servicioMonto');
-    if (servicioMonto) servicioMonto.value = costoTotal;
-    
-    const precioUnitario = document.getElementById('gasPrecioUnitario');
-    if (precioUnitario) {
-        if (cantidad > 0) {
-            const precio = costoTotal / cantidad;
-            precioUnitario.textContent = `₡${Math.round(precio)}/${unidad}`;
-        } else {
-            precioUnitario.textContent = `₡0/${unidad}`;
-        }
-    }
-}
-
-// ============================================
-// GUARDAR PRECIOS (solo agua y electricidad)
-// ============================================
-function guardarPreciosModal() {
+function cargarPreciosEnModal() {
     const local = document.getElementById('servicioLocal')?.value;
+    const precioAguaDisplay = document.getElementById('precioAguaDisplay');
+    const precioElectricidadDisplay = document.getElementById('precioElectricidadDisplay');
+    const precioAguaHidden = document.getElementById('precioAgua');
+    const precioElectricidadHidden = document.getElementById('precioElectricidad');
+    
     if (!local) {
-        alert('Seleccione un local primero');
+        if (precioAguaDisplay) precioAguaDisplay.textContent = PRECIOS_DEFAULT.Agua;
+        if (precioElectricidadDisplay) precioElectricidadDisplay.textContent = PRECIOS_DEFAULT.Electricidad;
+        if (precioAguaHidden) precioAguaHidden.value = PRECIOS_DEFAULT.Agua;
+        if (precioElectricidadHidden) precioElectricidadHidden.value = PRECIOS_DEFAULT.Electricidad;
         return;
     }
+    
+    const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
+    const precioAgua = precios[local]?.Agua || PRECIOS_DEFAULT.Agua;
+    const precioElectricidad = precios[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad;
+    
+    if (precioAguaDisplay) precioAguaDisplay.textContent = precioAgua;
+    if (precioElectricidadDisplay) precioElectricidadDisplay.textContent = precioElectricidad;
+    if (precioAguaHidden) precioAguaHidden.value = precioAgua;
+    if (precioElectricidadHidden) precioElectricidadHidden.value = precioElectricidad;
+}
+
+function guardarPreciosModal() {
+    const local = document.getElementById('servicioLocal')?.value;
+    if (!local) return;
     
     const precioAgua = parseFloat(document.getElementById('precioAgua')?.value);
     const precioElectricidad = parseFloat(document.getElementById('precioElectricidad')?.value);
     
-    if (!precioAgua || !precioElectricidad) {
-        alert('Complete los precios de Agua y Electricidad');
-        return;
-    }
+    if (!precioAgua || !precioElectricidad) return;
     
     const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
     precios[local] = {
         Agua: precioAgua,
         Electricidad: precioElectricidad
-        // Gas no se guarda aquí
     };
     
     localStorage.setItem('preciosServicios', JSON.stringify(precios));
-    alert('✅ Precios guardados para ' + local);
 }
 
-// ============================================
-// GUARDAR SERVICIO
-// ============================================
-async function guardarServicio() {
-    const modal = document.getElementById('servicioModal');
-    const editLocal = modal?.dataset?.editLocal;
-    const editId = modal?.dataset?.editId;
-    
-    const fecha = document.getElementById('servicioFecha')?.value;
-    const local = document.getElementById('servicioLocal')?.value;
-    const tipo = document.getElementById('servicioTipo')?.value;
-    const medidor = document.getElementById('servicioMedidor')?.value;
-    
-    if (!fecha || !local || !tipo) {
-        alert('Complete los campos obligatorios');
-        return;
-    }
-    
-    // Guardar precios primero
-    guardarPreciosModal();
-    
-    let servicioData = {
-        fecha,
-        servicio: tipo,
-        medidor: medidor || null,
-        creadoPor: AppState.usuario?.email || 'sistema',
-        ultimaModificacion: new Date().toISOString()
-    };
-    
-    // Dentro de la función guardarServicio(), en la parte de 'Agua':
-if (tipo === 'Agua') {
-    // Obtener las 6 lecturas del medidor
-    const miscApertura = parseFloat(document.getElementById('aguaMiscApertura')?.value) || 0;
-    const miscCierre = parseFloat(document.getElementById('aguaMiscCierre')?.value) || 0;
-    const opApertura = parseFloat(document.getElementById('aguaOpApertura')?.value) || 0;
-    const opCierre = parseFloat(document.getElementById('aguaOpCierre')?.value) || 0;
-    const cerradoApertura = parseFloat(document.getElementById('aguaCerradoApertura')?.value) || 0;
-    const cerradoCierre = parseFloat(document.getElementById('aguaCerradoCierre')?.value) || 0;
-
-    // Calcular los consumos parciales (con la misma lógica de no negativos)
-    const consumoMisc = (miscCierre > miscApertura) ? (miscCierre - miscApertura) : 0;
-    const consumoOp = (opCierre > opApertura) ? (opCierre - opApertura) : 0;
-    const consumoCerrado = (cerradoCierre > cerradoApertura) ? (cerradoCierre - cerradoApertura) : 0;
-    const consumoTotal = consumoMisc + consumoOp + consumoCerrado;
-
-    // Validar que al menos un período tenga consumo
-    if (consumoMisc === 0 && consumoOp === 0 && consumoCerrado === 0) {
-        alert('Debe ingresar lecturas de cierre mayores a las de apertura en al menos un período.');
-        return;
-    }
-
-    // Obtener el precio
-    const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
-    const precio = precios[local]?.Agua || PRECIOS_DEFAULT.Agua;
-
-    // Guardar TODO en servicioData
-    servicioData = {
-        ...servicioData,
-        // Lecturas originales (las 6)
-        miscApertura: miscApertura,
-        miscCierre: miscCierre,
-        opApertura: opApertura,
-        opCierre: opCierre,
-        cerradoApertura: cerradoApertura,
-        cerradoCierre: cerradoCierre,
-        // Consumos calculados (los 3 parciales y el total)
-        consumoMisc: parseFloat(consumoMisc.toFixed(3)),
-        consumoOp: parseFloat(consumoOp.toFixed(3)),
-        consumoCerrado: parseFloat(consumoCerrado.toFixed(3)),
-        consumo: parseFloat(consumoTotal.toFixed(3)), // Este es el que se muestra en la tabla
-        monto: Math.round(consumoTotal * precio),
-        precioUnitario: precio
-    };
-}
-    else if (tipo === 'Electricidad') {
-        const apertura = parseFloat(document.getElementById('energiaApertura')?.value) || 0;
-        const cierre = parseFloat(document.getElementById('energiaCierre')?.value) || 0;
-        
-        // Validar lecturas
-        if (apertura === 0 && cierre === 0) {
-            alert('Ingrese las lecturas de apertura y cierre');
-            return;
-        }
-        
-        if (cierre <= apertura) {
-            alert('La lectura de cierre debe ser mayor a la de apertura');
-            return;
-        }
-        
-        const consumo = cierre - apertura;
-        
-        // Obtener el precio del localStorage
-        const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
-        const precio = precios[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad;
-        
-        servicioData = {
-            ...servicioData,
-            apertura,
-            cierre,
-            consumo,
-            monto: consumo * precio,
-            precioUnitario: precio
-        };
-    }
-    else if (tipo === 'Gas') {
-        const cantidad = parseFloat(document.getElementById('gasCantidad')?.value) || 0;
-        const unidad = document.getElementById('gasUnidad')?.value || 'kg';
-        const costoTotal = parseFloat(document.getElementById('gasCostoTotal')?.value) || 0;
-        
-        if (cantidad === 0 || costoTotal === 0) {
-            alert('Ingrese la cantidad y el costo total de la recarga');
-            return;
-        }
-        
-        servicioData = {
-            ...servicioData,
-            cantidad,
-            unidad,
-            monto: costoTotal
-            // No guardamos precio unitario, se calcula al mostrar
-        };
-    }
-    
-    if (!editLocal || !editId) {
-        servicioData.fechaCreacion = new Date().toISOString();
-    }
-    
-    try {
-        const ref = firebase.database().ref(`servicios/${local}`);
-        
-        if (editLocal && editId) {
-            await ref.child(editId).update(servicioData);
-            alert('✅ Servicio actualizado');
-        } else {
-            await ref.push(servicioData);
-            alert('✅ Servicio registrado');
-        }
-        
-        cerrarModal('servicioModal');
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al guardar');
-    }
-}
-
-// ============================================
-// ELIMINAR SERVICIO
-// ============================================
-async function eliminarServicio(local, id) {
-    if (!confirm('¿Está seguro de eliminar este registro?')) return;
-    
-    try {
-        await firebase.database().ref(`servicios/${local}/${id}`).remove();
-        alert('✅ Registro eliminado');
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al eliminar');
-    }
-}
-
-// ============================================
-// CONFIGURAR PRECIOS (solo agua y electricidad)
-// ============================================
 function configurarPrecios() {
-    // Crear un modal personalizado
     const overlay = document.getElementById('modalOverlay');
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -1023,29 +982,17 @@ function configurarPrecios() {
     locales.forEach(local => {
         html += `
             <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-                <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-store" style="color: #2563eb;"></i> ${local}
-                </h3>
-                
+                <h3 style="margin: 0 0 15px 0; color: #1e293b;"><i class="fas fa-store"></i> ${local}</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
-                        <label style="display: block; font-weight: 600; color: #475569; margin-bottom: 5px;">
-                            <i class="fas fa-water" style="color: #3b82f6;"></i> Agua (₡/M³)
-                        </label>
-                        <input type="number" id="precio_${local}_agua" value="${preciosActuales[local]?.Agua || PRECIOS_DEFAULT.Agua}" step="10" min="0" 
-                               style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 10px;">
+                        <label><i class="fas fa-water"></i> Agua (₡/M³)</label>
+                        <input type="number" id="precio_${local}_agua" value="${preciosActuales[local]?.Agua || PRECIOS_DEFAULT.Agua}" step="10" min="0">
                     </div>
                     <div>
-                        <label style="display: block; font-weight: 600; color: #475569; margin-bottom: 5px;">
-                            <i class="fas fa-bolt" style="color: #f59e0b;"></i> Electricidad (₡/kWh)
-                        </label>
-                        <input type="number" id="precio_${local}_electricidad" value="${preciosActuales[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad}" step="5" min="0" 
-                               style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 10px;">
+                        <label><i class="fas fa-bolt"></i> Electricidad (₡/kWh)</label>
+                        <input type="number" id="precio_${local}_electricidad" value="${preciosActuales[local]?.Electricidad || PRECIOS_DEFAULT.Electricidad}" step="5" min="0">
                     </div>
                 </div>
-                <p style="margin: 10px 0 0; color: #64748b; font-size: 0.85rem;">
-                    <i class="fas fa-info-circle"></i> El gas se ingresa como recarga con cantidad y costo total
-                </p>
             </div>
         `;
     });
@@ -1053,11 +1000,9 @@ function configurarPrecios() {
     html += `
             <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
                 <button onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" 
-                        style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 12px; cursor: pointer;">
-                    Cancelar
-                </button>
+                        style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 12px;">Cancelar</button>
                 <button onclick="window.guardarTodosLosPrecios()" 
-                        style="padding: 12px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 600;">
+                        style="padding: 12px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 12px; font-weight: 600;">
                     <i class="fas fa-save"></i> Guardar Todos
                 </button>
             </div>
@@ -1070,9 +1015,6 @@ function configurarPrecios() {
     modal.classList.add('active');
 }
 
-// ============================================
-// GUARDAR TODOS LOS PRECIOS
-// ============================================
 function guardarTodosLosPrecios() {
     const locales = AppState.locales.map(l => l.nombre);
     const nuevosPrecios = {};
@@ -1091,16 +1033,27 @@ function guardarTodosLosPrecios() {
     
     localStorage.setItem('preciosServicios', JSON.stringify(nuevosPrecios));
     
-    // Cerrar modal
     document.querySelector('.modal')?.remove();
     document.getElementById('modalOverlay')?.classList.remove('active');
-    
     alert('✅ Precios guardados correctamente');
 }
 
-// ============================================
-// INICIALIZAR
-// ============================================
+function editarServicio(local, id) {
+    mostrarModalServicio(local, id);
+}
+
+async function eliminarServicio(local, id) {
+    if (!confirm('¿Está seguro de eliminar este registro?')) return;
+    
+    try {
+        await firebase.database().ref(`servicios/${local}/${id}`).remove();
+        alert('✅ Registro eliminado');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+    }
+}
+
 function initServicios() {
     console.log('🚀 Inicializando servicios...');
     setTimeout(() => {
@@ -1112,15 +1065,6 @@ function initServicios() {
         }
     }, 100);
 }
-
-// ============================================
-// EVENT LISTENERS
-// ============================================
-document.addEventListener('change', function(e) {
-    if (e.target.id === 'servicioLocal') {
-        cargarPreciosEnModal();
-    }
-});
 
 // ============================================
 // EXPORTAR FUNCIONES GLOBALES
@@ -1140,14 +1084,4 @@ window.initServicios = initServicios;
 window.guardarPreciosModal = guardarPreciosModal;
 window.guardarTodosLosPrecios = guardarTodosLosPrecios;
 
-console.log('Servicios:', window.serviciosData);
-
-// Crear alias por si acaso
-window.mostrarModalService = mostrarModalServicio;
-
-console.log('✅ servicios.js cargado correctamente');
-console.log('📋 Funciones disponibles:', {
-    renderServicios: typeof window.renderServicios,
-    mostrarModalServicio: typeof window.mostrarModalServicio,
-    configurarPrecios: typeof window.configurarPrecios
-});
+console.log('✅ servicios.js cargado (Gas simplificado - solo factura)');

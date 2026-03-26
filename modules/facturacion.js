@@ -6,11 +6,19 @@ console.log('📦 Cargando módulo de Facturación...');
 // ============================================
 // VARIABLES GLOBALES
 // ============================================
-// Usar la misma variable que logistica.js
 let facturas = [];
 
 // ============================================
-// INICIALIZAR MÓDULO (CORREGIDO)
+// FUNCIÓN PARA VERIFICAR PERMISOS DE LOCAL (CORREGIDO)
+// ============================================
+function puedeVerLocal(localNombre) {
+    if (esGerencia()) return true;
+    if (AppState.usuario?.local === localNombre) return true;
+    return false;
+}
+
+// ============================================
+// INICIALIZAR MÓDULO
 // ============================================
 function initFacturacion() {
     console.log('🚀 Inicializando módulo de Facturación...');
@@ -20,10 +28,8 @@ function initFacturacion() {
         return;
     }
     
-    // ✅ SIEMPRE cargar desde Firebase para tener los datos más recientes
+    // Cargar desde Firebase
     cargarFacturas();
-    
-    // Si ya hay datos en window.facturacionBodegas, se actualizarán cuando llegue la respuesta de Firebase
     
     if (document.getElementById('facturacion').classList.contains('active')) {
         renderFacturacion();
@@ -31,7 +37,7 @@ function initFacturacion() {
 }
 
 // ============================================
-// CARGAR FACTURAS DESDE FIREBASE (CORREGIDO)
+// CARGAR FACTURAS DESDE FIREBASE
 // ============================================
 function cargarFacturas() {
     console.log('📥 Cargando facturas desde Firebase...');
@@ -39,8 +45,8 @@ function cargarFacturas() {
     firebase.database().ref('facturacionBodegas').on('value', (snapshot) => {
         const data = snapshot.val();
         
-        // ✅ Limpiar el array global, NO crear uno nuevo
-        facturas = [];  // Esta es la variable GLOBAL declarada al inicio
+        // Limpiar array global
+        facturas = [];
         
         if (data) {
             Object.keys(data).forEach(key => {
@@ -56,10 +62,10 @@ function cargarFacturas() {
         
         console.log(`✅ ${facturas.length} facturas cargadas`);
         
-        // ✅ Actualizar la variable global que espera logistica.js
+        // ✅ ACTUALIZAR LA VARIABLE GLOBAL Y RENDERIZAR
         window.facturacionBodegas = facturas;
         
-        // ✅ Renderizar si el módulo está activo
+        // ✅ RENDERIZAR SIEMPRE QUE CAMBIEN LOS DATOS
         if (document.getElementById('facturacion').classList.contains('active')) {
             renderFacturacion();
         }
@@ -73,21 +79,26 @@ function renderFacturacion() {
     console.log('📊 Renderizando Facturación...');
     
     const content = document.getElementById('facturacionContent');
-    if (!content) return;
+    if (!content) {
+        console.error('❌ No se encontró facturacionContent');
+        return;
+    }
     
     const filtroLocal = AppState.filtros?.local || 'Todos';
     
-    // ✅ USAR LA VARIABLE GLOBAL window.facturacionBodegas
-    const facturas = window.facturacionBodegas || [];
+    // ✅ USAR EL ARRAY LOCAL O EL GLOBAL
+    const facturasParaRender = (facturas && facturas.length > 0) ? facturas : (window.facturacionBodegas || []);
     
-    console.log('📦 Facturas a renderizar:', facturas.length);
+    console.log('📦 Facturas a renderizar:', facturasParaRender.length);
     
     // Filtrar facturas por local
-    const facturasFiltradas = facturas.filter(f => {
+    const facturasFiltradas = facturasParaRender.filter(f => {
         if (filtroLocal !== 'Todos' && f.local !== filtroLocal) return false;
         if (!puedeVerLocal(f.local)) return false;
         return true;
     });
+    
+    console.log('📊 Facturas después de filtros:', facturasFiltradas.length);
     
     // Calcular total general
     const totalGeneral = facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
@@ -147,11 +158,27 @@ function renderFacturacion() {
         `;
         
         facturasFiltradas.forEach(f => {
-            const fecha = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-CR');
+            // Manejar diferentes formatos de fecha
+            let fechaFormateada = 'Fecha inválida';
+            if (f.fecha) {
+                try {
+                    const fechaObj = new Date(f.fecha);
+                    if (!isNaN(fechaObj.getTime())) {
+                        fechaFormateada = fechaObj.toLocaleDateString('es-CR');
+                    } else if (typeof f.fecha === 'string' && f.fecha.includes('-')) {
+                        // Si es formato YYYY-MM-DD
+                        const [year, month, day] = f.fecha.split('-');
+                        fechaFormateada = `${day}/${month}/${year}`;
+                    }
+                } catch(e) {
+                    console.warn('Error parsing date:', f.fecha);
+                }
+            }
+            
             html += `
                 <tr>
-                    <td><strong>${fecha}</strong></td>
-                    <td>${f.local}</td>
+                    <td><strong>${fechaFormateada}</strong></td>
+                    <td>${f.local || '—'}</td>
                     <td>${f.numeroFactura || '—'}</td>
                     <td style="color: #10b981; font-weight: 600;">₡${(f.monto || 0).toLocaleString()}</td>
                     <td>
@@ -204,7 +231,7 @@ function agregarFactura(editId = null) {
         facturaEdit = facturas.find(f => f.id === editId);
     }
     
-    // ✅ CALCULAR FECHA AQUÍ (FUERA DEL HTML)
+    // Calcular fecha actual
     const hoy = new Date();
     const año = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -249,17 +276,13 @@ function agregarFactura(editId = null) {
     
     // Cargar locales
     const localesPermitidos = getLocalesPermitidos();
-    AppState.locales.forEach(local => {
-        if (localesPermitidos.includes(local.nombre)) {
-            const selected = facturaEdit?.local === local.nombre ? 'selected' : '';
-            html += `<option value="${local.nombre}" ${selected}>${local.nombre}</option>`;
-        }
-    });
-    
-    // Si es usuario, deshabilitar select
-    const disabled = (!esGerencia() && AppState.usuario?.local) ? 'disabled' : '';
-    if (!esGerencia() && AppState.usuario?.local) {
-        html = html.replace('<select id="facturaLocal" required', `<select id="facturaLocal" required ${disabled}`);
+    if (AppState.locales) {
+        AppState.locales.forEach(local => {
+            if (localesPermitidos.includes(local.nombre)) {
+                const selected = facturaEdit?.local === local.nombre ? 'selected' : '';
+                html += `<option value="${local.nombre}" ${selected}>${local.nombre}</option>`;
+            }
+        });
     }
     
     html += `
@@ -302,7 +325,7 @@ function agregarFactura(editId = null) {
 }
 
 // ============================================
-// GUARDAR FACTURA (CORREGIDO)
+// GUARDAR FACTURA
 // ============================================
 async function guardarFactura(editId = null) {
     const fecha = document.getElementById('facturaFecha').value;
@@ -335,11 +358,13 @@ async function guardarFactura(editId = null) {
             alert('✅ Factura agregada');
         }
         
-        // ✅ Cerrar modal
-        document.getElementById('facturaModal').remove();
-        document.getElementById('modalOverlay').classList.remove('active');
+        // Cerrar modal
+        const modal = document.getElementById('facturaModal');
+        if (modal) modal.remove();
+        const overlay = document.getElementById('modalOverlay');
+        if (overlay) overlay.classList.remove('active');
         
-        // ✅ No necesitas hacer nada más, el listener de Firebase actualizará automáticamente
+        // No es necesario hacer nada más, el listener de Firebase actualizará automáticamente
         
     } catch (error) {
         console.error('Error:', error);
@@ -378,4 +403,4 @@ window.guardarFactura = guardarFactura;
 window.editarFactura = editarFactura;
 window.eliminarFactura = eliminarFactura;
 
-console.log('✅ facturacion.js cargado - Módulo simple');
+console.log('✅ facturacion.js cargado - Módulo corregido');

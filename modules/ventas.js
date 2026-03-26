@@ -420,18 +420,225 @@ async function eliminarVenta(id) {
 }
 
 // ============================================
-// VER DETALLE DE VENTA
+// VER DETALLE DE VENTA (CON MODAL)
 // ============================================
 async function verDetalleVenta(id) {
+    console.log('🔍 Cargando detalle de venta:', id);
+    
+    // Verificar que el modal existe
+    const modal = document.getElementById('detalleVentaModal');
+    const overlay = document.getElementById('modalOverlay');
+    const content = document.getElementById('detalleVentaContent');
+    
+    if (!modal) {
+        console.error('❌ Modal detalleVentaModal no encontrado en el DOM');
+        alert('Error: El modal de detalle no está disponible. Por favor recargue la página.');
+        return;
+    }
+    
+    if (!overlay) {
+        console.error('❌ ModalOverlay no encontrado');
+        alert('Error: No se puede mostrar el detalle.');
+        return;
+    }
+    
+    if (!content) {
+        console.error('❌ Contenido detalleVentaContent no encontrado');
+        alert('Error: No se puede mostrar el detalle.');
+        return;
+    }
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #3b82f6;"></i>
+            <p style="margin-top: 15px; color: #64748b;">Cargando información de la venta...</p>
+        </div>
+    `;
+    
+    // Mostrar modal
+    modal.classList.add('active');
+    overlay.classList.add('active');
+    
     try {
         const snapshot = await firebase.database().ref(`ventas/${id}`).once('value');
         const venta = snapshot.val();
-        if (!venta) { alert('Venta no encontrada'); return; }
         
-        alert(`Fecha: ${venta.fecha}\nLocal: ${venta.local}\nEfectivo: ₡${(venta.efectivo || 0).toLocaleString()}\nTarjeta: ₡${(venta.bac || 0).toLocaleString()}\nDelivery: ₡${((venta.pedidosYa || 0) + (venta.didi || 0) + (venta.uber || 0)).toLocaleString()}\nPersonal: ₡${(venta.personal || 0).toLocaleString()}\nTotal: ₡${(venta.total || 0).toLocaleString()}\nComisiones: ₡${(venta.comisiones?.total || 0).toLocaleString()}\nGastos: ₡${(venta.gastos || 0).toLocaleString()}`);
+        console.log('📦 Venta cargada:', venta);
+        
+        if (!venta) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ef4444;"></i>
+                    <p style="margin-top: 15px; color: #64748b;">Venta no encontrada</p>
+                    <p style="font-size: 0.8rem; color: #94a3b8;">ID: ${id}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Formatear fecha
+        let fechaFormateada = '—';
+        if (venta.fecha) {
+            try {
+                const fecha = new Date(venta.fecha + 'T12:00:00');
+                fechaFormateada = fecha.toLocaleDateString('es-CR', { year: 'numeric', month: 'long', day: 'numeric' });
+            } catch(e) {
+                fechaFormateada = venta.fecha;
+            }
+        }
+        
+        // Calcular valores
+        const delivery = (venta.pedidosYa || 0) + (venta.didi || 0) + (venta.uber || 0);
+        const comisionBAC = (venta.bac || 0) * 0.0225;
+        const comisionPedidosYa = (venta.pedidosYa || 0) * 0.18;
+        const comisionDidi = (venta.didi || 0) * 0.18;
+        const comisionUber = (venta.uber || 0) * 0.44;
+        const comisionesTotal = comisionBAC + comisionPedidosYa + comisionDidi + comisionUber;
+        const ventasNetas = (venta.total || 0) - comisionesTotal - (venta.gastos || 0);
+        
+        // Generar HTML del detalle
+        content.innerHTML = `
+            <div style="background: white; border-radius: 20px; overflow: hidden;">
+                <!-- Información principal -->
+                <div style="background: linear-gradient(135deg, #f8fafc, #ffffff); padding: 20px; border-bottom: 1px solid #eef2f6;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase;">Fecha</span>
+                            <div style="font-size: 1.2rem; font-weight: 600; color: #1e293b;">${fechaFormateada}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="color: #64748b; font-size: 0.75rem; text-transform: uppercase;">Local</span>
+                            <div style="font-size: 1.2rem; font-weight: 600; color: #1e293b;">${venta.local || '—'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="padding: 24px;">
+                    <!-- Sección: Ventas Mostrador -->
+                    <h4 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 1rem;">
+                        <i class="fas fa-cash-register" style="color: #3b82f6;"></i> Mostrador
+                    </h4>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
+                        <div style="background: #f1f5f9; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">EFECTIVO</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">₡${(venta.efectivo || 0).toLocaleString()}</div>
+                        </div>
+                        <div style="background: #f1f5f9; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">TARJETA BAC</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">₡${(venta.bac || 0).toLocaleString()}</div>
+                        </div>
+                        <div style="background: #f1f5f9; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #64748b;">PERSONAL</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">₡${(venta.personal || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Delivery -->
+                    <h4 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 1rem;">
+                        <i class="fas fa-motorcycle" style="color: #f59e0b;"></i> Delivery
+                    </h4>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
+                        <div style="background: #fef9e8; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #f59e0b;">PEDIDOS YA</div>
+                            <div style="font-size: 1rem; font-weight: 600;">₡${(venta.pedidosYa || 0).toLocaleString()}</div>
+                        </div>
+                        <div style="background: #fef9e8; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #f59e0b;">DIDI</div>
+                            <div style="font-size: 1rem; font-weight: 600;">₡${(venta.didi || 0).toLocaleString()}</div>
+                        </div>
+                        <div style="background: #fef9e8; border-radius: 12px; padding: 12px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #f59e0b;">UBER</div>
+                            <div style="font-size: 1rem; font-weight: 600;">₡${(venta.uber || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Comisiones -->
+                    <h4 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 1rem;">
+                        <i class="fas fa-percent" style="color: #ef4444;"></i> Comisiones
+                    </h4>
+                    
+                    <div style="background: #fff1f1; border-radius: 16px; padding: 16px; margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: #64748b;">BAC (2.25%)</span>
+                            <span style="font-weight: 500;">₡${Math.round(comisionBAC).toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: #64748b;">PedidosYa (18%)</span>
+                            <span style="font-weight: 500;">₡${Math.round(comisionPedidosYa).toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: #64748b;">Didi (18%)</span>
+                            <span style="font-weight: 500;">₡${Math.round(comisionDidi).toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: #64748b;">Uber (44%)</span>
+                            <span style="font-weight: 500;">₡${Math.round(comisionUber).toLocaleString()}</span>
+                        </div>
+                        <div style="border-top: 1px solid #fee2e2; margin-top: 12px; padding-top: 12px; display: flex; justify-content: space-between; font-weight: 700;">
+                            <span>TOTAL COMISIONES</span>
+                            <span style="color: #ef4444;">₡${Math.round(comisionesTotal).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección: Gastos -->
+                    ${(venta.gastos || 0) > 0 ? `
+                    <div style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #fef3c7; border-radius: 12px; padding: 12px 16px;">
+                            <span style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-receipt" style="color: #f59e0b;"></i>
+                                <span style="font-weight: 500;">Gastos operativos</span>
+                            </span>
+                            <span style="font-weight: 700; color: #f59e0b;">- ₡${(venta.gastos || 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Resumen final -->
+                    <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; padding: 20px; color: white;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="opacity: 0.8;">VENTAS BRUTAS</span>
+                            <span style="font-size: 1.1rem; font-weight: 600;">₡${(venta.total || 0).toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="opacity: 0.8;">COMISIONES</span>
+                            <span style="color: #f87171;">- ₡${Math.round(comisionesTotal).toLocaleString()}</span>
+                        </div>
+                        ${(venta.gastos || 0) > 0 ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="opacity: 0.8;">GASTOS</span>
+                            <span style="color: #fbbf24;">- ₡${(venta.gastos || 0).toLocaleString()}</span>
+                        </div>
+                        ` : ''}
+                        <div style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 12px; padding-top: 12px; display: flex; justify-content: space-between;">
+                            <span style="font-weight: 600;">VENTAS NETAS</span>
+                            <span style="font-size: 1.3rem; font-weight: 700; color: #10b981;">₡${Math.round(ventasNetas).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Información adicional -->
+                    <div style="margin-top: 20px; padding: 12px; background: #f1f5f9; border-radius: 12px; font-size: 0.7rem; color: #64748b; text-align: center;">
+                        <i class="fas fa-user"></i> Registrado por: ${venta.creadoPor || 'Sistema'} | 
+                        <i class="fas fa-hashtag"></i> ID: ${id.substring(0, 8)}...
+                    </div>
+                </div>
+            </div>
+        `;
+        
     } catch (error) {
-        console.error('Error cargando venta:', error);
-        alert('Error al cargar el detalle');
+        console.error('❌ Error cargando venta:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ef4444;"></i>
+                <p style="margin-top: 15px; color: #64748b;">Error al cargar el detalle</p>
+                <p style="font-size: 0.8rem; color: #94a3b8;">${error.message}</p>
+                <button onclick="cerrarModal('detalleVentaModal')" style="margin-top: 20px; padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer;">
+                    Cerrar
+                </button>
+            </div>
+        `;
     }
 }
 

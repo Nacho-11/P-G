@@ -125,12 +125,15 @@
                 </button>
 
                 <div class="filters">
+                    <!-- Filtro por Local -->
                     <div class="filter-group">
                         <i class="fas fa-store filter-icon"></i>
                         <select id="filtroLocal" class="filter-select">
                             <option value="Todos">Todos los locales</option>
                         </select>
                     </div>
+                    
+                    <!-- Filtro por Tiempo -->
                     <div class="filter-group">
                         <i class="fas fa-calendar filter-icon"></i>
                         <select id="filtroTiempo" class="filter-select">
@@ -138,9 +141,20 @@
                             <option value="ayer">Ayer</option>
                             <option value="mes">Este mes</option>
                             <option value="anio">Este año</option>
+                            <option value="rango">Rango de fechas</option>
                             <option value="personalizado">Personalizado</option>
                         </select>
                     </div>
+                    
+                    <!-- Selector de Rango de Fechas (inicio y fin) -->
+                    <div class="filter-group" id="grupoRangoFechas" style="display: none;">
+                        <i class="fas fa-calendar-alt filter-icon"></i>
+                        <input type="date" id="filtroFechaInicio" class="filter-input" placeholder="Fecha inicio" style="width: 140px;">
+                        <span style="margin: 0 5px; color: #94a3b8;">→</span>
+                        <input type="date" id="filtroFechaFin" class="filter-input" placeholder="Fecha fin" style="width: 140px;">
+                    </div>
+                    
+                    <!-- Fecha personalizada (día específico) -->
                     <div class="filter-group" id="grupoFechaPersonalizado" style="display: none;">
                         <i class="fas fa-calendar-alt filter-icon"></i>
                         <input type="date" id="filtroFechaPersonalizado" class="filter-input" placeholder="YYYY-MM-DD">
@@ -507,10 +521,11 @@
         </div>
     </div>
 
-    <!-- Modal de Costos -->
+    <!-- Modal de Costos - SIMPLIFICADO (valores mensuales como en Excel) -->
     <div class="modal" id="costoModal" style="max-width: 550px; border-radius: 24px; overflow: hidden;">
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px 30px;">
-            <h2 style="margin: 0;">Nuevo Costo Fijo</h2>
+            <h2 style="margin: 0;">Nuevo Costo Fijo Mensual</h2>
+            <p style="margin: 4px 0 0; opacity: 0.8;">El valor se dividirá entre los días del mes para el cálculo diario</p>
         </div>
         <div class="modal-body" style="padding: 30px; background: #f8fafc;">
             <form id="costoForm" onsubmit="event.preventDefault(); guardarCosto();">
@@ -525,10 +540,10 @@
                     <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                         <option value="">Seleccionar categoría...</option>
                         <option value="restaurante">Restaurante</option>
-                        <option value="planta">Planta</option>
+                        <option value="planta">Planta Producción</option>
                         <option value="oficinas">Oficinas</option>
                         <option value="transporte">Transporte</option>
-                        <option value="planilla">Planilla</option>
+                        <option value="planilla">Planilla Logística</option>
                     </select>
                 </div>
                 <div style="margin-bottom: 20px;">
@@ -538,8 +553,9 @@
                     </select>
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label>Monto (₡)</label>
+                    <label>Monto MENSUAL (₡)</label>
                     <input type="number" id="costoMonto" min="0" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <small style="color: #64748b;">Este es el valor que pagas cada mes. Para el cálculo diario se dividirá entre los días del mes.</small>
                 </div>
                 <div style="display: flex; gap: 15px; justify-content: flex-end;">
                     <button type="button" onclick="cerrarModal('costoModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
@@ -917,44 +933,53 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN PARA GAS -->
+                <!-- SECCIÓN DE GAS - SIN RESTRICCIONES -->
                 <div id="seccionGas" style="display: none;">
-                    <div style="background: linear-gradient(135deg, #ef444410, #ef444420); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
-                        <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-fire" style="color: #ef4444;"></i> Recarga de Gas
-                        </h3>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Cantidad de gas</label>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <input type="number" id="gasCantidad" step="0.1" placeholder="0.0" oninput="calcularGas()" style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                    <select id="gasUnidad" onchange="calcularGas()" style="padding: 12px; border: 2px solid #eef2f6; border-radius: 10px; background: white;">
-                                        <option value="kg">kg</option>
-                                        <option value="litros">litros</option>
-                                        <option value="m³">m³</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Costo total de la recarga (₡)</label>
-                                <div style="display: flex; align-items: center;">
-                                    <span style="background: #f1f5f9; padding: 12px; border: 2px solid #eef2f6; border-right: none; border-radius: 10px 0 0 10px; font-weight: 600;">₡</span>
-                                    <input type="number" id="gasCostoTotal" step="100" placeholder="0" oninput="calcularGas()" style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-left: none; border-radius: 0 10px 10px 0;">
-                                </div>
-                            </div>
+                    <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #eef2f6;">
+                            <i class="fas fa-file-invoice" style="font-size: 1.5rem; color: #ef4444;"></i>
+                            <h4 style="margin: 0; color: #1e293b;">Factura de Gas</h4>
                         </div>
                         
-                        <div style="background: white; border-radius: 12px; padding: 15px;">
+                        <!-- Proveedor -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                                <i class="fas fa-truck"></i> Proveedor
+                            </label>
+                            <input type="text" id="gasProveedor" placeholder="Ej: Zeta Gas, Tropigas, etc." 
+                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                        </div>
+                        
+                        <!-- Número de Factura -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                                <i class="fas fa-hashtag"></i> Número de Factura
+                            </label>
+                            <input type="text" id="gasNumeroFactura" placeholder="Ej: 001-0001" 
+                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                        </div>
+                        
+                        <!-- Monto de la Factura (SIN RESTRICCIONES) -->
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                                <i class="fas fa-dollar-sign"></i> Monto de la factura (₡)
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="background: #ef4444; color: white; padding: 12px 20px; border-radius: 12px; font-weight: 600;">₡</span>
+                                <input type="number" id="gasMonto" placeholder="Ingrese el monto de la factura" 
+                                    step="any" min="0" 
+                                    style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                            </div>
+                            <p style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
+                                <i class="fas fa-info-circle"></i> Ingrese el monto total de la factura de gas (cualquier valor es válido)
+                            </p>
+                        </div>
+                        
+                        <!-- Preview del monto -->
+                        <div id="gasMontoPreview" style="background: #fef2f2; border-radius: 12px; padding: 12px; margin-top: 10px; display: none;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <span style="color: #64748b;">Total a pagar</span>
-                                    <div style="font-size: 1.8rem; font-weight: 700; color: #ef4444;" id="gasMontoCalculado">₡0</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span style="color: #64748b;">Precio por unidad</span>
-                                    <div style="font-size: 1.2rem; font-weight: 600; color: #059669;" id="gasPrecioUnitario">₡0/kg</div>
-                                </div>
+                                <span style="color: #ef4444; font-weight: 600;">Total a pagar:</span>
+                                <span id="gasTotalPreview" style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">₡0</span>
                             </div>
                         </div>
                     </div>
@@ -1205,6 +1230,43 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE DETALLE DE VENTA ===== -->
+    <div class="modal" id="detalleVentaModal" style="max-width: 650px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+        
+        <!-- Header con gradiente -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-receipt" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">Detalle de Venta</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem;">Información completa de la transacción</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal('detalleVentaModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; font-size: 1.2rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Body del modal con scroll -->
+        <div class="modal-body" style="padding: 0; background: #f8fafc; max-height: 80vh; overflow-y: auto;">
+            <div id="detalleVentaContent" style="padding: 30px;">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #3b82f6;"></i>
+                    <p style="margin-top: 15px; color: #64748b;">Cargando información...</p>
+                </div>
+            </div>
+            
+            <!-- Botón cerrar fijo -->
+            <div style="padding: 20px 30px 30px; border-top: 1px solid #eef2f6; background: #f8fafc;">
+                <button onclick="cerrarModal('detalleVentaModal')" style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 16px; font-weight: 600; cursor: pointer;">
+                    Cerrar
+                </button>
+            </div>
         </div>
     </div>
 
