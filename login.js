@@ -107,6 +107,7 @@ async function cargarDatosUsuario(uid) {
         if (typeof initPrestamo === 'function') setTimeout(() => initPrestamo(), 1000);
         if (typeof initCompras === 'function') setTimeout(() => initCompras(), 1100);
         if (typeof initResumen === 'function') setTimeout(() => initResumen(), 1200);
+        if (typeof initPago10 === 'function') setTimeout(() => initPago10(), 1300);
 
         // Mostrar APP
         const mainContent = document.querySelector('.main-content');

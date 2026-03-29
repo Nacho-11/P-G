@@ -31,11 +31,9 @@ function renderDashboard() {
 
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
-
     const ayer = new Date(hoy);
     ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
-
     const mesActual = ayerStr.substring(0, 7);
     const anioActual = ayerStr.substring(0, 4);
 
@@ -45,10 +43,7 @@ function renderDashboard() {
 
     // FILTRAR VENTAS POR LOCAL (con permisos)
     const ventasFiltradas = ventasData.filter(v => {
-        // Primero, filtro por permisos de usuario
         if (!puedeVerLocal(v.local)) return false;
-        
-        // Luego, filtro por local seleccionado
         if (filtroLocal !== 'Todos' && v.local !== filtroLocal) return false;
         
         const fechaVenta = limpiarFecha(v.fecha);
@@ -64,23 +59,43 @@ function renderDashboard() {
 
     console.log('📊 Ventas filtradas por', filtroTiempo, ':', ventasFiltradas.length);
     
-    // FILTRAR COSTOS POR LOCAL (con permisos)
+    // ============================================
+    // FILTRAR COSTOS CORRECTAMENTE (CORREGIDO)
+    // ============================================
     let costosFiltrados = [];
-    for (const local in costosData) {
-        if (!puedeVerLocal(local)) continue;
-        if (filtroLocal !== 'Todos' && local !== filtroLocal) continue;
+
+    // costosData tiene estructura: { "Restaurante": { restaurante: [...] }, "Planta": { ... }, etc. }
+    Object.keys(costosData).forEach(categoriaFirebase => {
+        const subCategorias = costosData[categoriaFirebase];
         
-        for (const categoria in costosData[local]) {
-            costosData[local][categoria].forEach(costo => {
+        // Iterar sobre las subcategorías (restaurante, planta, oficinas, transporte, planilla)
+        Object.keys(subCategorias).forEach(subCategoria => {
+            const costosArray = subCategorias[subCategoria];
+            
+            if (!Array.isArray(costosArray)) return;
+            
+            costosArray.forEach(costo => {
+                // El local está dentro de cada costo (costo.local)
+                const localDelCosto = costo.local || 'Sin Local';
+                
+                // Verificar permisos del usuario para este local
+                if (typeof puedeVerLocal === 'function' && !puedeVerLocal(localDelCosto)) return;
+                
+                // Filtrar por local seleccionado
+                if (filtroLocal !== 'Todos' && localDelCosto !== filtroLocal) return;
+                
                 costosFiltrados.push({
                     ...costo,
-                    local: local,
-                    categoria: categoria
+                    local: localDelCosto,
+                    categoria: subCategoria
                 });
             });
-        }
-    }
+        });
+    });
+
+    console.log(`📊 Costos filtrados: ${costosFiltrados.length} registros`);
     
+    // Calcular totales
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
     const totalCostos = costosFiltrados.reduce((sum, c) => sum + (c.monto || 0), 0);
     const utilidad = totalVentas - totalCostos;
@@ -118,6 +133,7 @@ function renderDashboard() {
     
     const mostrarTopLocales = filtroLocal === 'Todos' && esGerencia();
     
+    // El resto del HTML se mantiene igual...
     const dashboardHTML = `
         <div style="padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 20px;">
@@ -256,13 +272,12 @@ function renderDashboard() {
     
     dashboardContent.innerHTML = dashboardHTML;
 
-    // ✅ Llamar al nuevo gráfico inteligente
+    // Crear gráfico si hay datos
     if (ventasFiltradas.length > 0) {
         setTimeout(() => {
             crearGraficoInteligente();
         }, 100);
     }
-    
 }
 
 // ============================================

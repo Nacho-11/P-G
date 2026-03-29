@@ -1051,3 +1051,22 @@ select optgroup option {
 #detalleVentaModal .modal-body::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
+
+/* Estilos para empleados inactivos */
+.inactive-row {
+    opacity: 0.7;
+    background-color: #fef2f2;
+}
+
+.inactive-row td {
+    color: #6b7280;
+}
+
+.inactive-row td:first-child {
+    text-decoration: line-through;
+    text-decoration-color: #ef4444;
+}
+
+.inactive-row strong {
+    color: #9ca3af;
+}

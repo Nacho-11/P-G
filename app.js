@@ -139,6 +139,7 @@ function cambiarModulo(moduleId) {
         else if (moduleId === 'prestamo' && window.renderPrestamo) window.renderPrestamo();
         else if (moduleId === 'compras' && window.renderCompras) window.renderCompras();
         else if (moduleId === 'resumen' && window.renderResumen) window.renderResumen();
+        else if (moduleId === 'pago10' && window.renderPago10) window.renderPago10();
     }, 100);
 }
 
@@ -252,7 +253,7 @@ function formatearFechaCR(fechaStr) {
 // ===== OBTENER RANGO DE FECHAS SEGÚN FILTRO =====
 function obtenerRangoFechas() {
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
-    const hoy = new Date();
+    const hoy = new Date(); // ✅ DEFINIR hoy AQUÍ
     let inicio = null;
     let fin = null;
     let nombre = '';
@@ -281,12 +282,27 @@ function obtenerRangoFechas() {
             break;
             
         case 'rango':
-            const fechaInicio = document.getElementById('filtroFechaInicio')?.value;
-            const fechaFin = document.getElementById('filtroFechaFin')?.value;
+            // ✅ USAR LAS FECHAS GUARDADAS EN AppState
+            const fechaInicio = AppState.filtros?.fechaInicio;
+            const fechaFin = AppState.filtros?.fechaFin;
             if (fechaInicio && fechaFin) {
                 inicio = fechaInicio;
                 fin = fechaFin;
                 nombre = `${formatearFechaCR(fechaInicio)} → ${formatearFechaCR(fechaFin)}`;
+                console.log('📅 Rango desde AppState:', { fechaInicio, fechaFin });
+            } else {
+                // Si no hay fechas guardadas, usar valores por defecto
+                const hoyFecha = new Date();
+                const hace30Dias = new Date(hoyFecha);
+                hace30Dias.setDate(hoyFecha.getDate() - 30);
+                const inicioDefault = hace30Dias.toISOString().split('T')[0];
+                const finDefault = hoyFecha.toISOString().split('T')[0];
+                inicio = inicioDefault;
+                fin = finDefault;
+                nombre = `${formatearFechaCR(inicioDefault)} → ${formatearFechaCR(finDefault)}`;
+                // Guardar en AppState
+                AppState.filtros.fechaInicio = inicioDefault;
+                AppState.filtros.fechaFin = finDefault;
             }
             break;
             
@@ -365,9 +381,19 @@ function inicializarFiltros() {
                     const hoy = new Date();
                     const hace30Dias = new Date(hoy);
                     hace30Dias.setDate(hoy.getDate() - 30);
-                    filtroFechaInicio.value = hace30Dias.toISOString().split('T')[0];
-                    filtroFechaFin.value = hoy.toISOString().split('T')[0];
+                    const inicioDefault = hace30Dias.toISOString().split('T')[0];
+                    const finDefault = hoy.toISOString().split('T')[0];
+                    filtroFechaInicio.value = inicioDefault;
+                    filtroFechaFin.value = finDefault;
+                    // ✅ GUARDAR EN AppState
+                    AppState.filtros.fechaInicio = inicioDefault;
+                    AppState.filtros.fechaFin = finDefault;
+                } else {
+                    // ✅ GUARDAR LOS VALORES ACTUALES
+                    AppState.filtros.fechaInicio = filtroFechaInicio.value;
+                    AppState.filtros.fechaFin = filtroFechaFin.value;
                 }
+                console.log('📅 Rango seleccionado:', AppState.filtros.fechaInicio, '→', AppState.filtros.fechaFin);
             }
             
             actualizarVistasPorFiltro();
@@ -377,6 +403,8 @@ function inicializarFiltros() {
     // Eventos para rango de fechas
     if (filtroFechaInicio) {
         filtroFechaInicio.addEventListener('change', () => {
+            AppState.filtros.fechaInicio = filtroFechaInicio.value;
+            console.log('📅 Fecha inicio cambiada:', AppState.filtros.fechaInicio);
             if (filtroFechaFin?.value) {
                 actualizarVistasPorFiltro();
             }
@@ -384,6 +412,8 @@ function inicializarFiltros() {
     }
     if (filtroFechaFin) {
         filtroFechaFin.addEventListener('change', () => {
+            AppState.filtros.fechaFin = filtroFechaFin.value;
+            console.log('📅 Fecha fin cambiada:', AppState.filtros.fechaFin);
             if (filtroFechaInicio?.value) {
                 actualizarVistasPorFiltro();
             }
@@ -441,8 +471,10 @@ function actualizarVistasPorFiltro() {
         window.renderCompras();
     } else if (moduloActivo === 'resumen' && window.renderResumen) {
         window.renderResumen();
+    } else if (moduloActivo === 'pago10' && window.renderPago10) {
+        window.renderPago10();
     }
-}  
+} 
 
 // ============================================
 // FILTRAR PRODUCTOS EN EL MODAL
@@ -559,6 +591,8 @@ window.renderLogistica = null;
 window.renderFacturacion = null;
 window.renderPrestamo = null;
 window.renderCompras = null;
+window.renderResumen = null;
+window.renderPago10 = null;
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {

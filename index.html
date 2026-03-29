@@ -104,6 +104,10 @@
                         <i class="fas fa-shopping-bag"></i>
                         <span>Compras Externas</span>
                     </a>
+                    <a href="#" onclick="cambiarModulo('pago10'); return false;" class="nav-item" data-module="pago10">
+                        <i class="fas fa-percent"></i>
+                        <span>Pago 10%</span>
+                    </a>
                 </div>
 
                 <!-- FINANZAS -->
@@ -213,6 +217,10 @@
                 <section id="resumen" class="module">
                     <div class="module-header"><h1 class="module-title">Resumen Financiero</h1></div>
                     <div class="module-content" id="resumenContent"></div>
+                </section>
+                <section id="pago10" class="module">
+                    <div class="module-header"><h1 class="module-title">Pago 10%</h1></div>
+                    <div class="module-content" id="pago10Content"></div>
                 </section>
             </div>
 
@@ -698,54 +706,54 @@
         </div>
     </div>
 
-    <!-- Modal de Horas -->
-    <div class="modal" id="horasModal" style="max-width: 900px; width: 95%; border-radius: 24px; overflow: hidden;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px 30px;">
-            <h2 style="margin: 0;">Registrar Horas</h2>
-        </div>
-        <div class="modal-body" style="padding: 25px; background: #f8fafc;">
-            <form id="horasForm" onsubmit="event.preventDefault(); guardarHoras();">
-                <div style="margin-bottom: 20px;">
-                    <h3 id="horasEmpleadoNombre">Nombre</h3>
-                    <p id="horasEmpleadoLocal">Local</p>
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <label>Fecha</label>
-                    <input type="date" id="horasFecha" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <label>Horas ordinarias</label>
-                        <input type="number" id="horasOrdinarias" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                    </div>
-                    <div>
-                        <label>Horas extra</label>
-                        <input type="number" id="horasExtras" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                    </div>
-                    <div>
-                        <label>Horas nocturnas</label>
-                        <input type="number" id="horasNocturnas" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                    </div>
-                    <div>
-                        <label>Horas extra nocturnas</label>
-                        <input type="number" id="horasExtrasNocturnas" value="0" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                    </div>
-                </div>
-                <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border-radius: 12px;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <div>Total horas: <span id="resumenTotalHoras">0.0</span></div>
-                        <div>Pago estimado: <span id="resumenPago">₡0.00</span></div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                    <button type="button" onclick="cerrarModal('horasModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
-                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 8px;">Guardar</button>
-                </div>
-            </form>
-        </div>
+    <!-- Modal de Horas - VERSIÓN CON DECIMALES -->
+<div class="modal" id="horasModal" style="max-width: 900px; width: 95%; border-radius: 24px; overflow: hidden;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 20px 30px;">
+        <h2 style="margin: 0;">Registrar Horas</h2>
     </div>
+    <div class="modal-body" style="padding: 25px; background: #f8fafc;">
+        <form id="horasForm" onsubmit="event.preventDefault(); guardarHoras();">
+            <div style="margin-bottom: 20px;">
+                <h3 id="horasEmpleadoNombre">Nombre</h3>
+                <p id="horasEmpleadoLocal">Local</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label>Fecha</label>
+                <input type="date" id="horasFecha" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <label>Horas ordinarias</label>
+                    <input type="number" id="horasOrdinarias" value="0" step="0.5" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                </div>
+                <div>
+                    <label>Horas extra</label>
+                    <input type="number" id="horasExtras" value="0" step="0.5" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                </div>
+                <div>
+                    <label>Horas nocturnas</label>
+                    <input type="number" id="horasNocturnas" value="0" step="0.5" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                </div>
+                <div>
+                    <label>Horas extra nocturnas</label>
+                    <input type="number" id="horasExtrasNocturnas" value="0" step="0.5" oninput="actualizarResumenHoras()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                </div>
+            </div>
+            <div style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div>Total horas: <span id="resumenTotalHoras">0.0</span></div>
+                    <div>Pago estimado: <span id="resumenPago">₡0.00</span></div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <button type="button" onclick="cerrarModal('horasModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
+                <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 8px;">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <!-- Modal de Servicio - VERSIÓN COMPLETA CON TODOS LOS CAMPOS -->
+    <!-- Modal de Servicio - VERSIÓN CORREGIDA CON MÚLTIPLES MEDIDORES -->
     <div class="modal" id="servicioModal" style="max-width: 800px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
         
         <!-- Header -->
@@ -767,8 +775,6 @@
                 
                 <!-- Fecha y Local -->
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 20px;">
-                    
-                    <!-- Fecha -->
                     <div style="background: white; border-radius: 16px; padding: 15px;">
                         <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <i class="fas fa-calendar-alt" style="color: #f59e0b;"></i> Fecha
@@ -776,7 +782,6 @@
                         <input type="date" id="servicioFecha" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                     </div>
                     
-                    <!-- Local -->
                     <div style="background: white; border-radius: 16px; padding: 15px;">
                         <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <i class="fas fa-store" style="color: #f59e0b;"></i> Local
@@ -792,7 +797,7 @@
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                         <i class="fas fa-tag" style="color: #f59e0b;"></i> Tipo de servicio
                     </label>
-                    <select id="servicioTipo" required onchange="cambiarTipoServicio()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                    <select id="servicioTipo" required onchange="cambiarTipoServicioModal()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                         <option value="">Seleccionar tipo...</option>
                         <option value="Agua">💧 Agua</option>
                         <option value="Electricidad">⚡ Electricidad</option>
@@ -801,90 +806,22 @@
                 </div>
                 
                 <!-- Número de medidor (opcional) -->
-                <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                <div id="medidorField" style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de medidor
+                        <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de medidor (opcional)
                     </label>
                     <input type="text" id="servicioMedidor" placeholder="Ej: 12345678" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                 </div>
                 
-                <!-- SECCIÓN PARA AGUA (6 lecturas) -->
+                <!-- SECCIÓN PARA AGUA (MÚLTIPLES MEDIDORES) -->
                 <div id="seccionAgua" style="display: none;">
                     <div style="background: linear-gradient(135deg, #3b82f610, #3b82f620); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-water" style="color: #3b82f6;"></i> Lecturas de Agua (M³)
                         </h3>
                         
-                        <!-- Período 1: Misceláneo -->
-                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-clock" style="color: #0369a1; font-size: 0.9rem;"></i>
-                                </div>
-                                <span style="font-weight: 600; color: #0369a1;">Período Misceláneo</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
-                                    <input type="number" id="aguaMiscApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
-                                    <input type="number" id="aguaMiscCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                            </div>
-                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
-                                Consumo: <span id="aguaConsumoMisc">0.000</span> M³
-                            </div>
-                        </div>
+                        <div id="medidoresContainer_agua"></div>
                         
-                        <!-- Período 2: Operación -->
-                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-industry" style="color: #0369a1; font-size: 0.9rem;"></i>
-                                </div>
-                                <span style="font-weight: 600; color: #0369a1;">Período Operación</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
-                                    <input type="number" id="aguaOpApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
-                                    <input type="number" id="aguaOpCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                            </div>
-                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
-                                Consumo: <span id="aguaConsumoOp">0.000</span> M³
-                            </div>
-                        </div>
-                        
-                        <!-- Período 3: Cerrado -->
-                        <div style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <div style="background: #e0f2fe; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-door-closed" style="color: #0369a1; font-size: 0.9rem;"></i>
-                                </div>
-                                <span style="font-weight: 600; color: #0369a1;">Período Cerrado</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Apertura</label>
-                                    <input type="number" id="aguaCerradoApertura" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                                <div>
-                                    <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px; font-size: 0.85rem;">Lectura Cierre</label>
-                                    <input type="number" id="aguaCerradoCierre" step="0.001" placeholder="0.000" class="agua-input" style="width: 100%; padding: 10px; border: 2px solid #eef2f6; border-radius: 10px;">
-                                </div>
-                            </div>
-                            <div style="margin-top: 8px; text-align: right; color: #3b82f6; font-weight: 500; font-size: 0.9rem;">
-                                Consumo: <span id="aguaConsumoCerrado">0.000</span> M³
-                            </div>
-                        </div>
-                        
-                        <!-- Totales Agua -->
                         <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 15px; border: 2px solid #3b82f620;">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                                 <div>
@@ -900,40 +837,31 @@
                     </div>
                 </div>
                 
-                <!-- SECCIÓN PARA ELECTRICIDAD -->
+                <!-- SECCIÓN PARA ELECTRICIDAD (MÚLTIPLES MEDIDORES) -->
                 <div id="seccionElectricidad" style="display: none;">
                     <div style="background: linear-gradient(135deg, #f59e0b10, #f59e0b20); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-bolt" style="color: #f59e0b;"></i> Lecturas de Electricidad (kWh)
                         </h3>
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Lectura Apertura</label>
-                                <input type="number" id="energiaApertura" step="0.1" placeholder="0.0" oninput="calcularConsumoEnergia()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
-                            </div>
-                            <div>
-                                <label style="font-weight: 500; color: #475569; display: block; margin-bottom: 5px;">Lectura Cierre</label>
-                                <input type="number" id="energiaCierre" step="0.1" placeholder="0.0" oninput="calcularConsumoEnergia()" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 10px;">
-                            </div>
-                        </div>
+                        <div id="medidoresContainer_electricidad"></div>
                         
-                        <div style="background: white; border-radius: 12px; padding: 15px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="background: white; border-radius: 16px; padding: 20px; margin-top: 15px; border: 2px solid #f59e0b20;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                                 <div>
                                     <span style="color: #64748b;">Consumo Total</span>
-                                    <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;" id="energiaConsumoTotal">0.0 kWh</div>
+                                    <div style="font-size: 2rem; font-weight: 700; color: #f59e0b;" id="energiaConsumoTotal">0.0 kWh</div>
                                 </div>
                                 <div style="text-align: right;">
                                     <span style="color: #64748b;">Monto Calculado</span>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: #059669;" id="energiaMontoCalculado">₡0</div>
+                                    <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="energiaMontoCalculado">₡0</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- SECCIÓN DE GAS - SIN RESTRICCIONES -->
+                <!-- SECCIÓN DE GAS - CON COSTO DIARIO -->
                 <div id="seccionGas" style="display: none;">
                     <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #eef2f6;">
@@ -941,25 +869,22 @@
                             <h4 style="margin: 0; color: #1e293b;">Factura de Gas</h4>
                         </div>
                         
-                        <!-- Proveedor -->
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
                                 <i class="fas fa-truck"></i> Proveedor
                             </label>
                             <input type="text" id="gasProveedor" placeholder="Ej: Zeta Gas, Tropigas, etc." 
-                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                         </div>
                         
-                        <!-- Número de Factura -->
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
                                 <i class="fas fa-hashtag"></i> Número de Factura
                             </label>
                             <input type="text" id="gasNumeroFactura" placeholder="Ej: 001-0001" 
-                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                         </div>
                         
-                        <!-- Monto de la Factura (SIN RESTRICCIONES) -->
                         <div style="margin-bottom: 15px;">
                             <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
                                 <i class="fas fa-dollar-sign"></i> Monto de la factura (₡)
@@ -967,20 +892,22 @@
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <span style="background: #ef4444; color: white; padding: 12px 20px; border-radius: 12px; font-weight: 600;">₡</span>
                                 <input type="number" id="gasMonto" placeholder="Ingrese el monto de la factura" 
-                                    step="any" min="0" 
-                                    style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                                    step="any" min="0" oninput="calcularGasDiario()"
+                                    style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                             </div>
-                            <p style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
-                                <i class="fas fa-info-circle"></i> Ingrese el monto total de la factura de gas (cualquier valor es válido)
-                            </p>
                         </div>
                         
-                        <!-- Preview del monto -->
-                        <div id="gasMontoPreview" style="background: #fef2f2; border-radius: 12px; padding: 12px; margin-top: 10px; display: none;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="color: #ef4444; font-weight: 600;">Total a pagar:</span>
-                                <span id="gasTotalPreview" style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">₡0</span>
-                            </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                                <i class="fas fa-calendar-alt"></i> Días que cubre la factura
+                            </label>
+                            <input type="number" id="gasDias" value="30" min="1" step="1" oninput="calcularGasDiario()"
+                                style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
+                            <small style="color: #64748b;">El monto se dividirá entre estos días para calcular el costo diario</small>
+                        </div>
+                        
+                        <div id="gasCostoDiarioPreview" style="background: #fef2f2; border-radius: 12px; padding: 12px; margin-top: 10px;">
+                            <strong>Costo diario:</strong> ₡0.00
                         </div>
                     </div>
                 </div>
@@ -993,7 +920,6 @@
                     </div>
                     
                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <!-- Agua -->
                         <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <i class="fas fa-water" style="color: #3b82f6; font-size: 1.2rem;"></i>
                             <div>
@@ -1005,7 +931,6 @@
                             </div>
                         </div>
                         
-                        <!-- Electricidad -->
                         <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <i class="fas fa-bolt" style="color: #f59e0b; font-size: 1.2rem;"></i>
                             <div>
@@ -1027,7 +952,6 @@
                 <!-- Inputs ocultos -->
                 <input type="hidden" id="precioAgua">
                 <input type="hidden" id="precioElectricidad">
-                <input type="hidden" id="precioGas">
                 <input type="hidden" id="servicioConsumo">
                 <input type="hidden" id="servicioMonto">
                 
@@ -1191,7 +1115,15 @@
                         <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <i class="fas fa-weight-hanging" style="color: #ef4444;"></i> Cantidad
                         </label>
-                        <input type="number" id="mermaCantidad" step="0.001" required oninput="calcularCostoMerma()" style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;" onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#e2e8f0'">
+                        <input type="number" id="mermaCantidad" step="0.001" placeholder="0.000" 
+                            oninput="window.calcularCostoMerma()" 
+                            style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;">
+                        
+                        <!-- Botón para agregar al carrito -->
+                        <button type="button" onclick="window.agregarProductoAlCarrito()" 
+                                style="margin-top: 15px; width: 100%; padding: 12px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-plus-circle"></i> Agregar producto al carrito
+                        </button>
                     </div>
                     
                     <!-- Motivo -->
@@ -1199,20 +1131,31 @@
                         <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                             <i class="fas fa-comment" style="color: #ef4444;"></i> Motivo
                         </label>
-                        <input type="text" id="mermaMotivo" placeholder="Ej: Caducado, roto, etc." style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;" onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#e2e8f0'">
+                        <input type="text" id="mermaMotivo" placeholder="Ej: Caducado, roto, etc." 
+                            style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;">
                     </div>
                 </div>
-                
+
+                <!-- SECCIÓN: Carrito de productos -->
+                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <h3 style="margin: 0 0 15px 0; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-shopping-cart" style="color: #ef4444;"></i> Productos agregados
+                    </h3>
+                    <div id="carritoMerma" style="max-height: 250px; overflow-y: auto;">
+                        <div style="text-align: center; padding: 20px; color: #64748b;">
+                            <i class="fas fa-shopping-cart" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                            <p>No hay productos agregados</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SECCIÓN: Resumen de Costos (destacada) -->
                 <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; padding: 25px; margin-bottom: 25px; color: white;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <!-- Costo Unitario -->
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">COSTO UNITARIO</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">COSTO UNITARIO (último seleccionado)</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: #f87171;" id="mermaCostoUnitario">₡0 / unidad</div>
                         </div>
-                        
-                        <!-- Costo Total -->
                         <div style="text-align: right;">
                             <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">COSTO TOTAL</div>
                             <div style="font-size: 2.2rem; font-weight: 800; color: #f87171;" id="mermaCostoTotal">₡0</div>
@@ -1297,5 +1240,6 @@
     <script src="modules/prestamo.js"></script>
     <script src="modules/compras.js"></script>
     <script src="modules/resumen.js"></script>
+    <script src="modules/pago10.js"></script>
 </body>
 </html>

@@ -1,5 +1,4 @@
-// modules/facturacion.js
-// Módulo simple de Facturación de Bodegas
+// modules/facturacion.js - VERSIÓN CON DECIMALES
 
 console.log('📦 Cargando módulo de Facturación...');
 
@@ -9,7 +8,7 @@ console.log('📦 Cargando módulo de Facturación...');
 let facturas = [];
 
 // ============================================
-// FUNCIÓN PARA VERIFICAR PERMISOS DE LOCAL (CORREGIDO)
+// FUNCIÓN PARA VERIFICAR PERMISOS DE LOCAL
 // ============================================
 function puedeVerLocal(localNombre) {
     if (esGerencia()) return true;
@@ -28,7 +27,6 @@ function initFacturacion() {
         return;
     }
     
-    // Cargar desde Firebase
     cargarFacturas();
     
     if (document.getElementById('facturacion').classList.contains('active')) {
@@ -44,8 +42,6 @@ function cargarFacturas() {
     
     firebase.database().ref('facturacionBodegas').on('value', (snapshot) => {
         const data = snapshot.val();
-        
-        // Limpiar array global
         facturas = [];
         
         if (data) {
@@ -56,16 +52,13 @@ function cargarFacturas() {
                 });
             });
             
-            // Ordenar por fecha descendente
             facturas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
         }
         
         console.log(`✅ ${facturas.length} facturas cargadas`);
         
-        // ✅ ACTUALIZAR LA VARIABLE GLOBAL Y RENDERIZAR
         window.facturacionBodegas = facturas;
         
-        // ✅ RENDERIZAR SIEMPRE QUE CAMBIEN LOS DATOS
         if (document.getElementById('facturacion').classList.contains('active')) {
             renderFacturacion();
         }
@@ -73,34 +66,50 @@ function cargarFacturas() {
 }
 
 // ============================================
-// RENDERIZAR VISTA PRINCIPAL (CORREGIDO)
+// RENDERIZAR VISTA PRINCIPAL
 // ============================================
 function renderFacturacion() {
     console.log('📊 Renderizando Facturación...');
     
     const content = document.getElementById('facturacionContent');
-    if (!content) {
-        console.error('❌ No se encontró facturacionContent');
-        return;
-    }
+    if (!content) return;
     
-    const filtroLocal = AppState.filtros?.local || 'Todos';
+    const filtroLocal = AppState?.filtros?.local || 'Todos';
+    const filtroTiempo = AppState?.filtros?.tiempo || 'todos';
+    const fechaPersonalizada = AppState?.filtros?.fechaPersonalizada;
+    const fechaInicio = AppState?.filtros?.fechaInicio;
+    const fechaFin = AppState?.filtros?.fechaFin;
     
-    // ✅ USAR EL ARRAY LOCAL O EL GLOBAL
-    const facturasParaRender = (facturas && facturas.length > 0) ? facturas : (window.facturacionBodegas || []);
+    // Fechas para filtrar
+    const hoy = new Date();
+    const hoyStr = hoy.toLocaleDateString('en-CA');
+    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+    const ayerStr = ayer.toLocaleDateString('en-CA');
+    const mesActual = hoyStr.substring(0, 7);
+    const anioActual = hoyStr.substring(0, 4);
     
-    console.log('📦 Facturas a renderizar:', facturasParaRender.length);
-    
-    // Filtrar facturas por local
-    const facturasFiltradas = facturasParaRender.filter(f => {
+    // Filtrar facturas
+    const facturasFiltradas = facturas.filter(f => {
+        // Filtro por local
         if (filtroLocal !== 'Todos' && f.local !== filtroLocal) return false;
         if (!puedeVerLocal(f.local)) return false;
+        
+        // Filtro por fecha
+        if (!f.fecha) return true;
+        const fechaFactura = f.fecha.split('T')[0];
+        
+        if (filtroTiempo === 'todos') return true;
+        if (filtroTiempo === 'ayer') return fechaFactura === ayerStr;
+        if (filtroTiempo === 'mes') return fechaFactura.substring(0, 7) === mesActual;
+        if (filtroTiempo === 'anio') return fechaFactura.substring(0, 4) === anioActual;
+        if (filtroTiempo === 'personalizado') return fechaFactura === fechaPersonalizada;
+        if (filtroTiempo === 'rango') {
+            if (!fechaInicio || !fechaFin) return true;
+            return fechaFactura >= fechaInicio && fechaFactura <= fechaFin;
+        }
         return true;
     });
     
-    console.log('📊 Facturas después de filtros:', facturasFiltradas.length);
-    
-    // Calcular total general
     const totalGeneral = facturasFiltradas.reduce((sum, f) => sum + (f.monto || 0), 0);
     
     let html = `
@@ -111,7 +120,6 @@ function renderFacturacion() {
             </button>
         </div>
         
-        <!-- Tarjeta de total general -->
         <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px; color: white; margin-bottom: 25px; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 20px; display: flex; align-items: center; justify-content: center;">
@@ -119,7 +127,7 @@ function renderFacturacion() {
                 </div>
                 <div>
                     <div style="font-size: 0.9rem; opacity: 0.9;">TOTAL ACUMULADO</div>
-                    <div style="font-size: 2.5rem; font-weight: 700;">₡${totalGeneral.toLocaleString()}</div>
+                    <div style="font-size: 2.5rem; font-weight: 700;">₡${totalGeneral.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     <div style="font-size: 0.9rem; opacity: 0.8;">${facturasFiltradas.length} facturas</div>
                 </div>
             </div>
@@ -140,7 +148,7 @@ function renderFacturacion() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0;"><i class="fas fa-list"></i> Listado de Facturas</h3>
                     <span style="background: #f1f5f9; padding: 5px 15px; border-radius: 20px;">
-                        Total: ₡${totalGeneral.toLocaleString()}
+                        Total: ₡${totalGeneral.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
                 <div class="table-container">
@@ -150,15 +158,13 @@ function renderFacturacion() {
                                 <th>Fecha</th>
                                 <th>Local</th>
                                 <th>N° Factura</th>
-                                <th>Monto</th>
+                                <th>Monto (₡)</th>
                                 <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                            </thead>
+                            <tbody>
         `;
         
         facturasFiltradas.forEach(f => {
-            // Manejar diferentes formatos de fecha
             let fechaFormateada = 'Fecha inválida';
             if (f.fecha) {
                 try {
@@ -166,7 +172,6 @@ function renderFacturacion() {
                     if (!isNaN(fechaObj.getTime())) {
                         fechaFormateada = fechaObj.toLocaleDateString('es-CR');
                     } else if (typeof f.fecha === 'string' && f.fecha.includes('-')) {
-                        // Si es formato YYYY-MM-DD
                         const [year, month, day] = f.fecha.split('-');
                         fechaFormateada = `${day}/${month}/${year}`;
                     }
@@ -180,7 +185,7 @@ function renderFacturacion() {
                     <td><strong>${fechaFormateada}</strong></td>
                     <td>${f.local || '—'}</td>
                     <td>${f.numeroFactura || '—'}</td>
-                    <td style="color: #10b981; font-weight: 600;">₡${(f.monto || 0).toLocaleString()}</td>
+                    <td style="color: #10b981; font-weight: 600;">₡${(f.monto || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>
                         <div style="display: flex; gap: 5px;">
                             <button class="btn btn-sm btn-outline" onclick="window.editarFactura('${f.id}')" title="Editar">
@@ -196,8 +201,9 @@ function renderFacturacion() {
         });
         
         html += `
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -207,14 +213,13 @@ function renderFacturacion() {
 }
 
 // ============================================
-// AGREGAR FACTURA (MODAL SIMPLE)
+// AGREGAR FACTURA (MODAL CON DECIMALES)
 // ============================================
 function agregarFactura(editId = null) {
     console.log('📝 Abriendo modal de factura');
     
     const overlay = document.getElementById('modalOverlay');
     
-    // Crear modal dinámico
     const modalExistente = document.getElementById('facturaModal');
     if (modalExistente) modalExistente.remove();
     
@@ -225,13 +230,11 @@ function agregarFactura(editId = null) {
     modal.style.borderRadius = '24px';
     modal.style.overflow = 'hidden';
     
-    // Si es edición, buscar la factura
     let facturaEdit = null;
     if (editId) {
         facturaEdit = facturas.find(f => f.id === editId);
     }
     
-    // Calcular fecha actual
     const hoy = new Date();
     const año = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -262,7 +265,7 @@ function agregarFactura(editId = null) {
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-calendar-alt" style="color: #10b981;"></i> Fecha
                     </label>
-                    <input type="date" id="facturaFecha" value="${facturaEdit?.fecha || fechaHoy}" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                    <input type="date" id="facturaFecha" value="${facturaEdit?.fecha || fechaHoy}" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                 </div>
                 
                 <!-- Local -->
@@ -270,11 +273,10 @@ function agregarFactura(editId = null) {
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-store" style="color: #10b981;"></i> Local
                     </label>
-                    <select id="facturaLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem; background: white;">
+                    <select id="facturaLocal" required style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                         <option value="">Seleccionar local...</option>
     `;
     
-    // Cargar locales
     const localesPermitidos = getLocalesPermitidos();
     if (AppState.locales) {
         AppState.locales.forEach(local => {
@@ -294,23 +296,24 @@ function agregarFactura(editId = null) {
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-hashtag" style="color: #10b981;"></i> Número de factura
                     </label>
-                    <input type="text" id="facturaNumero" value="${facturaEdit?.numeroFactura || ''}" placeholder="Ej: 001-0001" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                    <input type="text" id="facturaNumero" value="${facturaEdit?.numeroFactura || ''}" placeholder="Ej: 001-0001" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                 </div>
                 
-                <!-- Monto -->
+                <!-- Monto (CON DECIMALES) -->
                 <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-dollar-sign" style="color: #10b981;"></i> Monto (₡)
                     </label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="background: #10b981; color: white; padding: 12px 20px; border-radius: 12px; font-weight: 600;">₡</span>
-                        <input type="number" id="facturaMonto" value="${facturaEdit?.monto || ''}" min="0" step="1000" placeholder="0" required style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
+                        <input type="number" id="facturaMonto" value="${facturaEdit?.monto || ''}" min="0" step="any" placeholder="0.00" required style="flex: 1; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px;">
                     </div>
+                    <small style="color: #64748b;">Puede usar decimales (ej: 400342.50)</small>
                 </div>
                 
                 <!-- Botones -->
                 <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px;">
-                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);">
+                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
                         <i class="fas fa-save"></i> ${editId ? 'Actualizar' : 'Guardar'} Factura
                     </button>
                 </div>
@@ -325,13 +328,16 @@ function agregarFactura(editId = null) {
 }
 
 // ============================================
-// GUARDAR FACTURA
+// GUARDAR FACTURA (CON DECIMALES)
 // ============================================
 async function guardarFactura(editId = null) {
     const fecha = document.getElementById('facturaFecha').value;
     const local = document.getElementById('facturaLocal').value;
     const numeroFactura = document.getElementById('facturaNumero').value;
-    const monto = parseFloat(document.getElementById('facturaMonto').value) || 0;
+    let monto = parseFloat(document.getElementById('facturaMonto').value) || 0;
+    
+    // Redondear a 2 decimales para mayor precisión
+    monto = Math.round(monto * 100) / 100;
     
     if (!fecha || !local || monto === 0) {
         alert('Complete los campos obligatorios (fecha, local y monto)');
@@ -340,35 +346,42 @@ async function guardarFactura(editId = null) {
     
     const data = {
         fecha,
-        local,
+        local: local,  // ✅ minúscula
         numeroFactura: numeroFactura || null,
         monto,
         ultimaModificacion: new Date().toISOString(),
-        modificadoPor: AppState.usuario?.email || 'sistema'
+        modificadoPor: AppState?.usuario?.email || 'sistema'
     };
     
     try {
+        const btn = document.querySelector('#facturaModal button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        }
+        
         if (editId) {
             await firebase.database().ref(`facturacionBodegas/${editId}`).update(data);
             alert('✅ Factura actualizada');
         } else {
             data.fechaCreacion = new Date().toISOString();
-            data.creadoPor = AppState.usuario?.email || 'sistema';
+            data.creadoPor = AppState?.usuario?.email || 'sistema';
             await firebase.database().ref('facturacionBodegas').push(data);
             alert('✅ Factura agregada');
         }
         
-        // Cerrar modal
-        const modal = document.getElementById('facturaModal');
-        if (modal) modal.remove();
-        const overlay = document.getElementById('modalOverlay');
-        if (overlay) overlay.classList.remove('active');
-        
-        // No es necesario hacer nada más, el listener de Firebase actualizará automáticamente
+        document.getElementById('facturaModal').remove();
+        document.getElementById('modalOverlay').classList.remove('active');
         
     } catch (error) {
         console.error('Error:', error);
         alert('Error al guardar: ' + error.message);
+        
+        const btn = document.querySelector('#facturaModal button[type="submit"]');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar Factura';
+        }
     }
 }
 
@@ -403,4 +416,4 @@ window.guardarFactura = guardarFactura;
 window.editarFactura = editarFactura;
 window.eliminarFactura = eliminarFactura;
 
-console.log('✅ facturacion.js cargado - Módulo corregido');
+console.log('✅ facturacion.js cargado - Versión con decimales');
