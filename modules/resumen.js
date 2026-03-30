@@ -339,6 +339,7 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
 
 function calcularServicios(serviciosData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) {
     let agua = 0, electricidad = 0, gas = 0, total = 0;
+    let gasPromedioDiario = 0;
     
     Object.keys(serviciosData).forEach(local => {
         if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
@@ -346,14 +347,22 @@ function calcularServicios(serviciosData, filtroLocal, filtroTiempo, ayerStr, me
         
         (serviciosData[local] || []).forEach(s => {
             if (!filtrarPorFecha(s, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin)) return;
-            total += s.monto || 0;
-            if (s.servicio === 'Agua') agua += s.monto || 0;
-            if (s.servicio === 'Electricidad') electricidad += s.monto || 0;
-            if (s.servicio === 'Gas') gas += s.monto || 0;
+            
+            const monto = s.monto || 0;
+            total += monto;
+            
+            if (s.servicio === 'Agua') agua += monto;
+            if (s.servicio === 'Electricidad') electricidad += monto;
+            
+            if (s.servicio === 'Gas') {
+                gas += monto;
+                const diasGas = s.dias || 30;
+                gasPromedioDiario += diasGas > 0 ? monto / diasGas : 0;
+            }
         });
     });
     
-    return { agua, electricidad, gas, total };
+    return { agua, electricidad, gas, gasPromedioDiario, total };
 }
 
 // ============================================
@@ -437,7 +446,6 @@ function renderResumen() {
     
     const periodoTexto = obtenerTextoPeriodo(filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin);
     
-    // Fecha base para costos fijos
     let fechaBaseCostos;
     if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
         fechaBaseCostos = parseFechaDDMMYYYY(fechaPersonalizada);
@@ -455,9 +463,7 @@ function renderResumen() {
     const diasDelMes = getDiasDelMes(fechaBaseCostos);
     const mesTexto = formatearMesAnio(fechaBaseCostos);
     const esVistaDiaria = (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado' || filtroTiempo === 'rango');
-    const textoVista = esVistaDiaria ? `Diario (${diasDelMes} días/mes)` : 'Mensual';
     
-    // Período para costos fijos y cálculos
     let periodo = { tipo: filtroTiempo, dias: 1 };
     let diasPeriodo = 30;
     
@@ -473,38 +479,38 @@ function renderResumen() {
         const diffTime = Math.abs(fin - inicio);
         periodo.dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         diasPeriodo = periodo.dias;
-    } else if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
+    } else {
         periodo.dias = 1;
         diasPeriodo = 1;
-    } else {
-        periodo.dias = diasDelMes;
-        diasPeriodo = diasDelMes;
     }
-    
-    // Fechas para filtrar
+
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
-    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+    const ayer = new Date(hoy);
+    ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
-    
-    // Datos
+
     const ventas = window.ventasData || [];
-    const costos = window.costosData || {};
+    const planilla = window.planillaData || {};
+    const prestamos = window.prestamos || [];
     const compras = window.comprasExternas || [];
     const facturas = window.facturacionBodegas || [];
     const mermas = window.mermas || [];
-    const prestamos = window.prestamos || [];
     const servicios = window.serviciosData || {};
-    const planilla = window.planillaData || {};
-    
-    // Filtrar
+    const costos = window.costosData || {};;
+
+    const filtrarPorLocal = (item, local) => {
+        if (local === 'Todos') return true;
+        return item.local === local;
+    };
+
     const ventasFiltradas = ventas.filter(v => 
         filtrarPorFecha(v, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
         filtrarPorLocal(v, filtroLocal)
     );
-    
+
     const comprasFiltradas = compras.filter(c => 
         filtrarPorFecha(c, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
         filtrarPorLocal(c, filtroLocal)
@@ -520,7 +526,7 @@ function renderResumen() {
         filtrarPorLocal(m, filtroLocal)
     );
     
-    // Cálculos de ingresos
+    // INGRESOS
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
     const ventaEfectivo = ventasFiltradas.reduce((sum, v) => sum + (v.efectivo || 0), 0);
     const ventaBAC = ventasFiltradas.reduce((sum, v) => sum + (v.bac || 0), 0);
@@ -529,7 +535,7 @@ function renderResumen() {
     const ventaDidi = ventasFiltradas.reduce((sum, v) => sum + (v.didi || 0), 0);
     const ventaPersonal = ventasFiltradas.reduce((sum, v) => sum + (v.personal || 0), 0);
     
-    // Cálculos de gastos
+    // GASTOS BASE
     const planillaCalc = calcularPlanilla(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
     const prestamosTotal = calcularPrestamos(prestamos, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
     const comisiones = calcularComisionesVentas(ventasFiltradas);
@@ -542,174 +548,355 @@ function renderResumen() {
     const mermasTotal = calcularMermas(mermasFiltradas);
     const serviciosCalc = calcularServicios(servicios, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
     const costosFijos = calcularCostosFijos(costos, filtroLocal, periodo);
-    
-    // CCSS, Cesantía, Vacaciones, Aguinaldos
+
+    // CARGAS SOCIALES
     const ccss = planillaCalc.total * 0.265;
     const cesantia = planillaCalc.salarioBase * 0.0533;
     const vacaciones = planillaCalc.salarioBase * 0.0416;
     const aguinaldos = planillaCalc.total * 0.0833;
-    
-    // Totales
-    const totalGastosOperativos = 
-        planillaCalc.total + ccss + cesantia + vacaciones + aguinaldos + 
-        prestamosTotal + comisiones.total + reembolsoDelivery + pago10 + 
-        costoMateriaPrima + facturacionBodegasTotal + mermasTotal + serviciosCalc.total +
-        costosFijos.alquilerLocal + costosFijos.secsa + costosFijos.softRestaurant + costosFijos.internetKolbi +
-        costosFijos.televisionKolbi + costosFijos.adt + costosFijos.fumigacion + costosFijos.polizaRT +
-        costosFijos.depreciacionActivos + costosFijos.patenteComercial + costosFijos.patenteLicores +
-        costosFijos.basuraMunicipal + costosFijos.interesesMoraPatente + costosFijos.certificacionGas +
-        costosFijos.certificacionElectrica + costosFijos.renovacionMinisterioSalud + costosFijos.mantenimiento +
-        costosFijos.haciendaIVA + costosFijos.asesoriaLegalRH + costosFijos.honorariosContabilidad +
-        costosFijos.publicidad + costosFijos.otrosServiciosProfesionales + costosFijos.electricidadPlanta +
-        costosFijos.aguaPlanta + costosFijos.adtPlanta + costosFijos.fumigacionPlanta + costosFijos.softwareSecsaPlanta +
-        costosFijos.ivaHaciendaPlanta + costosFijos.asesoriaLegalPlanta + costosFijos.electricidadOficinas +
-        costosFijos.aguaOficinas + costosFijos.internetOficinas + costosFijos.telefonoCelulares + costosFijos.adtOficinas +
-        costosFijos.mantenimientoPapeleria + costosFijos.softwareHosting + costosFijos.combustible +
-        costosFijos.electricidadBodegas + costosFijos.aguaBodegas + costosFijos.alquilerTaller + costosFijos.gpsNavsat +
-        costosFijos.marchamos + costosFijos.dekra + costosFijos.mantenimientoVehiculos + costosFijos.planillaBodega +
-        costosFijos.alexDuque + costosFijos.polizaRTBodega + costosFijos.ccssBodegaOficinas + costosFijos.planillaOficinas;
-    
-    const totalGastos = totalGastosOperativos;
+
+    // =========================
+    // GASTOS OPERATIVOS
+    // =========================
+    const gastosOperativos = {
+        planillaBase: planillaCalc.salarioBase,
+        horasExtras: planillaCalc.horasExtras,
+        horasNocturnas: planillaCalc.nocturnas,
+        extrasNocturnas: planillaCalc.extrasNocturnas,
+        ccss,
+        cesantia,
+        vacaciones,
+        aguinaldos,
+        pago10Diario: pago10PromedioDiario,
+        arrendamiento: costosFijos.alquilerLocal || 0,
+        servicioElectrico: serviciosCalc.electricidad || 0,
+        servicioGasDiario: serviciosCalc.gasPromedioDiario || 0,
+        servicioAgua: serviciosCalc.agua || 0,
+        comprasProveedores: costoMateriaPrima || 0,
+        costoDiarioMateriaPrima: facturacionBodegasTotal || 0,
+        mermas: mermasTotal || 0,
+        prestamosEmpleados: prestamosTotal || 0
+    };
+
+    const totalGastosOperativos = Object.values(gastosOperativos).reduce((a, b) => a + (b || 0), 0);
+
+    // =========================
+    // GASTOS ADMINISTRATIVOS & LOGÍSTICA
+    // =========================
+    const gastosAdminLogistica = {
+        secsa: costosFijos.secsa || 0,
+        softRestaurant: costosFijos.softRestaurant || 0,
+        internetKolbi: costosFijos.internetKolbi || 0,
+        televisionKolbi: costosFijos.televisionKolbi || 0,
+        adt: costosFijos.adt || 0,
+        fumigacion: costosFijos.fumigacion || 0,
+        polizaRT: costosFijos.polizaRT || 0,
+        depreciacionActivos: costosFijos.depreciacionActivos || 0,
+        patenteComercial: costosFijos.patenteComercial || 0,
+        patenteLicores: costosFijos.patenteLicores || 0,
+        basuraMunicipal: costosFijos.basuraMunicipal || 0,
+        interesesMoraPatente: costosFijos.interesesMoraPatente || 0,
+        certificacionGas: costosFijos.certificacionGas || 0,
+        certificacionElectrica: costosFijos.certificacionElectrica || 0,
+        renovacionMinisterioSalud: costosFijos.renovacionMinisterioSalud || 0,
+        mantenimiento: costosFijos.mantenimiento || 0,
+        asesoriaLegalRH: costosFijos.asesoriaLegalRH || 0,
+        honorariosContabilidad: costosFijos.honorariosContabilidad || 0,
+        publicidad: costosFijos.publicidad || 0,
+        otrosServiciosProfesionales: costosFijos.otrosServiciosProfesionales || 0,
+        electricidadPlanta: costosFijos.electricidadPlanta || 0,
+        aguaPlanta: costosFijos.aguaPlanta || 0,
+        adtPlanta: costosFijos.adtPlanta || 0,
+        comisionBAC: comisiones.datafonos || 0,
+        comisionUber: comisiones.uber || 0,
+        comisionPedidosYa: comisiones.pedidosYa || 0,
+        comisionDidi: comisiones.didi || 0
+    };
+
+    const totalGastosAdminLogistica = Object.values(gastosAdminLogistica).reduce((a, b) => a + (b || 0), 0);
+
+    // =========================
+    // TOTALES E IMPUESTOS
+    // =========================
+    const totalGastos = totalGastosOperativos + totalGastosAdminLogistica;
     const utilidadAntesImpuestos = totalVentas - totalGastos;
-    const iva = costosFijos.haciendaIVA;
+    const iva = totalVentas * 0.13;
     const retencionTarjetaVenta = ventaBAC * 0.0531;
     const utilidadAntesRenta = utilidadAntesImpuestos - iva - retencionTarjetaVenta;
     const impuestoRenta = utilidadAntesRenta > 0 ? utilidadAntesRenta * 0.30 : 0;
     const retencionTarjetaRenta = ventaBAC * 0.0171;
     const utilidadNeta = utilidadAntesRenta - impuestoRenta - retencionTarjetaRenta;
-    const margenUtilidad = totalVentas > 0 ? (utilidadNeta / totalVentas * 100) : 0;
-    
-    // Generar HTML
+    const margenUtilidad = totalVentas > 0 ? (utilidadNeta / totalVentas) * 100 : 0;
+
+    const porcentaje = (valor, base = totalVentas) => base > 0 ? ((valor / base) * 100).toFixed(2) : '0.00';
+    const money = (n) => `₡${Math.round(n || 0).toLocaleString()}`;
+
+    const fila = (label, value, percent = true, extraStyle = '') => `
+        <tr style="${extraStyle}">
+            <td style="padding: 11px 20px 11px 40px;">${label}</td>
+            <td style="padding: 11px 20px; text-align: right; font-weight: 600;">${money(value)}</td>
+            <td style="padding: 11px 20px; text-align: right; color: #64748b; font-weight: 600;">${percent ? porcentaje(value) + '%' : '—'}</td>
+        </tr>
+    `;
+
+    const filaTotal = (label, value, bg, color) => `
+        <tr style="background:${bg}; font-weight:800; border-top:2px solid #e2e8f0;">
+            <td style="padding: 14px 20px;">${label}</td>
+            <td style="padding: 14px 20px; text-align: right; color:${color}; font-weight:800;">${money(value)}</td>
+            <td style="padding: 14px 20px; text-align: right; color:${color}; font-weight:800;">${porcentaje(value)}%</td>
+        </tr>
+    `;
+
     let html = `
-        <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 24px; padding: 20px 25px; margin-bottom: 25px; color: white;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <div>
-                    <div style="font-size: 0.85rem; opacity: 0.7;">ESTADO DE RESULTADOS</div>
-                    <div style="font-size: 1.4rem; font-weight: 700;">Pérdidas y Ganancias</div>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                    <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 40px;">
-                        <i class="fas fa-store"></i> ${filtroLocal}
-                    </div>
-                    <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 40px;">
-                        <i class="fas fa-calendar"></i> ${periodoTexto} (${textoVista})
-                    </div>
-                </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+            <div>
+                <h2 style="margin:0; font-size:1.9rem; display:flex; align-items:center; gap:10px;">
+                    <span style="display:inline-flex; width:48px; height:48px; align-items:center; justify-content:center; border-radius:16px; background:linear-gradient(135deg,#0ea5e9,#2563eb); color:white;">
+                        <i class="fas fa-chart-line"></i>
+                    </span>
+                    Resumen Financiero
+                </h2>
+                <p style="margin:6px 0 0 58px; color:#64748b;">Estado de resultados y análisis financiero</p>
             </div>
-            <div style="margin-top: 12px; font-size: 0.8rem; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 12px;">
-                <i class="fas fa-chart-line"></i> Costos basados en el período: <strong>${mesTexto}</strong> (${periodo.dias} días)
-                ${esVistaDiaria ? `<span style="color: #fbbf24;"> | Costos diarios = Mensual ÷ ${periodo.dias}</span>` : ''}
-                ${window.pagos10 && window.pagos10.length > 0 && pago10PromedioDiario > 0 ? `<span style="color: #fbbf24;"> | Pago 10% promedio diario: ₡${Math.round(pago10PromedioDiario).toLocaleString()}</span>` : ''}
+
+            <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; color:#334155; font-weight:700;">
+                <i class="fas fa-calendar-alt"></i> ${periodoTexto}
             </div>
         </div>
-        
-        <div class="card" style="overflow-x: auto; padding: 0;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                <thead>
-                    <tr style="background: #f1f5f9;">
-                        <th colspan="2" style="padding: 15px 20px; text-align: left; font-size: 1rem; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-arrow-up" style="color: #10b981; margin-right: 10px;"></i> INGRESOS
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (EFECTIVO)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaEfectivo).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (BAC)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaBAC).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (UBER)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaUber).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (PEDIDOS YA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaPedidosYa).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (DIDI FOOD)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaDidi).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Ingreso x Venta (PERSONAL)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ventaPersonal).toLocaleString()}</td></tr>
-                    <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0;">
-                        <td style="padding: 12px 20px;">TOTAL GENERAL INGRESOS</td>
-                        <td style="padding: 12px 20px; text-align: right; color: #10b981;">₡${Math.round(totalVentas).toLocaleString()}</td>
-                    </tr>
-                </tbody>
-                
-                <thead>
-                    <tr style="background: #f1f5f9;">
-                        <th colspan="2" style="padding: 15px 20px; text-align: left; font-size: 1rem; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-arrow-down" style="color: #ef4444; margin-right: 10px;"></i> GASTOS OPERATIVOS
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Planilla Base</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.salarioBase).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Horas Extras</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.horasExtras).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Horas Nocturnas</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.nocturnas).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Nómina - Horas Extra Nocturnas</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(planillaCalc.extrasNocturnas).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x CCSS (26.5%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(ccss).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Cesantía (5.33%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(cesantia).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Vacaciones (4.16%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(vacaciones).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Aguinaldos (8.33%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(aguinaldos).toLocaleString()}</td></tr>
-                    <tr>
+    `;
+
+    // =========================
+    // DASHBOARD SUPERIOR
+    // =========================
+    html += `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:26px;">
+            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #86efac;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#15803d; font-weight:700;">Ingresos Totales</div>
+                        <div style="font-size:1.9rem; font-weight:900; color:#166534; margin-top:8px;">${money(totalVentas)}</div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(34,197,94,0.15); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-arrow-up" style="font-size:1.3rem; color:#16a34a;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1px solid #fca5a5;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#b91c1c; font-weight:700;">Gastos Totales</div>
+                        <div style="font-size:1.9rem; font-weight:900; color:#991b1b; margin-top:8px;">${money(totalGastos)}</div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-arrow-down" style="font-size:1.3rem; color:#dc2626;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1px solid #93c5fd;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#1d4ed8; font-weight:700;">Utilidad Neta</div>
+                        <div style="font-size:1.9rem; font-weight:900; color:${utilidadNeta >= 0 ? '#1d4ed8' : '#b91c1c'}; margin-top:8px;">${money(utilidadNeta)}</div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-coins" style="font-size:1.3rem; color:#2563eb;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#faf5ff,#ede9fe); border:1px solid #c4b5fd;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#7c3aed; font-weight:700;">Margen</div>
+                        <div style="font-size:1.9rem; font-weight:900; color:#6d28d9; margin-top:8px;">${margenUtilidad.toFixed(2)}%</div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(139,92,246,0.15); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-percent" style="font-size:1.3rem; color:#7c3aed;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:28px;">
+            <div class="card" style="border-radius:18px; padding:18px; background:#fff7ed; border:1px solid #fdba74;">
+                <div style="font-size:0.82rem; color:#c2410c; font-weight:700;">Pago 10% Diario</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#9a3412; margin-top:6px;">${money(pago10PromedioDiario)}</div>
+            </div>
+            <div class="card" style="border-radius:18px; padding:18px; background:#fefce8; border:1px solid #fde047;">
+                <div style="font-size:0.82rem; color:#a16207; font-weight:700;">Servicios Totales</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#854d0e; margin-top:6px;">${money(serviciosCalc.total)}</div>
+            </div>
+            <div class="card" style="border-radius:18px; padding:18px; background:#fff1f2; border:1px solid #fda4af;">
+                <div style="font-size:0.82rem; color:#be123c; font-weight:700;">Gas Diario</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#9f1239; margin-top:6px;">${money(serviciosCalc.gasPromedioDiario)}</div>
+            </div>
+            <div class="card" style="border-radius:18px; padding:18px; background:#ecfdf5; border:1px solid #86efac;">
+                <div style="font-size:0.82rem; color:#15803d; font-weight:700;">Materia Prima</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#166534; margin-top:6px;">${money(costoMateriaPrima)}</div>
+            </div>
+            <div class="card" style="border-radius:18px; padding:18px; background:#eff6ff; border:1px solid #93c5fd;">
+                <div style="font-size:0.82rem; color:#1d4ed8; font-weight:700;">Comisiones</div>
+                <div style="font-size:1.35rem; font-weight:900; color:#1e40af; margin-top:6px;">${money(comisiones.total)}</div>
+            </div>
+        </div>
+    `;
+
+    // =========================
+    // TABLA PRINCIPAL
+    // =========================
+    html += `
+        <div class="card" style="border-radius:28px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 16px 40px rgba(15,23,42,0.08);">
+            <div style="padding:22px 24px; background:linear-gradient(135deg,#ffffff,#f8fafc); border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
+                    <span style="width:42px; height:42px; border-radius:14px; background:#eff6ff; display:flex; align-items:center; justify-content:center; color:#2563eb;">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </span>
+                    Estado de Resultados
+                </h3>
+                <p style="margin:6px 0 0 52px; color:#64748b;">Desglose completo del período seleccionado</p>
+            </div>
+
+            <div class="table-container" style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; min-width:980px; font-size:0.95rem;">
+                    <thead>
+                        <tr style="background:#0f172a; color:white;">
+                            <th style="padding:16px 20px; text-align:left;">Concepto</th>
+                            <th style="padding:16px 20px; text-align:right;">Monto</th>
+                            <th style="padding:16px 20px; text-align:right;">% sobre Ingresos</th>
+                        </tr>
+                    </thead>
+
+                    <thead>
+                        <tr style="background:#ecfdf5;">
+                            <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #bbf7d0;">
+                                <i class="fas fa-arrow-up" style="color:#16a34a; margin-right:10px;"></i> INGRESOS
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${fila('Ingreso x Venta (EFECTIVO)', ventaEfectivo)}
+                        ${fila('Ingreso x Venta (BAC)', ventaBAC)}
+                        ${fila('Ingreso x Venta (UBER)', ventaUber)}
+                        ${fila('Ingreso x Venta (PEDIDOS YA)', ventaPedidosYa)}
+                        ${fila('Ingreso x Venta (DIDI FOOD)', ventaDidi)}
+                        ${fila('Ingreso x Venta (PERSONAL)', ventaPersonal)}
+                        ${filaTotal('TOTAL GENERAL INGRESOS', totalVentas, '#f0fdf4', '#166534')}
+                    </tbody>
+
+                    <thead>
+                        <tr style="background:#fff7ed;">
+                            <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #fdba74;">
+                                <i class="fas fa-store" style="color:#ea580c; margin-right:10px;"></i> GASTOS OPERATIVOS
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${fila('Gasto x Nómina - Planilla Base', gastosOperativos.planillaBase)}
+                        ${fila('Gasto x Nómina - Horas Extras', gastosOperativos.horasExtras)}
+                        ${fila('Gasto x Nómina - Horas Nocturnas', gastosOperativos.horasNocturnas)}
+                        ${fila('Gasto x Nómina - Horas Extra Nocturnas', gastosOperativos.extrasNocturnas)}
+                        ${fila('Gasto x CCSS (26.5%)', gastosOperativos.ccss)}
+                        ${fila('Cesantía (5.33%)', gastosOperativos.cesantia)}
+                        ${fila('Vacaciones (4.16%)', gastosOperativos.vacaciones)}
+                        ${fila('Aguinaldos (8.33%)', gastosOperativos.aguinaldos)}
+                        ${fila('Gasto x Pago 10% (diario)', gastosOperativos.pago10Diario)}
+                        ${fila('Gasto x Arrendamiento', gastosOperativos.arrendamiento)}
+                        ${fila('Gasto x Servicio Eléctrico', gastosOperativos.servicioElectrico)}
+                        ${fila('Gasto x Servicio Gas (diario)', gastosOperativos.servicioGasDiario)}
+                        ${fila('Gasto x Servicio Agua', gastosOperativos.servicioAgua)}
+                        ${fila('GASTO x COMPRA PROVEEDORES', gastosOperativos.comprasProveedores)}
+                        ${fila('Gasto x Costo Diario (MATERIA PRIMA)', gastosOperativos.costoDiarioMateriaPrima)}
+                        ${fila('Gasto x Merma', gastosOperativos.mermas)}
+                        ${fila('Préstamos a Empleados', gastosOperativos.prestamosEmpleados)}
+                        ${filaTotal('TOTAL GASTOS OPERATIVOS', totalGastosOperativos, '#fff7ed', '#c2410c')}
+                    </tbody>
+
+                    <thead>
+                        <tr style="background:#eff6ff;">
+                            <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #93c5fd;">
+                                <i class="fas fa-truck" style="color:#2563eb; margin-right:10px;"></i> GASTOS ADMINISTRATIVOS & LOGÍSTICA
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${fila('GASTO x SOFTWARE SECSA', gastosAdminLogistica.secsa)}
+                        ${fila('GASTO x SOFT-RESTAURANT', gastosAdminLogistica.softRestaurant)}
+                        ${fila('INTERNET', gastosAdminLogistica.internetKolbi)}
+                        ${fila('TELEVISIÓN', gastosAdminLogistica.televisionKolbi)}
+                        ${fila('Gasto x Servicio ADT', gastosAdminLogistica.adt)}
+                        ${fila('Gasto x Servicio Fumigación', gastosAdminLogistica.fumigacion)}
+                        ${fila('Gasto x Póliza RT', gastosAdminLogistica.polizaRT)}
+                        ${fila('GASTO x DEPRECIACION ACTIVOS', gastosAdminLogistica.depreciacionActivos)}
+                        ${fila('GASTO x PATENTE COMERCIAL', gastosAdminLogistica.patenteComercial)}
+                        ${fila('GASTO x PATENTE LICORES', gastosAdminLogistica.patenteLicores)}
+                        ${fila('BASURA MUNICIPAL', gastosAdminLogistica.basuraMunicipal)}
+                        ${fila('INTERESES x MORA PATENTE', gastosAdminLogistica.interesesMoraPatente)}
+                        ${fila('CERTIFICACION DE GAS', gastosAdminLogistica.certificacionGas)}
+                        ${fila('CERTIFICACION ELECTRICA', gastosAdminLogistica.certificacionElectrica)}
+                        ${fila('GASTO x RENOVACIÓN SALUD', gastosAdminLogistica.renovacionMinisterioSalud)}
+                        ${fila('MANTENIMIENTO', gastosAdminLogistica.mantenimiento)}
+                        ${fila('ASESORIA LEGAL RH', gastosAdminLogistica.asesoriaLegalRH)}
+                        ${fila('Honorarios Contabilidad', gastosAdminLogistica.honorariosContabilidad)}
+                        ${fila('SERV. PROF PUBLICIDAD', gastosAdminLogistica.publicidad)}
+                        ${fila('OTROS SERVICIOS PROFESIONALES', gastosAdminLogistica.otrosServiciosProfesionales)}
+                        ${fila('Electricidad Planta', gastosAdminLogistica.electricidadPlanta)}
+                        ${fila('Agua Planta', gastosAdminLogistica.aguaPlanta)}
+                        ${fila('ADT Planta', gastosAdminLogistica.adtPlanta)}
+                        ${fila('Gasto x Comisión Datafonos (BAC)', gastosAdminLogistica.comisionBAC)}
+                        ${fila('Gasto x Comisión (UBER)', gastosAdminLogistica.comisionUber)}
+                        ${fila('Gasto x Comisión (PEDIDOS YA)', gastosAdminLogistica.comisionPedidosYa)}
+                        ${fila('Gasto x Comisión (DIDI FOOD)', gastosAdminLogistica.comisionDidi)}
+                        ${filaTotal('TOTAL GASTOS ADMINISTRATIVOS & LOGÍSTICA', totalGastosAdminLogistica, '#eff6ff', '#1d4ed8')}
+                    </tbody>
+
+                    <thead>
+                        <tr style="background:#fef2f2;">
+                            <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #fca5a5;">
+                                <i class="fas fa-file-invoice" style="color:#dc2626; margin-right:10px;"></i> IMPUESTOS Y RETENCIONES
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filaTotal('TOTAL GENERAL GASTOS', totalGastos, '#fef2f2', '#b91c1c')}
+                        ${fila('Utilidad Antes de Impuestos', utilidadAntesImpuestos)}
+                        ${fila('IVA (Impuesto Valor Agregado)', iva)}
+                        ${fila('Retención de tarjeta (5.31%) - imp venta', retencionTarjetaVenta)}
+                        ${fila('Utilidad antes del impuesto de renta', utilidadAntesRenta)}
+                        ${fila('Impuesto de Renta (30%)', impuestoRenta)}
+                        ${fila('Retención de tarjeta (1.71%) - imp renta', retencionTarjetaRenta)}
+                    </tbody>
+
+                    <thead>
+                        <tr style="background:#f0fdf4;">
+                            <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #86efac;">
+                                <i class="fas fa-trophy" style="color:#16a34a; margin-right:10px;"></i> RESULTADO FINAL
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background:#f0fdf4;">
+                            <td style="padding:18px 20px; font-weight:900; font-size:1.08rem;">UTILIDAD O PÉRDIDA NETA</td>
+                            <td style="padding:18px 20px; text-align:right; font-weight:900; font-size:1.08rem; color:${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">${money(utilidadNeta)}</td>
+                            <td style="padding:18px 20px; text-align:right; font-weight:900; font-size:1.08rem; color:${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">${margenUtilidad.toFixed(2)}%</td>
+                        </tr>
                         <tr>
-                        <td style="padding: 10px 20px 10px 40px;">Gasto x Pago 10%</td>
-                        <td style="padding: 10px 20px; text-align: right;">
-                            ₡${Math.round(pago10PromedioDiario).toLocaleString()}
-                            <span style="font-size: 0.7rem; color: #64748b;"></span>
-                        </td>
-                    </tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Arrendamiento</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.alquilerLocal).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Eléctrico</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.electricidad).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Gas</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.gas).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Agua</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(serviciosCalc.agua).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x SOFTWARE SECSA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.secsa).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x SOFT-RESTAURANT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.softRestaurant).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">INTERNET</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.internetKolbi).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">TELEVISIÓN</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.televisionKolbi).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio ADT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.adt).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Servicio Fumigación</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.fumigacion).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Póliza RT</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.polizaRT).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x DEPRECIACION ACTIVOS</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.depreciacionActivos).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x PATENTE COMERCIAL</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.patenteComercial).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x PATENTE LICORES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.patenteLicores).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">BASURA MUNICIPAL</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.basuraMunicipal).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">INTERESES x MORA PATENTE</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.interesesMoraPatente).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">CERTIFICACION DE GAS</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.certificacionGas).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">CERTIFICACION ELECTRICA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.certificacionElectrica).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x RENOVACIÓN SALUD</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.renovacionMinisterioSalud).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x MANTENIMIENTO</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.mantenimiento).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">HACIENDA IVA</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.haciendaIVA).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">ASESORIA LEGAL RH</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.asesoriaLegalRH).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Honorarios Contabilidad</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.honorariosContabilidad).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">SERV. PROF PUBLICIDAD</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.publicidad).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">OTROS SERVICIOS PROFESIONALES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costosFijos.otrosServiciosProfesionales).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión Datafonos (BAC)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisiones.datafonos).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (UBER)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisiones.uber).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (PEDIDOS YA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisiones.pedidosYa).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Comisión (DIDI FOOD)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(comisiones.didi).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">GASTO x COMPRA PROVEEDORES</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(costoMateriaPrima).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Costo Diario (MATERIA PRIMA)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(facturacionBodegasTotal).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Gasto x Merma</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(mermasTotal).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Préstamos a Empleados</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(prestamosTotal).toLocaleString()}</td></tr>
-                </tbody>
-                
-                <tbody>
-                    <tr style="background: #fef2f2;">
-                        <td style="padding: 15px 20px; font-weight: 700;">TOTAL GENERAL GASTOS</td>
-                        <td style="padding: 15px 20px; text-align: right; font-weight: 700; color: #b91c1c;">₡${Math.round(totalGastos).toLocaleString()}</td>
-                    </tr>
-                    <tr><td style="padding: 12px 20px;">Utilidad Antes de Impuestos</td><td style="padding: 12px 20px; text-align: right;">₡${Math.round(utilidadAntesImpuestos).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">IVA (Impuesto Valor Agregado)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(iva).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Retención de tarjeta (5.31%) - imp venta</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(retencionTarjetaVenta).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 12px 20px;">Utilidad antes del impuesto de renta</td><td style="padding: 12px 20px; text-align: right;">₡${Math.round(utilidadAntesRenta).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Impuesto de Renta (30%)</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(impuestoRenta).toLocaleString()}</td></tr>
-                    <tr><td style="padding: 10px 20px 10px 40px;">Retención de tarjeta (1.71%) - imp renta</td><td style="padding: 10px 20px; text-align: right;">₡${Math.round(retencionTarjetaRenta).toLocaleString()}</td></tr>
-                    <tr style="background: #f0fdf4;">
-                        <td style="padding: 18px 20px; font-weight: 800; font-size: 1.1rem;">UTILIDAD O PÉRDIDA NETA</td>
-                        <td style="padding: 18px 20px; text-align: right; font-weight: 800; font-size: 1.1rem; color: ${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">₡${Math.round(utilidadNeta).toLocaleString()}</td>
-                    </tr>
-                    <tr><td style="padding: 12px 20px;">Margen de Utilidad</td><td style="padding: 12px 20px; text-align: right; font-weight: 600;">${margenUtilidad.toFixed(2)}%</td></tr>
-                </tbody>
-            </table>
+                            <td style="padding:12px 20px;">Margen de Utilidad</td>
+                            <td style="padding:12px 20px; text-align:right; font-weight:700;">${margenUtilidad.toFixed(2)}%</td>
+                            <td style="padding:12px 20px; text-align:right; color:#64748b;">sobre ingresos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        
-        <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 16px; text-align: center; font-size: 0.8rem; color: #64748b;">
-            <i class="fas fa-chart-line"></i> Estado de Resultados al ${new Date().toLocaleDateString('es-CR')} | 
+
+        <div style="margin-top:20px; padding:15px; background:#f8fafc; border-radius:16px; text-align:center; font-size:0.82rem; color:#64748b;">
+            <i class="fas fa-chart-line"></i> Estado de Resultados al ${new Date().toLocaleDateString('es-CR')} |
             Costos basados en el período: <strong>${mesTexto}</strong> (${periodo.dias} días)
         </div>
     `;
-    
+
     resumenContent.innerHTML = html;
 }
 

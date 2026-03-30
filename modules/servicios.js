@@ -57,48 +57,80 @@ function renderServicios() {
     
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
-    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+    const ayer = new Date(hoy); 
+    ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
     const mesActual = hoyStr.substring(0, 7);
     const anioActual = hoyStr.substring(0, 4);
-    
+
     let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-            <h2><i class="fas fa-bolt" style="color: #f59e0b;"></i> Servicios Públicos</h2>
-            <div style="display: flex; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
+                    <span style="display:inline-flex; width:48px; height:48px; align-items:center; justify-content:center; border-radius:16px; background: linear-gradient(135deg, #f59e0b, #d97706); color:white;">
+                        <i class="fas fa-bolt"></i>
+                    </span>
+                    Servicios Públicos
+                </h2>
+                <p style="margin: 6px 0 0 58px; color: #64748b; font-size: 0.95rem;">
+                    Control de agua, electricidad y gas por local
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 ${window.esGerencia && window.esGerencia() ? `
-                    <button class="btn btn-outline" onclick="window.configurarMedidores()">
+                    <button class="btn btn-outline" onclick="window.configurarMedidores()" style="border-radius: 12px; padding: 10px 16px;">
                         <i class="fas fa-microchip"></i> Configurar Medidores
                     </button>
-                    <button class="btn btn-outline" onclick="window.configurarPreciosGlobal()">
+                    <button class="btn btn-outline" onclick="window.configurarPreciosGlobal()" style="border-radius: 12px; padding: 10px 16px;">
                         <i class="fas fa-cog"></i> Precios Agua/Luz
                     </button>
                 ` : ''}
-                <button class="btn btn-primary" onclick="window.mostrarModalServicio()">
+                <button class="btn btn-primary" onclick="window.mostrarModalServicio()" style="border-radius: 14px; padding: 12px 18px; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18);">
                     <i class="fas fa-plus"></i> Nuevo Servicio
                 </button>
             </div>
         </div>
     `;
-    
+
     if (Object.keys(serviciosData).length === 0) {
-        html += `<div class="card" style="padding: 40px; text-align: center;"><i class="fas fa-bolt" style="font-size: 4rem; color: #9ca3af;"></i><h3>No hay servicios registrados</h3></div>`;
+        html += `
+            <div class="card" style="padding: 50px 30px; text-align: center; border-radius: 24px;">
+                <div style="width: 90px; height: 90px; margin: 0 auto 20px; border-radius: 24px; background: linear-gradient(135deg, #f8fafc, #e2e8f0); display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-bolt" style="font-size: 2.5rem; color: #9ca3af;"></i>
+                </div>
+                <h3 style="margin-bottom: 8px;">No hay servicios registrados</h3>
+                <p style="color:#64748b;">Agrega el primer servicio para comenzar a llevar el control.</p>
+            </div>
+        `;
         content.innerHTML = html;
         return;
     }
-    
+
     const puedeVer = (local) => window.esGerencia?.() || AppState?.usuario?.local === local;
-    const locales = filtroLocal === 'Todos' ? Object.keys(serviciosData).filter(puedeVer) : [filtroLocal].filter(l => puedeVer(l) && serviciosData[l]);
-    
+    const locales = filtroLocal === 'Todos'
+        ? Object.keys(serviciosData).filter(puedeVer)
+        : [filtroLocal].filter(l => puedeVer(l) && serviciosData[l]);
+
     if (locales.length === 0) {
-        html += `<div class="card" style="padding: 40px; text-align: center;"><h3>No hay servicios para ${filtroLocal}</h3></div>`;
+        html += `
+            <div class="card" style="padding: 40px; text-align: center; border-radius: 24px;">
+                <h3>No hay servicios para ${filtroLocal}</h3>
+            </div>
+        `;
         content.innerHTML = html;
         return;
     }
-    
+
     let totalGeneral = 0;
-    let resumen = { Agua: { consumo: 0, monto: 0 }, Electricidad: { consumo: 0, monto: 0 }, Gas: { monto: 0 } };
-    
+    let resumen = {
+        Agua: { consumo: 0, monto: 0 },
+        Electricidad: { consumo: 0, monto: 0 },
+        Gas: { monto: 0, dias: 0, diario: 0 }
+    };
+
+    const todosServiciosFiltrados = [];
+
     for (const local of locales) {
         const servicios = (serviciosData[local] || []).filter(s => {
             const fecha = s.fecha?.split('T')[0] || s.fecha;
@@ -110,151 +142,275 @@ function renderServicios() {
             if (filtroTiempo === 'personalizado') return fecha === AppState?.filtros?.fechaPersonalizada;
             return true;
         });
-        
-        if (servicios.length === 0) continue;
-        
-        html += `<div class="card" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3><i class="fas fa-store"></i> ${local}</h3>
-                <span>${servicios.length} registros</span>
-            </div>
-            <div class="table-container"><table class="table"><thead><tr><th>Fecha</th><th>Servicio</th><th>Medidor</th><th>Detalle</th><th>Consumo</th><th>Monto</th><th>Acciones</th> </thead><tbody>`;
-        
-        servicios.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(s => {
-            const fecha = new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-CR');
-            let detalle = '', cantidad = '';
-            if (s.servicio === 'Agua') {
-                detalle = `${s.medidores?.length || 0} medidor(es)`;
-                cantidad = `${(s.consumoTotal || 0).toFixed(3)} M³`;
-            } else if (s.servicio === 'Electricidad') {
-                detalle = `${s.medidores?.length || 0} medidor(es)`;
-                cantidad = `${(s.consumoTotal || 0).toFixed(1)} kWh`;
-            } else if (s.servicio === 'Gas') {
-                detalle = `${s.proveedor || '—'} | Fact #${s.numeroFactura || '—'}`;
-                cantidad = `${s.dias || 30} días | ₡${((s.monto || 0) / (s.dias || 30)).toFixed(2)}/día`;
-            }
-            
-            totalGeneral += s.monto || 0;
-            if (s.servicio === 'Agua') { resumen.Agua.consumo += s.consumoTotal || 0; resumen.Agua.monto += s.monto || 0; }
-            else if (s.servicio === 'Electricidad') { resumen.Electricidad.consumo += s.consumoTotal || 0; resumen.Electricidad.monto += s.monto || 0; }
-            else if (s.servicio === 'Gas') { resumen.Gas.monto += s.monto || 0; }
-            
-            html += `<tr><td><strong>${fecha}</strong></td><td>${s.servicio === 'Agua' ? '💧 Agua' : s.servicio === 'Electricidad' ? '⚡ Electricidad' : '🔥 Gas'}</td>
-                <td>${s.medidor || '—'}</td><td><small>${detalle}</small></td><td><strong>${cantidad}</strong></td>
-                <td style="color:#059669;font-weight:600;">₡${(s.monto || 0).toLocaleString()}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="window.editarServicio('${local}','${s.id}')"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-danger" onclick="window.eliminarServicio('${local}','${s.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
-        });
-        
-        html += `</tbody></table></div><div style="text-align:right;margin-top:10px;"><strong>Total ${local}: ₡${servicios.reduce((s, x) => s + (x.monto || 0), 0).toLocaleString()}</strong></div></div>`;
-    }
-    
-    html += `<div class="card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-top: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); text-align: center;">
-            <div><div>TOTAL</div><div style="font-size:1.8rem;">₡${totalGeneral.toLocaleString()}</div></div>
-            <div><div><i class="fas fa-water"></i> AGUA</div><div>${resumen.Agua.consumo.toFixed(1)} M³</div><div>₡${resumen.Agua.monto.toLocaleString()}</div></div>
-            <div><div><i class="fas fa-bolt"></i> ELECTRICIDAD</div><div>${resumen.Electricidad.consumo.toFixed(0)} kWh</div><div>₡${resumen.Electricidad.monto.toLocaleString()}</div></div>
-            <div><div><i class="fas fa-fire"></i> GAS</div><div>—</div><div>₡${resumen.Gas.monto.toLocaleString()}</div></div>
-        </div>
-    </div>`;
-    
-    content.innerHTML = html;
-}
 
-// ============================================
-// CONFIGURAR MEDIDORES POR LOCAL
-// ============================================
-function configurarMedidores() {
-    if (!window.esGerencia || !window.esGerencia()) {
-        alert('Solo gerencia puede configurar medidores');
+        servicios.forEach(s => todosServiciosFiltrados.push({ ...s, __local: local }));
+    }
+
+    if (todosServiciosFiltrados.length === 0) {
+        html += `
+            <div class="card" style="padding: 40px; text-align: center; border-radius: 24px;">
+                <h3>No hay servicios en el filtro seleccionado</h3>
+            </div>
+        `;
+        content.innerHTML = html;
         return;
     }
-    
-    const overlay = document.getElementById('modalOverlay');
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.maxWidth = '700px';
-    modal.style.borderRadius = '24px';
-    modal.style.overflow = 'hidden';
-    
-    const locales = AppState?.locales?.map(l => l.nombre) || [];
-    const medidoresGuardados = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
-    
-    let html = `
-        <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 20px 25px;">
-            <h2 style="margin: 0;"><i class="fas fa-microchip"></i> Configurar Medidores por Local</h2>
-            <button class="modal-close" onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body" style="padding: 25px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
-            <p style="margin-bottom: 20px; color: #4b5563;">Configure los números de medidor para cada local (Agua y Electricidad):</p>
-    `;
-    
-    locales.forEach(local => {
-        const medLocal = medidoresGuardados[local] || { agua: [], electricidad: [] };
-        html += `
-            <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-                <h3 style="margin: 0 0 15px 0;"><i class="fas fa-store"></i> ${local}</h3>
-                <div style="margin-bottom: 15px;">
-                    <label><i class="fas fa-water"></i> Medidores de Agua</label>
-                    <div id="medidores_agua_${local.replace(/\s+/g, '_')}">
-                        ${medLocal.agua.map((m, i) => `<div style="display: flex; gap: 10px; margin-bottom: 8px;"><input type="text" class="medidor-agua-${local.replace(/\s+/g, '_')}" value="${m}" placeholder="Número de medidor" style="flex:1; padding: 8px; border-radius: 8px; border:1px solid #ddd;"><button type="button" onclick="this.parentElement.remove()" style="background:#fee2e2; border:none; padding:8px 12px; border-radius:8px;">✖</button></div>`).join('')}
+
+    // =========================
+    // RESUMEN GENERAL SUPERIOR
+    // =========================
+    todosServiciosFiltrados.forEach(s => {
+        totalGeneral += s.monto || 0;
+
+        if (s.servicio === 'Agua') {
+            resumen.Agua.consumo += s.consumoTotal || 0;
+            resumen.Agua.monto += s.monto || 0;
+        } else if (s.servicio === 'Electricidad') {
+            resumen.Electricidad.consumo += s.consumoTotal || 0;
+            resumen.Electricidad.monto += s.monto || 0;
+        } else if (s.servicio === 'Gas') {
+            const diasGas = s.dias || 30;
+            const diarioGas = diasGas > 0 ? (s.monto || 0) / diasGas : 0;
+            resumen.Gas.monto += s.monto || 0;
+            resumen.Gas.dias += diasGas;
+            resumen.Gas.diario += diarioGas;
+        }
+    });
+
+    html += `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 26px;">
+            
+            <div class="card" style="border-radius: 24px; padding: 22px; background: linear-gradient(135deg, #0f172a, #1e293b); color: white; box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; opacity:0.85;">Total Servicios</div>
+                        <div style="font-size:2rem; font-weight:800; margin-top:8px;">₡${Math.round(totalGeneral).toLocaleString()}</div>
                     </div>
-                    <button type="button" onclick="agregarCampoMedidor('${local.replace(/\s+/g, '_')}', 'agua')" style="margin-top: 8px; background: #f1f5f9; border: 1px dashed #94a3b8; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
-                        <i class="fas fa-plus"></i> Agregar medidor de agua
-                    </button>
+                    <div style="width:52px; height:52px; border-radius:18px; background: rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-wallet" style="font-size:1.3rem;"></i>
+                    </div>
                 </div>
-                <div>
-                    <label><i class="fas fa-bolt"></i> Medidores de Electricidad</label>
-                    <div id="medidores_electricidad_${local.replace(/\s+/g, '_')}">
-                        ${medLocal.electricidad.map((m, i) => `<div style="display: flex; gap: 10px; margin-bottom: 8px;"><input type="text" class="medidor-electricidad-${local.replace(/\s+/g, '_')}" value="${m}" placeholder="Número de medidor" style="flex:1; padding: 8px; border-radius: 8px; border:1px solid #ddd;"><button type="button" onclick="this.parentElement.remove()" style="background:#fee2e2; border:none; padding:8px 12px; border-radius:8px;">✖</button></div>`).join('')}
+            </div>
+
+            <div class="card" style="border-radius: 24px; padding: 22px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border:1px solid #bfdbfe;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#2563eb; font-weight:700;">💧 Agua</div>
+                        <div style="font-size:1.7rem; font-weight:800; color:#1e3a8a; margin-top:8px;">₡${Math.round(resumen.Agua.monto).toLocaleString()}</div>
+                        <div style="font-size:0.9rem; color:#475569; margin-top:4px;">${resumen.Agua.consumo.toFixed(3)} M³ consumidos</div>
                     </div>
-                    <button type="button" onclick="agregarCampoMedidor('${local.replace(/\s+/g, '_')}', 'electricidad')" style="margin-top: 8px; background: #f1f5f9; border: 1px dashed #94a3b8; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
-                        <i class="fas fa-plus"></i> Agregar medidor de electricidad
-                    </button>
+                    <div style="width:52px; height:52px; border-radius:18px; background: rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-water" style="font-size:1.3rem; color:#2563eb;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-radius: 24px; padding: 22px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border:1px solid #fde68a;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#d97706; font-weight:700;">⚡ Electricidad</div>
+                        <div style="font-size:1.7rem; font-weight:800; color:#92400e; margin-top:8px;">₡${Math.round(resumen.Electricidad.monto).toLocaleString()}</div>
+                        <div style="font-size:0.9rem; color:#475569; margin-top:4px;">${resumen.Electricidad.consumo.toFixed(1)} kWh consumidos</div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background: rgba(245,158,11,0.18); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-bolt" style="font-size:1.3rem; color:#d97706;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-radius: 24px; padding: 22px; background: linear-gradient(135deg, #fff7ed, #fee2e2); border:1px solid #fdba74;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#dc2626; font-weight:700;">🔥 Gas</div>
+                        <div style="font-size:1.7rem; font-weight:800; color:#991b1b; margin-top:8px;">₡${Math.round(resumen.Gas.monto).toLocaleString()}</div>
+                        <div style="font-size:0.9rem; color:#475569; margin-top:4px;">
+                        </div>
+                    </div>
+                    <div style="width:52px; height:52px; border-radius:18px; background: rgba(239,68,68,0.14); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-fire" style="font-size:1.3rem; color:#dc2626;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // =========================
+    // AGRUPAR POR LOCAL
+    // =========================
+    for (const local of locales) {
+        const servicios = todosServiciosFiltrados
+            .filter(s => s.__local === local)
+            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        if (servicios.length === 0) continue;
+
+        html += `
+            <div class="card" style="margin-bottom: 24px; border-radius: 26px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(15,23,42,0.06);">
+                <div style="padding: 20px 22px; background: linear-gradient(135deg, #ffffff, #f8fafc); border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
+                            <span style="width:42px; height:42px; border-radius:14px; background:#eff6ff; display:flex; align-items:center; justify-content:center; color:#2563eb;">
+                                <i class="fas fa-store"></i>
+                            </span>
+                            ${local}
+                        </h3>
+                        <p style="margin:6px 0 0 52px; color:#64748b;">${servicios.length} registro(s) de servicios</p>
+                    </div>
+                    <div style="background:#0f172a; color:white; padding:10px 16px; border-radius:14px; font-weight:700;">
+                        Total: ₡${Math.round(servicios.reduce((sum, x) => sum + (x.monto || 0), 0)).toLocaleString()}
+                    </div>
+                </div>
+
+                <div style="padding: 16px;">
+                    <div style="display:grid; gap:14px;">
+        `;
+
+        servicios.forEach(s => {
+            const fecha = new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-CR');
+
+            let colorBg = '#f8fafc';
+            let colorBorder = '#e2e8f0';
+            let colorText = '#334155';
+            let servicioIcono = '🔥';
+            let servicioNombre = s.servicio;
+
+            let detalle = '';
+            let cantidad = '';
+
+            if (s.servicio === 'Agua') {
+                colorBg = 'linear-gradient(135deg, #eff6ff, #f8fbff)';
+                colorBorder = '#bfdbfe';
+                colorText = '#1d4ed8';
+                servicioIcono = '💧';
+                servicioNombre = 'Agua';
+
+                detalle = `
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <span style="background:#dbeafe; color:#1d4ed8; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
+                            ${s.medidores?.length || 0} medidor(es)
+                        </span>
+                    </div>
+                `;
+
+                cantidad = `
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:1rem; font-weight:800; color:#1d4ed8;">
+                            ${(s.consumoTotal || 0).toFixed(3)} M³
+                        </span>
+                        <small style="color:#64748b;">Consumo total registrado</small>
+                    </div>
+                `;
+            } 
+            else if (s.servicio === 'Electricidad') {
+                colorBg = 'linear-gradient(135deg, #fffbeb, #fffdf5)';
+                colorBorder = '#fde68a';
+                colorText = '#b45309';
+                servicioIcono = '⚡';
+                servicioNombre = 'Electricidad';
+
+                detalle = `
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <span style="background:#fef3c7; color:#b45309; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
+                            ${s.medidores?.length || 0} medidor(es)
+                        </span>
+                    </div>
+                `;
+
+                cantidad = `
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:1rem; font-weight:800; color:#b45309;">
+                            ${(s.consumoTotal || 0).toFixed(1)} kWh
+                        </span>
+                        <small style="color:#64748b;">Consumo eléctrico</small>
+                    </div>
+                `;
+            } 
+            else if (s.servicio === 'Gas') {
+                const diasGas = s.dias || 30;
+                const costoDiarioGas = diasGas > 0 ? ((s.monto || 0) / diasGas) : 0;
+
+                colorBg = 'linear-gradient(135deg, #fff7ed, #fff1f2)';
+                colorBorder = '#fdba74';
+                colorText = '#dc2626';
+                servicioIcono = '🔥';
+                servicioNombre = 'Gas';
+
+                detalle = `
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <span style="background:#fee2e2; color:#b91c1c; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
+                            🏢 ${s.proveedor || 'Sin proveedor'}
+                        </span>
+                        <span style="background:#fff7ed; color:#c2410c; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
+                            🧾 Fact #${s.numeroFactura || '—'}
+                        </span>
+                    </div>
+                `;
+
+                cantidad = `
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <span style="font-size:1rem; font-weight:800; color:#dc2626;">
+                            ₡${Math.round(costoDiarioGas).toLocaleString()}
+                        </span>
+                        <small style="color:#64748b;"></small>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div style="background:${colorBg}; border:1px solid ${colorBorder}; border-radius:22px; padding:18px; display:grid; grid-template-columns: 1.1fr 1fr 1fr auto; gap:16px; align-items:center;">
+                    
+                    <div>
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                            <span style="font-size:1.3rem;">${servicioIcono}</span>
+                            <span style="font-size:1rem; font-weight:800; color:${colorText};">${servicioNombre}</span>
+                        </div>
+                        <div style="font-size:0.9rem; color:#475569;">
+                            <strong>Fecha:</strong> ${fecha}
+                        </div>
+                        <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                            <strong>Medidor:</strong> ${s.medidor || 'No aplica'}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="font-size:0.78rem; color:#64748b; margin-bottom:6px; font-weight:700;">DETALLE</div>
+                        ${detalle}
+                    </div>
+
+                    <div>
+                        <div style="font-size:0.78rem; color:#64748b; margin-bottom:6px; font-weight:700;">RESUMEN</div>
+                        ${cantidad}
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
+                        <div style="background:white; border:1px solid rgba(255,255,255,0.6); padding:12px 16px; border-radius:18px; box-shadow: 0 8px 20px rgba(15,23,42,0.06); text-align:right;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700;">MONTO</div>
+                            <div style="font-size:1.15rem; font-weight:900; color:#059669;">
+                                ₡${Math.round(s.monto || 0).toLocaleString()}
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-sm btn-outline" onclick="window.editarServicio('${local}','${s.id}')" style="border-radius: 12px;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="window.eliminarServicio('${local}','${s.id}')" style="border-radius: 12px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                    </div>
                 </div>
             </div>
         `;
-    });
-    
-    html += `
-            <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
-                <button onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" style="padding: 12px 24px;">Cancelar</button>
-                <button onclick="window.guardarMedidoresGlobal()" style="padding: 12px 32px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border: none; border-radius: 12px;">Guardar Medidores</button>
-            </div>
-        </div>
-    `;
-    
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-    overlay.classList.add('active');
-    modal.classList.add('active');
-    
-    window.agregarCampoMedidor = function(localId, tipo) {
-        const container = document.getElementById(`medidores_${tipo}_${localId}`);
-        const input = document.createElement('div');
-        input.style.display = 'flex';
-        input.style.gap = '10px';
-        input.style.marginBottom = '8px';
-        input.innerHTML = `<input type="text" class="medidor-${tipo}-${localId}" placeholder="Número de medidor" style="flex:1; padding: 8px; border-radius: 8px; border:1px solid #ddd;"><button type="button" onclick="this.parentElement.remove()" style="background:#fee2e2; border:none; padding:8px 12px; border-radius:8px;">✖</button>`;
-        container.appendChild(input);
-    };
-    
-    window.guardarMedidoresGlobal = function() {
-        const nuevosMedidores = {};
-        locales.forEach(local => {
-            const localId = local.replace(/\s+/g, '_');
-            const aguaInputs = document.querySelectorAll(`.medidor-agua-${localId}`);
-            const electricidadInputs = document.querySelectorAll(`.medidor-electricidad-${localId}`);
-            nuevosMedidores[local] = {
-                agua: Array.from(aguaInputs).map(i => i.value.trim()).filter(v => v),
-                electricidad: Array.from(electricidadInputs).map(i => i.value.trim()).filter(v => v)
-            };
-        });
-        localStorage.setItem('medidoresServicios', JSON.stringify(nuevosMedidores));
-        alert('✅ Medidores guardados correctamente');
-        document.querySelector('.modal')?.remove();
-        document.getElementById('modalOverlay')?.classList.remove('active');
-    };
+    }
+
+    content.innerHTML = html;
 }
 
 // ============================================
