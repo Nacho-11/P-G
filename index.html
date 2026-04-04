@@ -144,7 +144,6 @@
                             <option value="todos">Todo</option>
                             <option value="ayer">Ayer</option>
                             <option value="mes">Este mes</option>
-                            <option value="anio">Este año</option>
                             <option value="rango">Rango de fechas</option>
                             <option value="personalizado">Personalizado</option>
                         </select>
@@ -240,34 +239,39 @@
     <!-- Modales -->
     <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()"></div>
     
-    <!-- Modal de Login -->
-    <div class="modal" id="loginModal">
-        <div class="modal-body">
-            <h2 class="login-title"><i class="fas fa-lock"></i> Iniciar Sesión</h2>
-            <div class="login-logo">
-                <img src="img/Logo.png" alt="Perdidas y Ganancias">
-                <h3>Perdidas y Ganancias</h3>
-                <p>Sistema Administrativo</p>
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="login-screen" style="display: none;">
+
+    <!-- MODAL -->
+    <div class="modal login-modal" id="loginModal">
+            <div class="modal-body">
+                <h2 class="login-title"><i class="fas fa-lock"></i> Iniciar Sesión</h2>
+                <div class="login-logo">
+                    <img src="img/Logo.png" alt="Perdidas y Ganancias">
+                    <h3>Perdidas y Ganancias</h3>
+                    <p>Sistema Administrativo</p>
+                </div>
+                <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
+                    <div class="form-group">
+                        <label><i class="fas fa-envelope"></i> Correo Electrónico</label>
+                        <input type="email" id="loginEmail" placeholder="ej: gerencia@perdidas.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Contraseña</label>
+                        <input type="password" id="loginPassword" placeholder="**********" required>
+                    </div>
+                    <div id="loginError" class="form-error"></div>
+                    <button type="submit" class="btn btn-primary" id="loginButton">
+                        <i class="fas fa-sign-in-alt"></i> Ingresar
+                    </button>
+                    <div class="security-info">
+                        <i class="fas fa-shield-alt"></i> Acceso seguro
+                    </div>
+                </form>
             </div>
-            <form id="loginForm" onsubmit="event.preventDefault(); procesarLogin();">
-                <div class="form-group">
-                    <label><i class="fas fa-envelope"></i> Correo Electrónico</label>
-                    <input type="email" id="loginEmail" placeholder="ej: gerencia@perdidas.com" required>
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Contraseña</label>
-                    <input type="password" id="loginPassword" placeholder="**********" required>
-                </div>
-                <div id="loginError" class="form-error"></div>
-                <button type="submit" class="btn btn-primary" id="loginButton">
-                    <i class="fas fa-sign-in-alt"></i> Ingresar
-                </button>
-                <div class="security-info">
-                    <i class="fas fa-shield-alt"></i> Acceso seguro
-                </div>
-            </form>
         </div>
     </div>
+</div>
     
     <!-- Modal de Usuario -->
     <div class="modal" id="usuarioModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
@@ -803,14 +807,6 @@
                         <option value="Electricidad">⚡ Electricidad</option>
                         <option value="Gas">🔥 Gas</option>
                     </select>
-                </div>
-                
-                <!-- Número de medidor (opcional) -->
-                <div id="medidorField" style="background: white; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de medidor (opcional)
-                    </label>
-                    <input type="text" id="servicioMedidor" placeholder="Ej: 12345678" style="width: 100%; padding: 12px; border: 2px solid #eef2f6; border-radius: 12px; font-size: 1rem;">
                 </div>
                 
                 <!-- SECCIÓN PARA AGUA (MÚLTIPLES MEDIDORES) -->

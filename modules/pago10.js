@@ -22,10 +22,12 @@ function getDiasDelPeriodo(filtroTiempo, fechaPersonalizada, fechaInicio, fechaF
     const hoy = new Date();
     
     if (filtroTiempo === 'mes') {
-        const fechaBase = fechaPersonalizada ? new Date(fechaPersonalizada + 'T12:00:00') : hoy;
-        return new Date(fechaBase.getFullYear(), fechaBase.getMonth() + 1, 0).getDate();
-    } else if (filtroTiempo === 'anio') {
-        return 365;
+        fechaReferencia = fechaPersonalizada
+            ? new Date(fechaPersonalizada + '-01T12:00:00')
+            : hoy;
+
+        nombrePeriodo = `${getNombreMes(fechaReferencia)} ${fechaReferencia.getFullYear()}`;
+        diasPeriodo = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth() + 1, 0).getDate();
     } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
         const inicio = new Date(fechaInicio + 'T12:00:00');
         const fin = new Date(fechaFin + 'T12:00:00');
@@ -39,8 +41,19 @@ function getDiasDelPeriodo(filtroTiempo, fechaPersonalizada, fechaInicio, fechaF
 
 function getNombreMes(fecha) {
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    return meses[fecha.getMonth()];
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    let fechaObj = fecha;
+
+    if (!(fechaObj instanceof Date)) {
+        fechaObj = new Date(fecha);
+    }
+
+    if (isNaN(fechaObj.getTime())) {
+        return '';
+    }
+
+    return meses[fechaObj.getMonth()];
 }
 
 // ============================================
@@ -102,9 +115,6 @@ function renderPago10() {
         fechaReferencia = fechaPersonalizada ? new Date(fechaPersonalizada + 'T12:00:00') : hoy;
         nombrePeriodo = `${getNombreMes(fechaReferencia)} ${fechaReferencia.getFullYear()}`;
         diasPeriodo = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth() + 1, 0).getDate();
-    } else if (filtroTiempo === 'anio') {
-        nombrePeriodo = `Año ${hoy.getFullYear()}`;
-        diasPeriodo = 365;
     } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
         nombrePeriodo = `${formatearFechaCR(fechaInicio)} → ${formatearFechaCR(fechaFin)}`;
         diasPeriodo = getDiasDelPeriodo(filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin);
@@ -136,8 +146,6 @@ function renderPago10() {
         
         if (filtroTiempo === 'mes' && fechaPersonalizada) {
             return fechaPago.substring(0, 7) === fechaPersonalizada.substring(0, 7);
-        } else if (filtroTiempo === 'anio') {
-            return fechaPago.substring(0, 4) === hoy.getFullYear().toString();
         } else if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
             return fechaPago === fechaPersonalizada;
         } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
@@ -579,8 +587,6 @@ function obtenerTotalPago10(filtroLocal, filtroTiempo, fechaPersonalizada, fecha
         
         if (filtroTiempo === 'mes' && fechaPersonalizada) {
             return fechaPago.substring(0, 7) === fechaPersonalizada.substring(0, 7);
-        } else if (filtroTiempo === 'anio') {
-            return fechaPago.substring(0, 4) === new Date().getFullYear().toString();
         } else if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
             return fechaPago === fechaPersonalizada;
         } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {

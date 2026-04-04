@@ -101,7 +101,6 @@ function renderFacturacion() {
         if (filtroTiempo === 'todos') return true;
         if (filtroTiempo === 'ayer') return fechaFactura === ayerStr;
         if (filtroTiempo === 'mes') return fechaFactura.substring(0, 7) === mesActual;
-        if (filtroTiempo === 'anio') return fechaFactura.substring(0, 4) === anioActual;
         if (filtroTiempo === 'personalizado') return fechaFactura === fechaPersonalizada;
         if (filtroTiempo === 'rango') {
             if (!fechaInicio || !fechaFin) return true;

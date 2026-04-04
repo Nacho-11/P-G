@@ -110,7 +110,6 @@ function renderMerma() {
         if (filtroTiempo === 'todos') return true;
         if (filtroTiempo === 'ayer') return fechaMerma === ayerStr;
         if (filtroTiempo === 'mes') return fechaMerma.substring(0, 7) === mesActual;
-        if (filtroTiempo === 'anio') return fechaMerma.substring(0, 4) === anioActual;
         if (filtroTiempo === 'personalizado') return fechaMerma === AppState.filtros?.fechaPersonalizada;
         return true;
     });

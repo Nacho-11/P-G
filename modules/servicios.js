@@ -1,4 +1,4 @@
-// modules/servicios.js - VERSIÓN LIMPIA Y FUNCIONAL
+// modules/servicios.js - VERSIÓN CON MÚLTIPLES MEDIDORES POR DEFECTO
 console.log('⚡ Cargando módulo de Servicios...');
 
 // ============================================
@@ -10,16 +10,95 @@ const PRECIOS_DEF = {
 };
 
 // ============================================
+// MEDIDORES POR DEFECTO PARA CADA LOCAL
+// ============================================
+const MEDIDORES_POR_DEFECTO = {
+    agua: [''],
+    electricidad: ['']
+};
+
+// ============================================
 // FUNCIONES DE PRECIOS Y MEDIDORES
 // ============================================
+function obtenerMedidoresLocal(local) {
+    const medidores = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
+
+    const configuracionCorrecta = {
+        agua: [''],
+        electricidad: ['']
+    };
+
+    if (!medidores[local]) {
+        medidores[local] = {
+            agua: [...configuracionCorrecta.agua],
+            electricidad: [...configuracionCorrecta.electricidad]
+        };
+
+        localStorage.setItem('medidoresServicios', JSON.stringify(medidores));
+        return medidores[local];
+    }
+
+    if (!Array.isArray(medidores[local].agua) || medidores[local].agua.length === 0) {
+        medidores[local].agua = [...configuracionCorrecta.agua];
+    }
+
+    if (!Array.isArray(medidores[local].electricidad) || medidores[local].electricidad.length === 0) {
+        medidores[local].electricidad = [...configuracionCorrecta.electricidad];
+    }
+
+    localStorage.setItem('medidoresServicios', JSON.stringify(medidores));
+    return medidores[local];
+}
+
+function guardarMedidoresLocal(local, tipo, medidores) {
+    const todosMedidores = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
+    if (!todosMedidores[local]) {
+        todosMedidores[local] = {
+            agua: [...MEDIDORES_POR_DEFECTO.agua],
+            electricidad: [...MEDIDORES_POR_DEFECTO.electricidad]
+        };
+    }
+    todosMedidores[local][tipo] = medidores;
+    localStorage.setItem('medidoresServicios', JSON.stringify(todosMedidores));
+}
+
 function obtenerPrecioLocal(local, servicio) {
     const precios = JSON.parse(localStorage.getItem('preciosServicios')) || {};
     return precios[local]?.[servicio] || PRECIOS_DEF[servicio];
 }
 
-function obtenerMedidoresLocal(local) {
-    const medidores = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
-    return medidores[local] || { agua: [], electricidad: [] };
+// ============================================
+// INICIALIZAR MEDIDORES POR DEFECTO PARA TODOS LOS LOCALES
+// ============================================
+function inicializarMedidoresPorDefecto() {
+    const locales = AppState?.locales?.map(l => l.nombre) || [];
+    const medidoresActuales = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
+    let cambios = false;
+    
+    locales.forEach(local => {
+        if (!medidoresActuales[local]) {
+            medidoresActuales[local] = {
+                agua: [...MEDIDORES_POR_DEFECTO.agua],
+                electricidad: [...MEDIDORES_POR_DEFECTO.electricidad]
+            };
+            cambios = true;
+        } else {
+            // Asegurar que tenga al menos los medidores básicos
+            if (!medidoresActuales[local].agua || medidoresActuales[local].agua.length === 0) {
+                medidoresActuales[local].agua = [...MEDIDORES_POR_DEFECTO.agua];
+                cambios = true;
+            }
+            if (!medidoresActuales[local].electricidad || medidoresActuales[local].electricidad.length === 0) {
+                medidoresActuales[local].electricidad = [...MEDIDORES_POR_DEFECTO.electricidad];
+                cambios = true;
+            }
+        }
+    });
+    
+    if (cambios) {
+        localStorage.setItem('medidoresServicios', JSON.stringify(medidoresActuales));
+        console.log('✅ Medidores por defecto inicializados para todos los locales');
+    }
 }
 
 // ============================================
@@ -79,16 +158,13 @@ function renderServicios() {
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 ${window.esGerencia && window.esGerencia() ? `
-                    <button class="btn btn-outline" onclick="window.configurarMedidores()" style="border-radius: 12px; padding: 10px 16px;">
-                        <i class="fas fa-microchip"></i> Configurar Medidores
-                    </button>
                     <button class="btn btn-outline" onclick="window.configurarPreciosGlobal()" style="border-radius: 12px; padding: 10px 16px;">
                         <i class="fas fa-cog"></i> Precios Agua/Luz
                     </button>
                 ` : ''}
                 <button class="btn btn-primary" onclick="window.mostrarModalServicio()" style="border-radius: 14px; padding: 12px 18px; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18);">
                     <i class="fas fa-plus"></i> Nuevo Servicio
-                </button>
+                </button>   
             </div>
         </div>
     `;
@@ -223,8 +299,6 @@ function renderServicios() {
                     <div>
                         <div style="font-size:0.85rem; color:#dc2626; font-weight:700;">🔥 Gas</div>
                         <div style="font-size:1.7rem; font-weight:800; color:#991b1b; margin-top:8px;">₡${Math.round(resumen.Gas.monto).toLocaleString()}</div>
-                        <div style="font-size:0.9rem; color:#475569; margin-top:4px;">
-                        </div>
                     </div>
                     <div style="width:52px; height:52px; border-radius:18px; background: rgba(239,68,68,0.14); display:flex; align-items:center; justify-content:center;">
                         <i class="fas fa-fire" style="font-size:1.3rem; color:#dc2626;"></i>
@@ -232,6 +306,27 @@ function renderServicios() {
                 </div>
             </div>
         </div>
+
+        <!-- GRÁFICO DE CONSUMO -->
+        <div style="background: white; border-radius: 24px; padding: 20px; margin-bottom: 26px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-bar" style="color: #2563eb;"></i>
+                    Consumo diario de Agua y Electricidad
+                </h3>
+                <div style="display: flex; gap: 15px; font-size: 0.8rem;">
+                    <span><span style="display: inline-block; width: 12px; height: 12px; background: #2563eb; border-radius: 2px; margin-right: 5px;"></span> Agua (M³)</span>
+                    <span><span style="display: inline-block; width: 12px; height: 12px; background: #f59e0b; border-radius: 2px; margin-right: 5px;"></span> Electricidad (kWh)</span>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
+                <div style="height: 320px;">
+                    <canvas id="graficoAguaOperaciones"></canvas>
+                </div>
+                <div style="height: 320px;">
+                    <canvas id="graficoElectricidadOperaciones"></canvas>
+                </div>
+            </div>
     `;
 
     // =========================
@@ -276,6 +371,7 @@ function renderServicios() {
 
             let detalle = '';
             let cantidad = '';
+            let medidoresHtml = '';
 
             if (s.servicio === 'Agua') {
                 colorBg = 'linear-gradient(135deg, #eff6ff, #f8fbff)';
@@ -284,11 +380,23 @@ function renderServicios() {
                 servicioIcono = '💧';
                 servicioNombre = 'Agua';
 
+                if (s.medidores && Array.isArray(s.medidores) && s.medidores.length > 0) {
+                    medidoresHtml = '<div style="margin-top: 8px;">';
+                    s.medidores.forEach((med, idx) => {
+                        medidoresHtml += `
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; padding: 4px 0; border-bottom: 1px dashed #bfdbfe;">
+                                <span><strong>${med.numero || `Medidor ${idx+1}`}</strong></span>
+                                <span>${(med.consumo || 0).toFixed(3)} M³</span>
+                                <span style="color: #059669;">${med.apertura || 0} → ${med.cierre || 0}</span>
+                            </div>
+                        `;
+                    });
+                    medidoresHtml += '</div>';
+                }
+
                 detalle = `
-                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                        <span style="background:#dbeafe; color:#1d4ed8; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
-                            ${s.medidores?.length || 0} medidor(es)
-                        </span>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${medidoresHtml}
                     </div>
                 `;
 
@@ -297,7 +405,7 @@ function renderServicios() {
                         <span style="font-size:1rem; font-weight:800; color:#1d4ed8;">
                             ${(s.consumoTotal || 0).toFixed(3)} M³
                         </span>
-                        <small style="color:#64748b;">Consumo total registrado</small>
+                        <small style="color:#64748b;">Consumo de Agua</small>
                     </div>
                 `;
             } 
@@ -308,11 +416,23 @@ function renderServicios() {
                 servicioIcono = '⚡';
                 servicioNombre = 'Electricidad';
 
+                if (s.medidores && Array.isArray(s.medidores) && s.medidores.length > 0) {
+                    medidoresHtml = '<div style="margin-top: 8px;">';
+                    s.medidores.forEach((med, idx) => {
+                        medidoresHtml += `
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; padding: 4px 0; border-bottom: 1px dashed #fde68a;">
+                                <span><strong>${med.numero || `Medidor ${idx+1}`}</strong></span>
+                                <span>${(med.consumo || 0).toFixed(1)} kWh</span>
+                                <span style="color: #059669;">${med.apertura || 0} → ${med.cierre || 0}</span>
+                            </div>
+                        `;
+                    });
+                    medidoresHtml += '</div>';
+                }
+
                 detalle = `
-                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                        <span style="background:#fef3c7; color:#b45309; padding:5px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">
-                            ${s.medidores?.length || 0} medidor(es)
-                        </span>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${medidoresHtml}
                     </div>
                 `;
 
@@ -351,13 +471,13 @@ function renderServicios() {
                         <span style="font-size:1rem; font-weight:800; color:#dc2626;">
                             ₡${Math.round(costoDiarioGas).toLocaleString()}
                         </span>
-                        <small style="color:#64748b;"></small>
+                        <small style="color:#64748b;">Costo diario</small>
                     </div>
                 `;
             }
 
             html += `
-                <div style="background:${colorBg}; border:1px solid ${colorBorder}; border-radius:22px; padding:18px; display:grid; grid-template-columns: 1.1fr 1fr 1fr auto; gap:16px; align-items:center;">
+                <div style="background:${colorBg}; border:1px solid ${colorBorder}; border-radius:22px; padding:18px; display:grid; grid-template-columns: 1.1fr 1.2fr 1fr auto; gap:16px; align-items:start;">
                     
                     <div>
                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
@@ -367,13 +487,10 @@ function renderServicios() {
                         <div style="font-size:0.9rem; color:#475569;">
                             <strong>Fecha:</strong> ${fecha}
                         </div>
-                        <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
-                            <strong>Medidor:</strong> ${s.medidor || 'No aplica'}
-                        </div>
                     </div>
 
                     <div>
-                        <div style="font-size:0.78rem; color:#64748b; margin-bottom:6px; font-weight:700;">DETALLE</div>
+                        <div style="font-size:0.78rem; color:#64748b; margin-bottom:6px; font-weight:700;">DETALLE DE CONSUMO</div>
                         ${detalle}
                     </div>
 
@@ -411,6 +528,12 @@ function renderServicios() {
     }
 
     content.innerHTML = html;
+    
+    setTimeout(() => {
+        if (typeof renderGraficoServicios === 'function') {
+            renderGraficoServicios();
+        }
+    }, 150);
 }
 
 // ============================================
@@ -423,7 +546,12 @@ function configurarPreciosGlobal() {
     }
     
     const overlay = document.getElementById('modalOverlay');
+    
+    const modalExistente = document.querySelector('#configurarPreciosModal');
+    if (modalExistente) modalExistente.remove();
+    
     const modal = document.createElement('div');
+    modal.id = 'configurarPreciosModal';
     modal.className = 'modal';
     modal.style.maxWidth = '500px';
     modal.style.borderRadius = '24px';
@@ -434,27 +562,48 @@ function configurarPreciosGlobal() {
     
     let html = `
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 20px 25px;">
-            <h2 style="margin: 0;"><i class="fas fa-cog"></i> Configurar Precios</h2>
-            <button class="modal-close" onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');"><i class="fas fa-times"></i></button>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin: 0;"><i class="fas fa-cog"></i> Configurar Precios</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.8; font-size: 0.85rem;">Configure precios por M³ de agua y kWh de electricidad</p>
+                </div>
+            </div>
         </div>
         <div class="modal-body" style="padding: 25px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
     `;
     
     locales.forEach(local => {
-        const localId = local.replace(/\s+/g, '_');
+        const localId = local.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
         html += `
             <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                 <h3><i class="fas fa-store"></i> ${local}</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div><label>💧 Agua (₡/M³)</label><input type="number" id="precio_${localId}_agua" value="${preciosActuales[local]?.Agua || PRECIOS_DEF.Agua}" step="10" min="0" style="width:100%; padding:8px; border-radius:8px;"></div>
-                    <div><label>⚡ Electricidad (₡/kWh)</label><input type="number" id="precio_${localId}_electricidad" value="${preciosActuales[local]?.Electricidad || PRECIOS_DEF.Electricidad}" step="5" min="0" style="width:100%; padding:8px; border-radius:8px;"></div>
+                    <div>
+                        <label>💧 Agua (₡/M³)</label>
+                        <input type="number" id="precio_${localId}_agua" value="${preciosActuales[local]?.Agua || PRECIOS_DEF.Agua}" step="10" min="0" style="width:100%; padding:10px; border:2px solid #eef2f6; border-radius:8px;">
+                    </div>
+                    <div>
+                        <label>⚡ Electricidad (₡/kWh)</label>
+                        <input type="number" id="precio_${localId}_electricidad" value="${preciosActuales[local]?.Electricidad || PRECIOS_DEF.Electricidad}" step="5" min="0" style="width:100%; padding:10px; border:2px solid #eef2f6; border-radius:8px;">
+                    </div>
                 </div>
             </div>
         `;
     });
     
-    html += `<div style="display: flex; gap: 15px; justify-content: flex-end;"><button onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" style="padding: 12px 24px;">Cancelar</button>
-        <button onclick="window.guardarPreciosGlobal()" style="padding: 12px 32px; background: #2563eb; color:white; border:none; border-radius:12px;">Guardar</button></div></div>`;
+    html += `
+            <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" 
+                        style="padding: 10px 24px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 10px; cursor: pointer;">
+                    Cancelar
+                </button>
+                <button onclick="window.guardarPreciosGlobal()" 
+                        style="padding: 10px 28px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    `;
     
     modal.innerHTML = html;
     document.body.appendChild(modal);
@@ -464,7 +613,7 @@ function configurarPreciosGlobal() {
     window.guardarPreciosGlobal = function() {
         const nuevosPrecios = {};
         locales.forEach(local => {
-            const localId = local.replace(/\s+/g, '_');
+            const localId = local.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             nuevosPrecios[local] = {
                 Agua: parseFloat(document.getElementById(`precio_${localId}_agua`)?.value) || PRECIOS_DEF.Agua,
                 Electricidad: parseFloat(document.getElementById(`precio_${localId}_electricidad`)?.value) || PRECIOS_DEF.Electricidad
@@ -472,7 +621,8 @@ function configurarPreciosGlobal() {
         });
         localStorage.setItem('preciosServicios', JSON.stringify(nuevosPrecios));
         alert('✅ Precios guardados');
-        document.querySelector('.modal')?.remove();
+        const modalActual = document.querySelector('#configurarPreciosModal');
+        if (modalActual) modalActual.remove();
         document.getElementById('modalOverlay')?.classList.remove('active');
     };
 }
@@ -482,6 +632,9 @@ function configurarPreciosGlobal() {
 // ============================================
 function cargarMedidoresEnModal(tipo) {
     const local = document.getElementById('servicioLocal')?.value;
+    if (!local) return;
+    
+    // Obtener medidores configurados para este local
     const medidoresConfig = tipo === 'agua' ? window.medidoresAguaConfig || [] : window.medidoresElectricidadConfig || [];
     const container = document.getElementById(`medidoresContainer_${tipo}`);
     if (!container) return;
@@ -495,7 +648,7 @@ function cargarMedidoresEnModal(tipo) {
     medidoresConfig.forEach((medidor, idx) => {
         html += `
             <div style="background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eef2f6;">
-                <div style="margin-bottom: 10px;"><strong>Medidor: ${medidor}</strong></div>
+                <div style="margin-bottom: 10px;"><strong>${medidor}</strong></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div>
                         <label>Lectura Apertura</label>
@@ -631,6 +784,9 @@ function cambiarTipoServicioModal() {
 // ============================================
 function mostrarModalServicio(editLocal = null, editId = null) {
     console.log('📝 Mostrando modal servicio:', { editLocal, editId });
+
+    window.editandoServicioId = editId || null;
+    window.editandoServicioLocal = editLocal || null;
     
     const modal = document.getElementById('servicioModal');
     const overlay = document.getElementById('modalOverlay');
@@ -644,7 +800,6 @@ function mostrarModalServicio(editLocal = null, editId = null) {
     const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
     document.getElementById('servicioFecha').value = fechaActual;
     document.getElementById('servicioTipo').value = '';
-    document.getElementById('servicioMedidor').value = '';
     
     // Limpiar medidores
     delete window.medidoresAguaConfig;
@@ -703,19 +858,39 @@ function mostrarModalServicio(editLocal = null, editId = null) {
     // Si es edición
     if (editLocal && editId && window.serviciosData) {
         const servicio = window.serviciosData[editLocal]?.find(s => s.id === editId);
+
         if (servicio) {
             selectLocal.value = editLocal;
             selectLocal.disabled = true;
             document.getElementById('servicioFecha').value = servicio.fecha;
             document.getElementById('servicioTipo').value = servicio.servicio;
-            document.getElementById('servicioMedidor').value = servicio.medidor || '';
-            
+
             const medidores = obtenerMedidoresLocal(editLocal);
             window.medidoresAguaConfig = medidores.agua || [];
             window.medidoresElectricidadConfig = medidores.electricidad || [];
-            
+
             cambiarTipoServicioModal();
-            
+
+            if ((servicio.servicio === 'Agua' || servicio.servicio === 'Electricidad') && Array.isArray(servicio.medidores)) {
+                const tipoKey = servicio.servicio === 'Agua' ? 'agua' : 'electricidad';
+
+                setTimeout(() => {
+                    servicio.medidores.forEach((med, i) => {
+                        const inputApertura = document.getElementById(`${tipoKey}_apertura_${i}`);
+                        const inputCierre = document.getElementById(`${tipoKey}_cierre_${i}`);
+
+                        if (inputApertura) inputApertura.value = med.apertura ?? 0;
+                        if (inputCierre) inputCierre.value = med.cierre ?? 0;
+                    });
+
+                    if (servicio.servicio === 'Agua') {
+                        calcularConsumoAguaServicio();
+                    } else {
+                        calcularConsumoEnergiaServicio();
+                    }
+                }, 120);
+            }
+
             if (servicio.servicio === 'Gas') {
                 document.getElementById('gasProveedor').value = servicio.proveedor || '';
                 document.getElementById('gasNumeroFactura').value = servicio.numeroFactura || '';
@@ -754,7 +929,12 @@ async function guardarServicio() {
             const cierre = parseFloat(document.getElementById(`agua_cierre_${i}`)?.value) || 0;
             const consumo = (cierre > apertura) ? (cierre - apertura) : 0;
             consumoTotal += consumo;
-            medidores.push({ numero: medidoresConfig[i], apertura, cierre, consumo });
+            medidores.push({ 
+                numero: medidoresConfig[i], 
+                apertura: apertura, 
+                cierre: cierre, 
+                consumo: consumo 
+            });
         }
         const precio = obtenerPrecioLocal(local, 'Agua');
         servicioData = { ...servicioData, medidores, consumoTotal, monto: Math.round(consumoTotal * precio) };
@@ -767,7 +947,12 @@ async function guardarServicio() {
             const cierre = parseFloat(document.getElementById(`electricidad_cierre_${i}`)?.value) || 0;
             const consumo = (cierre > apertura) ? (cierre - apertura) : 0;
             consumoTotal += consumo;
-            medidores.push({ numero: medidoresConfig[i], apertura, cierre, consumo });
+            medidores.push({ 
+                numero: medidoresConfig[i], 
+                apertura: apertura, 
+                cierre: cierre, 
+                consumo: consumo 
+            });
         }
         const precio = obtenerPrecioLocal(local, 'Electricidad');
         servicioData = { ...servicioData, medidores, consumoTotal, monto: Math.round(consumoTotal * precio) };
@@ -782,8 +967,19 @@ async function guardarServicio() {
     }
     
     try {
-        await firebase.database().ref(`servicios/${local}`).push(servicioData);
-        alert('✅ Servicio guardado');
+        if (window.editandoServicioId && window.editandoServicioLocal) {
+            await firebase.database()
+                .ref(`servicios/${window.editandoServicioLocal}/${window.editandoServicioId}`)
+                .set(servicioData);
+
+            alert('✅ Servicio actualizado');
+        } else {
+            await firebase.database().ref(`servicios/${local}`).push(servicioData);
+            alert('✅ Servicio guardado');
+        }
+
+        window.editandoServicioId = null;
+        window.editandoServicioLocal = null;
         cerrarModal('servicioModal');
     } catch (error) {
         alert('Error: ' + error.message);
@@ -800,6 +996,223 @@ function eliminarServicio(local, id) {
 
 function editarServicio(local, id) {
     mostrarModalServicio(local, id);
+}
+
+// ============================================
+// GRÁFICO DE CONSUMO DE SERVICIOS
+// ============================================
+
+let serviciosChart = null;
+
+function renderGraficoServicios() {
+    console.log('📊 Renderizando gráficos de servicios por operación...');
+
+    const canvasAgua = document.getElementById('graficoAguaOperaciones');
+    const canvasElec = document.getElementById('graficoElectricidadOperaciones');
+    if (!canvasAgua || !canvasElec) return;
+
+    const ctxAgua = canvasAgua.getContext('2d');
+    const ctxElec = canvasElec.getContext('2d');
+    if (!ctxAgua || !ctxElec) return;
+
+    if (window.serviciosChartAgua) {
+        try { window.serviciosChartAgua.destroy(); } catch (e) {}
+        window.serviciosChartAgua = null;
+    }
+
+    if (window.serviciosChartElec) {
+        try { window.serviciosChartElec.destroy(); } catch (e) {}
+        window.serviciosChartElec = null;
+    }
+
+    const filtroLocal = AppState?.filtros?.local || 'Todos';
+    const filtroTiempo = AppState?.filtros?.tiempo || 'todos';
+    const serviciosData = window.serviciosData || {};
+
+    const hoy = new Date();
+    const hoyStr = hoy.toLocaleDateString('en-CA');
+    const ayer = new Date(hoy);
+    ayer.setDate(hoy.getDate() - 1);
+    const ayerStr = ayer.toLocaleDateString('en-CA');
+    const mesActual = hoyStr.substring(0, 7);
+    const anioActual = hoyStr.substring(0, 4);
+
+    const puedeVer = (local) => window.esGerencia?.() || AppState?.usuario?.local === local;
+    const locales = filtroLocal === 'Todos'
+        ? Object.keys(serviciosData).filter(puedeVer)
+        : [filtroLocal].filter(l => puedeVer(l) && serviciosData[l]);
+
+    const aguaPorDia = {};
+    const elecPorDia = {};
+
+    for (const local of locales) {
+        const servicios = (serviciosData[local] || []).filter(s => {
+            const fecha = s.fecha?.split('T')[0] || s.fecha;
+            if (!fecha) return false;
+
+            if (filtroTiempo === 'todos') return true;
+            if (filtroTiempo === 'ayer') return fecha === ayerStr;
+            if (filtroTiempo === 'mes') return fecha.substring(0, 7) === mesActual;
+            if (filtroTiempo === 'personalizado') return fecha === AppState?.filtros?.fechaPersonalizada;
+            return true;
+        });
+
+        servicios.forEach(s => {
+            const fecha = s.fecha?.split('T')[0] || s.fecha;
+            if (!fecha || !Array.isArray(s.medidores)) return;
+
+            if (s.servicio === 'Agua') {
+                if (!aguaPorDia[fecha]) aguaPorDia[fecha] = {};
+                s.medidores.forEach(med => {
+                    const nombre = med.numero || med.nombre || 'Medidor';
+                    const consumo = med.consumo || 0;
+                    if (!aguaPorDia[fecha][nombre]) aguaPorDia[fecha][nombre] = 0;
+                    aguaPorDia[fecha][nombre] += consumo;
+                });
+            }
+
+            if (s.servicio === 'Electricidad') {
+                if (!elecPorDia[fecha]) elecPorDia[fecha] = {};
+                s.medidores.forEach(med => {
+                    const nombre = med.numero || med.nombre || 'Medidor';
+                    const consumo = med.consumo || 0;
+                    if (!elecPorDia[fecha][nombre]) elecPorDia[fecha][nombre] = 0;
+                    elecPorDia[fecha][nombre] += consumo;
+                });
+            }
+        });
+    }
+
+    const labelsAgua = Object.keys(aguaPorDia).sort();
+    const labelsElec = Object.keys(elecPorDia).sort();
+
+    const colores = {
+        "Misceláneo": "rgba(59, 130, 246, 0.75)",
+        "Operación ABIERTA": "rgba(34, 197, 94, 0.75)",
+        "Operación CERRADA": "rgba(239, 68, 68, 0.75)"
+    };
+
+    // ===== AGUA =====
+    const nombresAgua = new Set();
+    labelsAgua.forEach(f => {
+        Object.keys(aguaPorDia[f] || {}).forEach(n => nombresAgua.add(n));
+    });
+
+    const datasetsAgua = [];
+    nombresAgua.forEach(nombre => {
+        datasetsAgua.push({
+            label: nombre,
+            data: labelsAgua.map(f => aguaPorDia[f]?.[nombre] || 0),
+            backgroundColor: colores[nombre] || "rgba(96, 165, 250, 0.75)",
+            borderColor: colores[nombre] || "rgba(96, 165, 250, 1)",
+            borderWidth: 1,
+            borderRadius: 6
+        });
+    });
+
+    window.serviciosChartAgua = new Chart(ctxAgua, {
+        type: 'bar',
+        data: {
+            labels: labelsAgua,
+            datasets: datasetsAgua
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Consumo diario de Agua por operación',
+                    font: { size: 14, weight: 'bold' }
+                },
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} M³`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Agua (M³)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Día'
+                    }
+                }
+            }
+        }
+    });
+
+    // ===== ELECTRICIDAD =====
+    const nombresElec = new Set();
+    labelsElec.forEach(f => {
+        Object.keys(elecPorDia[f] || {}).forEach(n => nombresElec.add(n));
+    });
+
+    const datasetsElec = [];
+    nombresElec.forEach(nombre => {
+        datasetsElec.push({
+            label: nombre,
+            data: labelsElec.map(f => elecPorDia[f]?.[nombre] || 0),
+            backgroundColor: colores[nombre] || "rgba(245, 158, 11, 0.75)",
+            borderColor: colores[nombre] || "rgba(245, 158, 11, 1)",
+            borderWidth: 1,
+            borderRadius: 6
+        });
+    });
+
+    window.serviciosChartElec = new Chart(ctxElec, {
+        type: 'bar',
+        data: {
+            labels: labelsElec,
+            datasets: datasetsElec
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Consumo diario de Electricidad por operación',
+                    font: { size: 14, weight: 'bold' }
+                },
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} kWh`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Electricidad (kWh)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Día'
+                    }
+                }
+            }
+        }
+    });
+
+    console.log('✅ Gráficos por operación creados correctamente');
 }
 
 // ============================================
@@ -825,7 +1238,6 @@ window.editarServicio = editarServicio;
 window.eliminarServicio = eliminarServicio;
 window.cambiarTipoServicioModal = cambiarTipoServicioModal;
 window.cambiarTipoServicio = cambiarTipoServicioModal;
-window.configurarMedidores = configurarMedidores;
 window.configurarPreciosGlobal = configurarPreciosGlobal;
 window.cargarServiciosFirebase = cargarServiciosFirebase;
 window.initServicios = initServicios;
@@ -836,5 +1248,6 @@ window.calcularGasDiario = calcularGasDiarioServicio;
 window.calcularConsumoAgua = calcularConsumoAguaServicio;
 window.calcularConsumoEnergia = calcularConsumoEnergiaServicio;
 window.cargarMedidoresEnModal = cargarMedidoresEnModal;
+window.renderGraficoServicios = renderGraficoServicios;
 
 console.log('✅ servicios.js cargado correctamente');

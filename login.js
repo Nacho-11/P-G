@@ -139,7 +139,7 @@ async function cargarDatosUsuario(uid) {
         // Ocultar login
         const modal = document.getElementById('loginModal');
         const overlay = document.getElementById('modalOverlay');
-        
+
         if (modal) {
             modal.style.display = 'none';
             modal.classList.remove('active');
@@ -147,6 +147,12 @@ async function cargarDatosUsuario(uid) {
         if (overlay) {
             overlay.style.display = 'none';
             overlay.classList.remove('active');
+        }
+
+        // 👇 NUEVO (IMPORTANTE)
+        const loginScreen = document.getElementById('loginScreen');
+        if (loginScreen) {
+            loginScreen.style.display = 'none';
         }
         
         if (typeof cambiarModulo === 'function') {
@@ -205,8 +211,7 @@ function mostrarLogin() {
     const overlay = document.getElementById('modalOverlay');
     
     if (modal && overlay) {
-        modal.style.display = 'flex';
-        overlay.style.display = 'block';
+        document.getElementById('loginScreen').style.display = 'flex';
         modal.classList.add('active');
         overlay.classList.add('active');
         
@@ -220,6 +225,11 @@ function mostrarLogin() {
             errorDiv.innerHTML = '';
             errorDiv.style.display = 'none';
         }
+    }
+
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) {
+        loginScreen.style.display = 'flex';
     }
 }
 

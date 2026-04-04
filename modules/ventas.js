@@ -99,7 +99,6 @@ function renderVentas() {
         
         if (filtroTiempo === 'ayer') return fechaVenta === ayerStr;
         if (filtroTiempo === 'mes') return fechaVenta.substring(0, 7) === mesActual;
-        if (filtroTiempo === 'anio') return fechaVenta.substring(0, 4) === anioActual;
         if (filtroTiempo === 'personalizado') return fechaVenta === AppState.filtros?.fechaPersonalizada;
         
         return true;
@@ -620,8 +619,7 @@ async function verDetalleVenta(id) {
                     
                     <!-- Información adicional -->
                     <div style="margin-top: 20px; padding: 12px; background: #f1f5f9; border-radius: 12px; font-size: 0.7rem; color: #64748b; text-align: center;">
-                        <i class="fas fa-user"></i> Registrado por: ${venta.creadoPor || 'Sistema'} | 
-                        <i class="fas fa-hashtag"></i> ID: ${id.substring(0, 8)}...
+                        <i class="fas fa-user"></i> Registrado por: ${venta.creadoPor}
                     </div>
                 </div>
             </div>

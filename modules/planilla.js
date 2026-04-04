@@ -195,10 +195,6 @@ function renderPlanilla() {
                             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         fechaMostrar = `${mesesNombre[parseInt(mes)-1]} ${año}`;
     }
-    else if (filtroTiempo === 'anio') {
-        fechaBuscar = hoyStr.substring(0, 4);
-        fechaMostrar = `Año ${fechaBuscar}`;
-    }
     else {
         fechaBuscar = hoyStr;
         fechaMostrar = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-CR', { 

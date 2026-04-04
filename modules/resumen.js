@@ -60,8 +60,6 @@ function getDiasDelPeriodo(filtroTiempo, fechaPersonalizada, fechaInicio, fechaF
     if (filtroTiempo === 'mes') {
         const fechaBase = fechaPersonalizada ? new Date(fechaPersonalizada + 'T12:00:00') : hoy;
         return new Date(fechaBase.getFullYear(), fechaBase.getMonth() + 1, 0).getDate();
-    } else if (filtroTiempo === 'anio') {
-        return 365;
     } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
         const inicio = new Date(fechaInicio + 'T12:00:00');
         const fin = new Date(fechaFin + 'T12:00:00');
@@ -108,7 +106,6 @@ function filtrarPorFecha(item, filtroTiempo, ayerStr, mesActual, anioActual, fec
     if (filtroTiempo === 'todos') return true;
     if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
     if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
-    if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
     if (filtroTiempo === 'personalizado') return fechaItem === fechaPersonalizada;
     if (filtroTiempo === 'rango') {
         if (!fechaInicio || !fechaFin) return true;
@@ -470,9 +467,6 @@ function renderResumen() {
     if (filtroTiempo === 'mes') {
         periodo.dias = diasDelMes;
         diasPeriodo = diasDelMes;
-    } else if (filtroTiempo === 'anio') {
-        periodo.dias = 365;
-        diasPeriodo = 365;
     } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
         const inicio = new Date(fechaInicio + 'T12:00:00');
         const fin = new Date(fechaFin + 'T12:00:00');

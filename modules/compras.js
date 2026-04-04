@@ -97,7 +97,6 @@ function renderCompras() {
         let pasaFecha = true;
         if (filtroTiempo === 'ayer') pasaFecha = c.fecha === ayerStr;
         else if (filtroTiempo === 'mes') pasaFecha = c.fecha.substring(0, 7) === mesActual;
-        else if (filtroTiempo === 'anio') pasaFecha = c.fecha.substring(0, 4) === anioActual;
         else if (filtroTiempo === 'personalizado') pasaFecha = c.fecha === AppState.filtros?.fechaPersonalizada;
         
         if (!pasaFecha) return false;
