@@ -213,7 +213,8 @@ function mostrarLogin() {
     if (modal && overlay) {
         document.getElementById('loginScreen').style.display = 'flex';
         modal.classList.add('active');
-        overlay.classList.add('active');
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
         
         const emailInput = document.getElementById('loginEmail');
         const passInput = document.getElementById('loginPassword');

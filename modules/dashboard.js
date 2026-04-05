@@ -134,87 +134,96 @@ function renderDashboard() {
     
     // El resto del HTML se mantiene igual...
     const dashboardHTML = `
-        <div style="padding: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 20px;">
-                <h1 style="font-size: 24px; color: #333;">
-                    <i class="fas fa-chart-line" style="color: #2563eb; margin-right: 10px;"></i>
-                    Dashboard
-                </h1>
-                
-                <div style="display: flex; gap: 10px; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <span style="padding: 5px 10px; background: #f3f4f6; border-radius: 5px;">
+        <div class="dashboard-shell">
+            <div class="dashboard-hero">
+                <div class="dashboard-hero-left">
+                    <div class="dashboard-hero-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h2 class="dashboard-hero-title">Dashboard</h2>
+                        <p class="dashboard-hero-subtitle">Resumen general del negocio</p>
+                    </div>
+                </div>
+
+                <div class="dashboard-filters-card">
+                    <span class="dashboard-chip">
                         <i class="fas fa-store"></i> ${filtroLocal}
                     </span>
-                    <span style="padding: 5px 10px; background: #f3f4f6; border-radius: 5px;">
-                        <i class="fas fa-calendar"></i> ${filtroTiempo === 'dia' ? 'Hoy' : filtroTiempo === 'mes' ? 'Este mes' : filtroTiempo === 'anio' ? 'Este año' : 'Todo'}
+                    <span class="dashboard-chip">
+                        <i class="fas fa-calendar"></i>
+                        ${filtroTiempo === 'dia' ? 'Hoy' : filtroTiempo === 'mes' ? 'Este mes' : filtroTiempo === 'anio' ? 'Este año' : 'Todo'}
                     </span>
                 </div>
             </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">VENTAS TOTALES</div>
-                    <div style="font-size: 28px; font-weight: bold; margin-bottom: 5px;">₡${Math.round(totalVentas).toLocaleString()}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">${ventasFiltradas.length} transacciones</div>
+
+            <div class="dashboard-stats-grid">
+                <div class="dashboard-stat-card blue">
+                    <div class="dashboard-stat-label">VENTAS TOTALES</div>
+                    <div class="dashboard-stat-value">₡${Math.round(totalVentas).toLocaleString()}</div>
+                    <div class="dashboard-stat-subtext">${ventasFiltradas.length} transacciones</div>
                 </div>
-                
-                <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">COSTOS TOTALES</div>
-                    <div style="font-size: 28px; font-weight: bold; margin-bottom: 5px;">₡${Math.round(totalCostos).toLocaleString()}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">${costosFiltrados.length} costos fijos</div>
+
+                <div class="dashboard-stat-card red">
+                    <div class="dashboard-stat-label">COSTOS TOTALES</div>
+                    <div class="dashboard-stat-value">₡${Math.round(totalCostos).toLocaleString()}</div>
+                    <div class="dashboard-stat-subtext">${costosFiltrados.length} costos fijos</div>
                 </div>
-                
-                <div style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">UTILIDAD NETA</div>
-                    <div style="font-size: 28px; font-weight: bold; margin-bottom: 5px;">₡${Math.round(utilidad).toLocaleString()}</div>
-                    <div style="font-size: 14px; opacity: 0.8;">Margen: ${margen}%</div>
+
+                <div class="dashboard-stat-card green">
+                    <div class="dashboard-stat-label">UTILIDAD NETA</div>
+                    <div class="dashboard-stat-value">₡${Math.round(utilidad).toLocaleString()}</div>
+                    <div class="dashboard-stat-subtext">Margen: ${margen}%</div>
                 </div>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px;">
-                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <h3 style="margin-bottom: 20px; color: #333;">
-                        <i class="fas fa-chart-bar" style="color: #2563eb; margin-right: 10px;"></i>
+
+            <div class="dashboard-metrics-grid">
+                <div class="dashboard-panel">
+                    <h3 class="dashboard-panel-title">
+                        <i class="fas fa-chart-bar"></i>
                         ${filtroLocal === 'Todos'
                             ? 'Ventas por Local'
                             : (['mes', 'rango', 'ayer', 'personalizado'].includes(filtroTiempo)
                                 ? `Ventas Diarias - ${filtroLocal}`
                                 : `Ventas por Mes - ${filtroLocal}`)}
                     </h3>
-                    <div style="height: 300px;">
+
+                    <div class="dashboard-chart-wrap">
                         <canvas id="graficoVentasMensuales"></canvas>
                     </div>
-                    ${ventasFiltradas.length === 0 ? '<p style="text-align: center; color: #666; margin-top: 20px;">No hay datos para mostrar en el gráfico</p>' : ''}
+
+                    ${ventasFiltradas.length === 0 ? '<p class="dashboard-empty-text">No hay datos para mostrar en el gráfico</p>' : ''}
                 </div>
-                
-                <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <i class="fas fa-motorcycle" style="font-size: 2.5rem; opacity: 0.8;"></i>
+
+                <div class="dashboard-side-cards">
+                    <div class="dashboard-mini-card purple">
+                        <div class="dashboard-mini-card-inner">
+                            <i class="fas fa-motorcycle dashboard-mini-icon"></i>
                             <div>
-                                <div style="font-size: 14px; opacity: 0.9;">VENTAS DELIVERY</div>
-                                <div style="font-size: 24px; font-weight: bold;">₡${Math.round(deliveryData.ventas).toLocaleString()}</div>
+                                <div class="dashboard-mini-label">VENTAS DELIVERY</div>
+                                <div class="dashboard-mini-value">₡${Math.round(deliveryData.ventas).toLocaleString()}</div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <i class="fas fa-percent" style="font-size: 2.5rem; opacity: 0.8;"></i>
+
+                    <div class="dashboard-mini-card orange">
+                        <div class="dashboard-mini-card-inner">
+                            <i class="fas fa-percent dashboard-mini-icon"></i>
                             <div>
-                                <div style="font-size: 14px; opacity: 0.9;">COMISIONES DELIVERY</div>
-                                <div style="font-size: 24px; font-weight: bold;">₡${Math.round(deliveryData.comisiones).toLocaleString()}</div>
+                                <div class="dashboard-mini-label">COMISIONES DELIVERY</div>
+                                <div class="dashboard-mini-value">₡${Math.round(deliveryData.comisiones).toLocaleString()}</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h3 style="margin-bottom: 20px; color: #333;">
-                    <i class="fas fa-${mostrarTopLocales ? 'store' : 'clock'}" style="color: #2563eb; margin-right: 10px;"></i>
+
+            <div class="dashboard-panel dashboard-table-panel">
+                <h3 class="dashboard-panel-title">
+                    <i class="fas fa-${mostrarTopLocales ? 'store' : 'clock'}"></i>
                     ${mostrarTopLocales ? 'Top Locales' : `Últimas ventas en ${filtroLocal}`}
                 </h3>
+
                 <div class="table-container">
                     <table class="table">
                         <thead>
@@ -225,16 +234,17 @@ function renderDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${mostrarTopLocales 
+                            ${mostrarTopLocales
                                 ? (topLocales.length > 0 ? topLocales.map(([local, monto]) => {
                                     const porcentaje = totalVentas > 0 ? ((monto / totalVentas) * 100).toFixed(1) : 0;
                                     return `
-                                    <tr>
-                                        <td><strong>${local}</strong></td>
-                                        <td>₡${Math.round(monto).toLocaleString()}</td>
-                                        <td>${porcentaje}%</td>
-                                    </tr>
-                                `}).join('') : `
+                                        <tr>
+                                            <td><strong>${local}</strong></td>
+                                            <td class="dashboard-amount">₡${Math.round(monto).toLocaleString()}</td>
+                                            <td><span class="dashboard-percent-badge">${porcentaje}%</span></td>
+                                        </tr>
+                                    `;
+                                }).join('') : `
                                     <tr>
                                         <td colspan="3" style="text-align: center; padding: 30px;">
                                             No hay ventas en este período
@@ -246,12 +256,13 @@ function renderDashboard() {
                                     const fechaObj = fechaLimpia ? new Date(fechaLimpia + 'T12:00:00') : new Date();
                                     const porcentaje = totalVentas > 0 ? ((v.total / totalVentas) * 100).toFixed(1) : 0;
                                     return `
-                                    <tr>
-                                        <td>${fechaLimpia ? fechaObj.toLocaleDateString('es-CR') : 'Fecha no disponible'}</td>
-                                        <td>₡${Math.round(v.total || 0).toLocaleString()}</td>
-                                        <td>${porcentaje}%</td>
-                                    </tr>
-                                `}).join('') : `
+                                        <tr>
+                                            <td>${fechaLimpia ? fechaObj.toLocaleDateString('es-CR') : 'Fecha no disponible'}</td>
+                                            <td class="dashboard-amount">₡${Math.round(v.total || 0).toLocaleString()}</td>
+                                            <td><span class="dashboard-percent-badge">${porcentaje}%</span></td>
+                                        </tr>
+                                    `;
+                                }).join('') : `
                                     <tr>
                                         <td colspan="3" style="text-align: center; padding: 30px;">
                                             No hay ventas en este local
@@ -263,14 +274,6 @@ function renderDashboard() {
                     </table>
                 </div>
             </div>
-            
-            <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 0.9rem; color: #64748b;">
-                <i class="fas fa-user" style="margin-right: 8px;"></i>
-                ${AppState.usuario?.nombre || 'Usuario'} | 
-                ${AppState.usuario?.rol || 'Sin rol'} | 
-                Última actualización: ${new Date().toLocaleTimeString()}
-            </div>
-        </div>
     `;
     
     dashboardContent.innerHTML = dashboardHTML;
@@ -433,34 +436,29 @@ if (filtroTiempo === 'mes' || filtroTiempo === 'rango') {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
-                    title: {
-                        display: true,
-                        text: tituloGrafico,
-                        font: { size: 14, weight: 'bold' }
-                    },
                     legend: {
-                        display: true,
-                        position: 'top'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => `${context.dataset.label}: ₡${Math.round(context.parsed.y).toLocaleString()}`
-                        }
+                        display: false
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
+                    x: {
+                        grid: {
+                            display: false
+                        },
                         ticks: {
-                            callback: (value) => '₡' + Math.round(value).toLocaleString()
+                            color: '#64748b'
                         }
                     },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Día'
+                    y: {
+                        grid: {
+                            color: '#eef2f7'
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            callback: function(value) {
+                                return '₡' + value.toLocaleString();
+                            }
                         }
                     }
                 }

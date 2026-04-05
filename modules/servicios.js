@@ -12,9 +12,16 @@ const PRECIOS_DEF = {
 // ============================================
 // MEDIDORES POR DEFECTO PARA CADA LOCAL
 // ============================================
-const MEDIDORES_POR_DEFECTO = {
-    agua: [''],
-    electricidad: ['']
+const configuracionCorrecta = {
+    agua: [
+        'Misceláneo',
+        'Operación ABIERTA',
+        'Operación CERRADA'
+    ],
+    electricidad: [
+        'Operación ABIERTA',
+        'Operación CERRADA'
+    ]
 };
 
 // ============================================
@@ -24,8 +31,15 @@ function obtenerMedidoresLocal(local) {
     const medidores = JSON.parse(localStorage.getItem('medidoresServicios')) || {};
 
     const configuracionCorrecta = {
-        agua: [''],
-        electricidad: ['']
+        agua: [
+            'Misceláneo',
+            'Operación ABIERTA',
+            'Operación CERRADA'
+        ],
+        electricidad: [
+            'Operación ABIERTA',
+            'Operación CERRADA'
+        ]
     };
 
     if (!medidores[local]) {
@@ -38,13 +52,8 @@ function obtenerMedidoresLocal(local) {
         return medidores[local];
     }
 
-    if (!Array.isArray(medidores[local].agua) || medidores[local].agua.length === 0) {
-        medidores[local].agua = [...configuracionCorrecta.agua];
-    }
-
-    if (!Array.isArray(medidores[local].electricidad) || medidores[local].electricidad.length === 0) {
-        medidores[local].electricidad = [...configuracionCorrecta.electricidad];
-    }
+    medidores[local].agua = [...configuracionCorrecta.agua];
+    medidores[local].electricidad = [...configuracionCorrecta.electricidad];
 
     localStorage.setItem('medidoresServicios', JSON.stringify(medidores));
     return medidores[local];

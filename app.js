@@ -536,29 +536,31 @@ function cerrarModal(id = null) {
     
     const overlay = document.getElementById('modalOverlay');
     
-    // Si se especifica un ID, cerrar ese modal específico
     if (id) {
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.remove('active');
-            modal.style.display = 'none'; // Forzar ocultamiento
+            modal.style.display = 'none';
+            // Limpiar estilos inline que hayamos agregado
+            modal.style.position = '';
+            modal.style.top = '';
+            modal.style.left = '';
+            modal.style.transform = '';
+            modal.style.zIndex = '';
         }
     } else {
-        // Si no se especifica, cerrar TODOS los modales
         const modales = document.querySelectorAll('.modal');
         modales.forEach(modal => {
             modal.classList.remove('active');
-            modal.style.display = 'none'; // Forzar ocultamiento
+            modal.style.display = 'none';
         });
     }
     
-    // Cerrar overlay si no hay modales activos
     if (overlay) {
-        const modalesActivos = document.querySelectorAll('.modal.active');
-        if (modalesActivos.length === 0) {
-            overlay.classList.remove('active');
-            overlay.style.display = 'none'; // Forzar ocultamiento
-        }
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+        overlay.style.position = '';
+        overlay.style.zIndex = '';
     }
 }
 
@@ -580,19 +582,19 @@ window.cambiarModulo = cambiarModulo;
 window.inicializarFiltros = inicializarFiltros;
 
 // Referencias a funciones de módulos
-window.renderDashboard = null;
-window.renderVentas = null;
-window.renderCostos = null;
-window.renderUsuarios = null;
-window.renderServicios = null;
-window.renderPlanilla = null;
-window.renderMerma = null;
-window.renderLogistica = null;
-window.renderFacturacion = null;
-window.renderPrestamo = null;
-window.renderCompras = null;
-window.renderResumen = null;
-window.renderPago10 = null;
+window.renderDashboard = window.renderDashboard || null;
+window.renderVentas = window.renderVentas || null;
+window.renderCostos = window.renderCostos || null;
+window.renderUsuarios = window.renderUsuarios || null;
+window.renderServicios = window.renderServicios || null;
+window.renderPlanilla = window.renderPlanilla || null;
+window.renderMerma = window.renderMerma || null;
+window.renderLogistica = window.renderLogistica || null;
+window.renderFacturacion = window.renderFacturacion || null;
+window.renderPrestamo = window.renderPrestamo || null;
+window.renderCompras = window.renderCompras || null;
+window.renderResumen = window.renderResumen || null;
+window.renderPago10 = window.renderPago10 || null;
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {

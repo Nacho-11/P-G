@@ -227,17 +227,12 @@
                 <span>
                     <i class="fas fa-copyright"></i> 2026 Perdidas y Ganancias
                 </span>
-                <span>
-                    <i class="fas fa-user"></i> <span id="footerUserName">Ignacio Calderón Vargas</span> | 
-                    <i class="fas fa-tag"></i> <span id="footerUserRole">Gerencia</span> |
-                    <i class="fas fa-clock"></i> <span id="footerDate"></span>
-                </span>
             </footer>
         </main>
     </div>
 
     <!-- Modales -->
-    <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()"></div>
+    <div class="modal-overlay" id="modalOverlay"></div>
     
     <!-- Pantalla de Login -->
     <div id="loginScreen" class="login-screen" style="display: none;">
@@ -271,7 +266,6 @@
             </div>
         </div>
     </div>
-</div>
     
     <!-- Modal de Usuario -->
     <div class="modal" id="usuarioModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
@@ -371,8 +365,9 @@
         <!-- Header elegante -->
         <div class="modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-shopping-cart" style="font-size: 1.8rem;"></i>
+                <div class="dashboard-card blue">
+                    <div class="label">VENTAS TOTALES</div>
+                    <div class="value">₡...</div>
                 </div>
                 <div>
                     <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;">Registrar Nueva Venta</h2>
@@ -965,38 +960,64 @@
     </div>
 
     <!-- Modal de Producto -->
-    <div class="modal" id="productoModal" style="max-width: 550px; border-radius: 24px;">
-        <div class="modal-body" style="padding: 20px;">
+    <div class="modal" id="productoModal" style="max-width: 550px; width: 90%; border-radius: 24px; overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 1.3rem;">Producto</h2>
+            <button class="modal-close" onclick="cerrarModal('productoModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 38px; height: 38px; border-radius: 10px; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; background: #f8fafc; max-height: 75vh; overflow-y: auto;">
             <form id="productoForm" onsubmit="event.preventDefault(); guardarProducto();">
-                <div style="margin-bottom: 15px;">
-                    <label>Familia</label>
-                    <input type="text" id="productoFamilia" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 18px;">
+                    <div style="margin-bottom: 15px;">
+                        <label>Familia</label>
+                        <input type="text" id="productoFamilia" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label>Nombre</label>
+                        <input type="text" id="productoNombre" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label>Presentación</label>
+                        <input type="number" id="productoPresentacion" value="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label>Unidad</label>
+                        <select id="productoUnidad" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <option value="GR">Gramos</option>
+                            <option value="KG">Kilogramos</option>
+                            <option value="ML">Mililitros</option>
+                            <option value="L">Litros</option>
+                            <option value="UD">Unidad</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 0;">
+                        <label>Precio (₡)</label>
+                        <input
+                            type="number"
+                            id="productoPrecio"
+                            required
+                            step="any"
+                            min="0"
+                            inputmode="decimal"
+                            style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;"
+                        >
+                    </div>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Nombre</label>
-                    <input type="text" id="productoNombre" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Presentación</label>
-                    <input type="number" id="productoPresentacion" value="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Unidad</label>
-                    <select id="productoUnidad" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                        <option value="GR">Gramos</option>
-                        <option value="KG">Kilogramos</option>
-                        <option value="ML">Mililitros</option>
-                        <option value="L">Litros</option>
-                        <option value="UD">Unidad</option>
-                    </select>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Precio (₡)</label>
-                    <input type="number" id="productoPrecio" required style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" onclick="cerrarModal('productoModal')" style="padding: 10px 20px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
-                    <button type="submit" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px;">Guardar</button>
+
+                <div style="position: sticky; bottom: 0; background: #f8fafc; padding-top: 10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e2e8f0;">
+                    <button type="button" onclick="cerrarModal('productoModal')" style="padding: 10px 20px; border: 2px solid #e2e8f0; background: white; border-radius: 8px; font-weight: 600;">
+                        Cancelar
+                    </button>
+                    <button type="submit" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600;">
+                        Guardar
+                    </button>
                 </div>
             </form>
         </div>
@@ -1012,161 +1033,147 @@
                 <input type="text" id="buscarProductoCatalogo" placeholder="Buscar productos..." oninput="filtrarCatalogo()" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
             </div>
             <div id="catalogoProductos"></div>
+                <div style="position: sticky; bottom: 0; background: #f8fafc; padding-top: 10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e2e8f0;">
+                    <button type="button" onclick="cerrarModal('catalogoModal')" style="padding: 10px 20px; border: 2px solid #e2e8f0; background: white; border-radius: 8px; font-weight: 600;">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Modal de Merma - VERSIÓN MEJORADA -->
-    <div class="modal" id="mermaModal" style="max-width: 650px; width: 95%; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
+    <!-- Modal de Merma - VERSIÓN PRO -->
+    <div class="modal" id="mermaModal" style="max-width: 760px; width: 95%; border-radius: 30px; overflow: hidden; box-shadow: 0 30px 70px -18px rgba(0, 0, 0, 0.35);">
         
-        <!-- Header con degradado rojo (acorde al tema de mermas) -->
-        <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-trash-alt" style="font-size: 1.8rem;"></i>
+        <!-- Header -->
+        <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 26px 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="background: rgba(255,255,255,0.18); width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);">
+                    <i class="fas fa-trash-alt" style="font-size: 1.7rem;"></i>
                 </div>
                 <div>
-                    <h2 style="margin: 0; font-size: 1.6rem; font-weight: 600;" id="mermaModalTitle">Registrar Merma</h2>
-                    <p style="margin: 4px 0 0; opacity: 0.8;">Complete los datos de la pérdida de producto</p>
+                    <h2 style="margin: 0; font-size: 1.55rem; font-weight: 700;" id="mermaModalTitle">Registrar Merma</h2>
+                    <p style="margin: 5px 0 0; opacity: 0.88; font-size: 0.92rem;">Registre productos perdidos, cantidades y costo total</p>
                 </div>
             </div>
-            <button class="modal-close" onclick="cerrarModal('mermaModal')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; font-size: 1.2rem;">
+
+            <button class="modal-close" onclick="cerrarModal('mermaModal')" style="background: rgba(255,255,255,0.18); border: none; color: white; width: 42px; height: 42px; border-radius: 14px; cursor: pointer; font-size: 1.05rem;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
-        <!-- Body del modal con scroll -->
-        <div class="modal-body" style="padding: 30px; background: #f8fafc; max-height: 80vh; overflow-y: auto;">
+
+        <!-- Body -->
+        <div class="modal-body" style="padding: 24px; background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); max-height: 80vh; overflow-y: auto;">
             <form id="mermaForm" onsubmit="event.preventDefault(); guardarMerma();">
-                
-                <!-- SECCIÓN: Fecha y Local (2 columnas) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    
-                    <!-- Fecha -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+
+                <!-- Fecha + Local -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px;">
+                    <div style="background: white; border-radius: 18px; padding: 18px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04); border: 1px solid #eef2f7;">
+                        <label style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                             <i class="fas fa-calendar-alt" style="color: #ef4444;"></i> Fecha
                         </label>
-                        <input type="date" id="mermaFecha" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; transition: all 0.2s;" onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#e2e8f0'">
+                        <input type="date" id="mermaFecha" required style="width: 100%; padding: 13px 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;">
                     </div>
-                    
-                    <!-- Local -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+
+                    <div style="background: white; border-radius: 18px; padding: 18px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04); border: 1px solid #eef2f7;">
+                        <label style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                             <i class="fas fa-store" style="color: #ef4444;"></i> Local
                         </label>
-                        <select id="mermaLocal" required style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white; cursor: pointer;">
+                        <select id="mermaLocal" required style="width: 100%; padding: 13px 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: white;">
                             <option value="">Seleccionar local...</option>
                         </select>
                     </div>
                 </div>
-                
-                <!-- SECCIÓN: Búsqueda de Producto (destacada) -->
-                <div style="background: linear-gradient(135deg, #fff1f1, #ffffff); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 2px solid #fee2e2;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
-                        <div style="background: #ef4444; width: 4px; height: 24px; border-radius: 4px;"></div>
-                        <span style="font-weight: 700; color: #1e293b; font-size: 1rem;">
-                            <i class="fas fa-search" style="color: #ef4444; margin-right: 8px;"></i>
-                            Buscar Producto
-                        </span>
+
+                <!-- Buscador / selección -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 18px; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05); border: 1px solid #eef2f7;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.08rem; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-box-open" style="color:#ef4444;"></i> Producto
+                            </h3>
+                            <p style="margin:4px 0 0; color:#64748b; font-size:0.88rem;">Busque y agregue uno o varios productos al carrito</p>
+                        </div>
                     </div>
-                    
-                    <!-- Campo de búsqueda -->
-                    <div style="position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" 
-                            id="buscadorProducto" 
-                            placeholder="Escriba para buscar por nombre o familia..." 
-                            oninput="buscarProductos()"
-                            style="width: 100%; padding: 16px 16px 16px 48px; border: 2px solid #e2e8f0; border-radius: 16px; font-size: 1rem; background: white; transition: all 0.2s;" 
-                            onfocus="this.style.borderColor='#ef4444'" 
-                            onblur="this.style.borderColor='#e2e8f0'">
+
+                    <div style="position: relative; margin-bottom: 14px;">
+                        <i class="fas fa-search" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                        <input type="text" id="buscadorProducto" oninput="buscarProductos()" placeholder="Buscar por nombre o familia..." style="width: 100%; padding: 14px 16px 14px 42px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; background: #fff;">
                     </div>
-                    
-                    <!-- Resultados de búsqueda -->
-                    <div id="resultadosBusqueda" style="display: none; margin-top: 10px; max-height: 250px; overflow-y: auto; border: 2px solid #e2e8f0; border-radius: 16px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    </div>
-                    
-                    <!-- Producto seleccionado -->
-                    <div id="productoSeleccionado" style="display: none; margin-top: 15px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 16px; padding: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+
+                    <div id="resultadosBusqueda" style="display:none; max-height: 220px; overflow-y:auto; border: 1px solid #e2e8f0; border-radius: 14px; background: white; margin-bottom: 14px;"></div>
+
+                    <div id="productoSeleccionado" style="display:none; background: linear-gradient(135deg, #fef2f2, #fff1f2); border: 1px solid #fecaca; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 10px;">
                             <div>
-                                <div style="font-size: 0.8rem; color: #22c55e; font-weight: 600;">PRODUCTO SELECCIONADO</div>
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #1e293b; margin-top: 2px;" id="productoSeleccionadoNombre"></div>
-                                <div style="font-size: 0.9rem; color: #64748b; margin-top: 4px;" id="productoSeleccionadoDetalle"></div>
+                                <div id="productoSeleccionadoNombre" style="font-weight: 700; color:#991b1b;"></div>
+                                <div id="productoSeleccionadoDetalle" style="font-size:0.88rem; color:#7f1d1d; margin-top:4px;"></div>
                             </div>
-                            <button type="button" onclick="limpiarSeleccionProducto()" style="background: #fee2e2; border: none; color: #ef4444; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; font-size: 1.2rem;">
+                            <button type="button" onclick="limpiarSeleccionProducto()" style="background: rgba(239,68,68,0.1); color:#dc2626; border:none; width:34px; height:34px; border-radius:10px; cursor:pointer;">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
-                    
+
                     <input type="hidden" id="mermaProductoId">
-                </div>
-                
-                <!-- SECCIÓN: Cantidad y Motivo (2 columnas) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    
-                    <!-- Cantidad -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <i class="fas fa-weight-hanging" style="color: #ef4444;"></i> Cantidad
-                        </label>
-                        <input type="number" id="mermaCantidad" step="0.001" placeholder="0.000" 
-                            oninput="window.calcularCostoMerma()" 
-                            style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;">
-                        
-                        <!-- Botón para agregar al carrito -->
-                        <button type="button" onclick="window.agregarProductoAlCarrito()" 
-                                style="margin-top: 15px; width: 100%; padding: 12px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer;">
-                            <i class="fas fa-plus-circle"></i> Agregar producto al carrito
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap:14px; align-items:end;">
+                        <div>
+                            <label style="font-weight: 600; color:#334155; display:block; margin-bottom:8px;">Cantidad</label>
+                            <input type="number" id="mermaCantidad" min="0" step="any" oninput="calcularCostoMerma()" placeholder="0.00" style="width:100%; padding:14px; border:2px solid #e2e8f0; border-radius:14px;">
+                        </div>
+
+                        <div style="background:#fff; border:2px solid #e2e8f0; border-radius:16px; padding:14px;">
+                            <div style="font-size:0.75rem; color:#64748b;">Costo unitario</div>
+                            <div id="mermaCostoUnitario" style="font-size:1.05rem; font-weight:800; color:#1e293b; margin-top:4px;">₡0 / unidad</div>
+                        </div>
+
+                        <button type="button" onclick="agregarProductoAlCarrito()" style="height: 52px; border:none; border-radius:16px; background: linear-gradient(135deg, #ef4444, #dc2626); color:white; font-weight:800; cursor:pointer; box-shadow: 0 10px 18px rgba(239,68,68,0.22);">
+                            <i class="fas fa-plus"></i> Agregar al carrito
                         </button>
                     </div>
-                    
-                    <!-- Motivo -->
-                    <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <label style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <i class="fas fa-comment" style="color: #ef4444;"></i> Motivo
-                        </label>
-                        <input type="text" id="mermaMotivo" placeholder="Ej: Caducado, roto, etc." 
-                            style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem;">
-                    </div>
-                </div>
 
-                <!-- SECCIÓN: Carrito de productos -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <h3 style="margin: 0 0 15px 0; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-shopping-cart" style="color: #ef4444;"></i> Productos agregados
-                    </h3>
-                    <div id="carritoMerma" style="max-height: 250px; overflow-y: auto;">
-                        <div style="text-align: center; padding: 20px; color: #64748b;">
-                            <i class="fas fa-shopping-cart" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                            <p>No hay productos agregados</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECCIÓN: Resumen de Costos (destacada) -->
-                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 20px; padding: 25px; margin-bottom: 25px; color: white;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Carrito -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 18px; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05); border: 1px solid #eef2f7;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">COSTO UNITARIO (último seleccionado)</div>
-                            <div style="font-size: 1.8rem; font-weight: 700; color: #f87171;" id="mermaCostoUnitario">₡0 / unidad</div>
+                            <h3 style="margin:0; font-size:1.08rem; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-shopping-basket" style="color:#ef4444;"></i> Carrito de Merma
+                            </h3>
+                            <p style="margin:4px 0 0; color:#64748b; font-size:0.88rem;">Productos agregados para este registro</p>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">COSTO TOTAL</div>
-                            <div style="font-size: 2.2rem; font-weight: 800; color: #f87171;" id="mermaCostoTotal">₡0</div>
+
+                        <div style="background: #fef2f2; color:#b91c1c; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.88rem;">
+                            Total: <span id="mermaCostoTotal">₡0</span>
                         </div>
                     </div>
+
+                    <div id="carritoMerma" style="border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; min-height: 120px; background: #fff;"></div>
                 </div>
-                
-                <!-- Botones de acción -->
-                <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 25px;">
-                    <button type="button" onclick="cerrarModal('mermaModal')" style="padding: 14px 28px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                        Cancelar
-                    </button>
-                    <button type="submit" id="mermaSubmitBtn" style="padding: 14px 36px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 18px; font-weight: 700; cursor: pointer; font-size: 1rem; box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 20px rgba(239, 68, 68, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 16px rgba(239, 68, 68, 0.3)'">
-                        <i class="fas fa-save"></i> Guardar Merma
-                    </button>
+
+                <!-- Motivo -->
+                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 18px; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05); border: 1px solid #eef2f7;">
+                    <label style="font-weight: 700; color:#1e293b; display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                        <i class="fas fa-comment-dots" style="color:#ef4444;"></i> Motivo de la merma
+                    </label>
+                    <textarea id="mermaMotivo" rows="3" placeholder="Ej: producto vencido, daño por manipulación, error de preparación..." style="width:100%; padding:14px; border:2px solid #e2e8f0; border-radius:14px; resize: vertical; font-family: inherit;"></textarea>
+                </div>
+
+                <!-- Footer -->
+                <div style="position: sticky; bottom: 0; background: rgba(248,250,252,0.96); backdrop-filter: blur(10px); padding: 16px 0 0; margin-top: 18px; border-top: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+                    <div style="background: linear-gradient(135deg, #0f172a, #111827); color:white; border-radius: 18px; padding: 14px 18px; min-width: 220px; box-shadow: 0 12px 24px rgba(15,23,42,0.18);">
+                        <div style="font-size:0.74rem; opacity:0.75; letter-spacing:0.04em;">TOTAL ESTIMADO</div>
+                        <div style="font-size:1.45rem; font-weight:800; margin-top:4px;" id="mermaCostoTotalFooter">₡0</div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-left:auto;">
+                        <button type="button" onclick="cerrarModal('mermaModal')" style="padding: 14px 24px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 16px; font-weight: 700; cursor: pointer; min-width: 130px;">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary" style="padding: 14px 28px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 20px rgba(239,68,68,0.24); min-width: 190px;">
+                            <i class="fas fa-save"></i> Guardar Merma
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

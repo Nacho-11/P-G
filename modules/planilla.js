@@ -211,9 +211,6 @@ function renderPlanilla() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2><i class="fas fa-users" style="color: var(--primary);"></i> Planilla Diaria</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-outline" onclick="diagnosticarPlanilla()">
-                            <i class="fas fa-stethoscope"></i> Diagnosticar
-                        </button>
                         <button class="btn btn-primary" onclick="mostrarModalEmpleado()">
                             <i class="fas fa-plus"></i> Nuevo Empleado
                         </button>
@@ -239,9 +236,6 @@ function renderPlanilla() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2><i class="fas fa-users" style="color: var(--primary);"></i> Planilla Diaria</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-outline" onclick="diagnosticarPlanilla()">
-                            <i class="fas fa-stethoscope"></i> Diagnosticar
-                        </button>
                         <button class="btn btn-primary" onclick="mostrarModalEmpleado()">
                             <i class="fas fa-plus"></i> Nuevo Empleado
                         </button>
@@ -268,9 +262,6 @@ function renderPlanilla() {
                 <h2><i class="fas fa-users" style="color: var(--primary);"></i> Planilla Diaria</h2>
                 
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-outline" onclick="diagnosticarPlanilla()" title="Diagnosticar carga de empleados">
-                        <i class="fas fa-stethoscope"></i> Diagnosticar
-                    </button>
                     <button class="btn btn-outline" onclick="toggleVerInactivos()" style="display: flex; align-items: center; gap: 5px;">
                         <i class="fas ${verInactivos ? 'fa-eye-slash' : 'fa-eye'}"></i>
                         ${verInactivos ? 'Ocultar inactivos' : 'Ver inactivos'}
@@ -661,28 +652,6 @@ async function guardarHoras() {
 }
 
 // ============================================
-// DIAGNÓSTICO
-// ============================================
-async function diagnosticarPlanilla() {
-    console.log('🔍 DIAGNÓSTICO DE PLANILLA');
-    try {
-        const snapshot = await firebase.database().ref('planilla').once('value');
-        const data = snapshot.val();
-        console.log('📦 Datos en Firebase:', data);
-        
-        let total = 0;
-        Object.keys(data || {}).forEach(local => {
-            const count = Object.keys(data[local] || {}).length;
-            total += count;
-            console.log(`📍 ${local}: ${count} empleados`);
-        });
-        alert(`Total empleados: ${total}`);
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-// ============================================
 // INICIALIZAR
 // ============================================
 function initPlanilla() {
@@ -706,7 +675,6 @@ window.guardarHoras = guardarHoras;
 window.actualizarResumenHoras = actualizarResumenHoras;
 window.toggleActivoEmpleado = toggleActivoEmpleado;
 window.toggleVerInactivos = toggleVerInactivos;
-window.diagnosticarPlanilla = diagnosticarPlanilla;
 window.initPlanilla = initPlanilla;
 
 console.log('✅ planilla.js cargado correctamente');

@@ -167,7 +167,9 @@ function renderFacturacion() {
             let fechaFormateada = 'Fecha inválida';
             if (f.fecha) {
                 try {
-                    const fechaObj = new Date(f.fecha);
+                    const [year, month, day] = f.fecha.split('-');
+                    const fechaObj = new Date(year, month - 1, day); // ← LOCAL, no UTC
+                    fechaFormateada = fechaObj.toLocaleDateString('es-CR');
                     if (!isNaN(fechaObj.getTime())) {
                         fechaFormateada = fechaObj.toLocaleDateString('es-CR');
                     } else if (typeof f.fecha === 'string' && f.fecha.includes('-')) {

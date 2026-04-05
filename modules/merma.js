@@ -86,39 +86,37 @@ function cargarMermas() {
 // ============================================
 function renderMerma() {
     console.log('📊 Renderizando vista de Mermas...');
-    
+
     const mermaContent = document.getElementById('mermaContent');
     if (!mermaContent) return;
-    
+
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const filtroTiempo = AppState.filtros?.tiempo || 'todos';
-    
+
     const hoy = new Date();
     const hoyStr = hoy.toLocaleDateString('en-CA');
     const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
     const mesActual = hoyStr.substring(0, 7);
-    const anioActual = hoyStr.substring(0, 4);
-    
+
     const mermasFiltradas = mermas.filter(m => {
         if (filtroLocal !== 'Todos' && m.local !== filtroLocal) return false;
         if (!puedeVerLocal(m.local)) return false;
-        
+
         const fechaMerma = m.fecha?.split('T')[0];
         if (!fechaMerma) return false;
-        
+
         if (filtroTiempo === 'todos') return true;
         if (filtroTiempo === 'ayer') return fechaMerma === ayerStr;
         if (filtroTiempo === 'mes') return fechaMerma.substring(0, 7) === mesActual;
         if (filtroTiempo === 'personalizado') return fechaMerma === AppState.filtros?.fechaPersonalizada;
         return true;
     });
-    
+
     mermasFiltradas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-    
+
     const totalMermas = mermasFiltradas.reduce((sum, m) => sum + (m.costoTotal || 0), 0);
-    
-    // Agrupar por familia
+
     const mermasPorFamilia = {};
     mermasFiltradas.forEach(m => {
         if (m.productos) {
@@ -132,7 +130,6 @@ function renderMerma() {
                 mermasPorFamilia[familia].count++;
             });
         } else {
-            // Versión antigua (un solo producto)
             const familia = m.familia || 'Sin categoría';
             if (!mermasPorFamilia[familia]) {
                 mermasPorFamilia[familia] = { cantidad: 0, costo: 0, count: 0 };
@@ -142,15 +139,24 @@ function renderMerma() {
             mermasPorFamilia[familia].count++;
         }
     });
-    
+
     const familiasOrdenadas = Object.entries(mermasPorFamilia)
         .sort(([, a], [, b]) => b.costo - a.costo)
         .slice(0, 5);
-    
+
     let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-            <h2><i class="fas fa-trash-alt" style="color: #ef4444;"></i> Control de Mermas</h2>
-            <div style="display: flex; gap: 10px;">
+        <div class="merma-hero">
+            <div class="merma-hero-title-wrap">
+                <div class="merma-hero-icon">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <div>
+                    <h2>Control de Mermas</h2>
+                    <p>Registro, seguimiento y análisis de pérdidas por producto y familia</p>
+                </div>
+            </div>
+
+            <div class="merma-toolbar">
                 ${esGerencia() ? `
                     <button class="btn btn-outline" onclick="window.mostrarModalImportarProductos()">
                         <i class="fas fa-file-import"></i> Importar Productos
@@ -164,91 +170,89 @@ function renderMerma() {
                 </button>
             </div>
         </div>
-        
-        <div style="background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <span style="background: #f1f5f9; padding: 8px 15px; border-radius: 20px;">
+
+        <div class="merma-summary-bar">
+            <span class="merma-chip">
                 <i class="fas fa-store"></i> ${filtroLocal}
             </span>
-            <span style="margin-left: auto; font-weight: 600; color: #ef4444;">
-                Total: ₡${totalMermas.toLocaleString()}
+            <span class="merma-chip">
+                <i class="fas fa-filter"></i> ${filtroTiempo}
             </span>
+            <span class="merma-summary-total">Total: ₡${totalMermas.toLocaleString()}</span>
         </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px;">
-            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; padding: 20px; color: white;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-trash-alt" style="font-size: 1.5rem;"></i>
-                    </div>
+
+        <div class="merma-stats-grid">
+            <div class="merma-stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="stat-row">
+                    <div class="stat-icon"><i class="fas fa-trash-alt"></i></div>
                     <div>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">TOTAL MERMAS</div>
-                        <div style="font-size: 1.8rem; font-weight: 700;">₡${totalMermas.toLocaleString()}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">${mermasFiltradas.length} registros</div>
+                        <div class="stat-label">TOTAL MERMAS</div>
+                        <div class="stat-value">₡${totalMermas.toLocaleString()}</div>
+                        <div style="font-size:0.82rem; opacity:0.85;">${mermasFiltradas.length} registros</div>
                     </div>
                 </div>
             </div>
-            
-            <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 16px; padding: 20px; color: white;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-chart-line" style="font-size: 1.5rem;"></i>
-                    </div>
+
+            <div class="merma-stat-card" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                <div class="stat-row">
+                    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
                     <div>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">PROMEDIO X REGISTRO</div>
-                        <div style="font-size: 1.8rem; font-weight: 700;">₡${mermasFiltradas.length ? (totalMermas / mermasFiltradas.length).toFixed(0).toLocaleString() : '0'}</div>
+                        <div class="stat-label">PROMEDIO X REGISTRO</div>
+                        <div class="stat-value">₡${mermasFiltradas.length ? Math.round(totalMermas / mermasFiltradas.length).toLocaleString() : '0'}</div>
                     </div>
                 </div>
             </div>
-            
-            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 20px; color: white;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-tag" style="font-size: 1.5rem;"></i>
-                    </div>
+
+            <div class="merma-stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="stat-row">
+                    <div class="stat-icon"><i class="fas fa-tag"></i></div>
                     <div>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">MAYOR MERMA POR FAMILIA</div>
-                        <div style="font-size: 1rem; font-weight: 700;">${familiasOrdenadas[0]?.[0] || 'Sin datos'}</div>
-                        <div>₡${familiasOrdenadas[0]?.[1].costo.toLocaleString() || '0'}</div>
+                        <div class="stat-label">MAYOR MERMA POR FAMILIA</div>
+                        <div style="font-size:1rem; font-weight:800; margin-top:6px;">${familiasOrdenadas[0]?.[0] || 'Sin datos'}</div>
+                        <div style="font-size:0.92rem; margin-top:4px;">₡${familiasOrdenadas[0]?.[1].costo.toLocaleString() || '0'}</div>
                     </div>
                 </div>
             </div>
         </div>
     `;
-    
+
     if (familiasOrdenadas.length > 0) {
         const maxCosto = Math.max(...familiasOrdenadas.map(([, data]) => data.costo));
         html += `
-            <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px;">
-                <h3 style="margin: 0 0 15px 0;"><i class="fas fa-chart-bar"></i> Top 5 Familias con mayor merma</h3>
+            <div class="merma-top-card">
+                <h3><i class="fas fa-chart-bar"></i> Top 5 Familias con mayor merma</h3>
         `;
+
         familiasOrdenadas.forEach(([familia, data]) => {
             const porcentaje = maxCosto > 0 ? (data.costo / maxCosto) * 100 : 0;
             html += `
-                <div style="margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between;">
+                <div class="merma-bar-item">
+                    <div class="merma-bar-head">
                         <span><strong>${familia}</strong> (${data.count} registros)</span>
-                        <span style="color: #ef4444;">₡${data.costo.toLocaleString()}</span>
+                        <span style="color:#b91c1c; font-weight:700;">₡${data.costo.toLocaleString()}</span>
                     </div>
-                    <div style="width: 100%; background: #f1f5f9; border-radius: 30px; height: 8px; overflow: hidden;">
-                        <div style="width: ${porcentaje}%; background: linear-gradient(90deg, #ef4444, #f87171); height: 8px; border-radius: 30px;"></div>
+                    <div class="merma-bar-track">
+                        <div class="merma-bar-fill" style="width:${porcentaje}%"></div>
                     </div>
                 </div>
             `;
         });
+
         html += `</div>`;
     }
-    
+
     if (mermasFiltradas.length === 0) {
         html += `
-            <div class="card" style="padding: 40px; text-align: center;">
-                <i class="fas fa-trash-alt" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+            <div class="merma-empty-card">
+                <i class="fas fa-trash-alt"></i>
                 <h3>No hay registros de merma</h3>
                 <p>Haga clic en "Registrar Merma" para agregar uno.</p>
             </div>
         `;
     } else {
         html += `
-            <div class="card">
+            <div class="merma-table-card">
+                <h3><i class="fas fa-list"></i> Registros de Merma</h3>
                 <div class="table-container">
                     <table class="table">
                         <thead>
@@ -264,12 +268,12 @@ function renderMerma() {
                         </thead>
                         <tbody>
         `;
-        
+
         mermasFiltradas.forEach(m => {
             const fecha = new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-CR');
             let productosLista = '';
             let cantidadTotal = 0;
-            
+
             if (m.productos && m.productos.length > 0) {
                 productosLista = m.productos.map(p => `${p.nombre} (${p.cantidad.toFixed(2)} ${p.unidad})`).join('<br>');
                 cantidadTotal = m.productos.reduce((sum, p) => sum + (p.cantidad || 0), 0);
@@ -277,31 +281,34 @@ function renderMerma() {
                 productosLista = `${m.productoNombre || '—'} (${(m.cantidad || 0).toFixed(2)} ${m.unidad || 'UD'})`;
                 cantidadTotal = m.cantidad || 0;
             }
-            
+
             html += `
                 <tr>
                     <td><strong>${fecha}</strong></td>
                     <td>${m.local || '—'}</td>
-                    <td><small>${productosLista}</small></td>
+                    <td class="merma-products-list"><small>${productosLista}</small></td>
                     <td>${cantidadTotal.toFixed(2)}</td>
-                    <td style="color: #ef4444; font-weight: 600;">₡${(m.costoTotal || 0).toLocaleString()}</td>
+                    <td><span class="merma-badge-cost">₡${(m.costoTotal || 0).toLocaleString()}</span></td>
                     <td>${m.motivo || '—'}</td>
                     <td>
-                        <div style="display: flex; gap: 5px;">
-                            ${esGerencia() ? `
-                                <button class="btn btn-sm btn-danger" onclick="window.eliminarMerma('${m.id}')" title="Eliminar">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        </div>
+                        ${esGerencia() ? `
+                            <button class="btn btn-sm btn-danger" onclick="window.eliminarMerma('${m.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : ''}
                     </td>
                 </tr>
             `;
         });
-        
-        html += `</tbody></table></div></div>`;
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
     }
-    
+
     mermaContent.innerHTML = html;
 }
 
@@ -371,37 +378,42 @@ function mostrarModalMerma(editId = null) {
 function buscarProductos() {
     const busqueda = document.getElementById('buscadorProducto')?.value.toLowerCase() || '';
     const resultadosDiv = document.getElementById('resultadosBusqueda');
-    
+
     if (busqueda.length < 2) {
         resultadosDiv.style.display = 'none';
         return;
     }
-    
-    const resultados = productos.filter(p => 
-        (p.nombre || '').toLowerCase().includes(busqueda) || 
+
+    const resultados = productos.filter(p =>
+        (p.nombre || '').toLowerCase().includes(busqueda) ||
         (p.familia || '').toLowerCase().includes(busqueda)
     ).slice(0, 30);
-    
+
     if (resultados.length === 0) {
-        resultadosDiv.innerHTML = `<div style="padding: 20px; text-align: center;">No se encontraron productos</div>`;
+        resultadosDiv.innerHTML = `<div style="padding: 18px; text-align: center; color:#64748b;">No se encontraron productos</div>`;
         resultadosDiv.style.display = 'block';
         return;
     }
-    
+
     let html = '';
     resultados.forEach(p => {
         const precioPorUnidad = p.precio / (p.presentacion || 1);
         html += `
-            <div onclick="window.seleccionarProducto('${p.id}')" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">
-                <div><strong>${p.nombre}</strong> <span style="color:#64748b;">(${p.familia})</span></div>
-                <div style="font-size: 0.85rem; color: #666;">
-                    ₡${p.precio.toLocaleString()} / ${p.presentacion} ${p.unidad} | 
-                    ₡${precioPorUnidad.toFixed(2)} / ${p.unidad}
+            <div onclick="window.seleccionarProducto('${p.id}')" style="padding: 14px 16px; border-bottom: 1px solid #eef2f7; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                <div style="display:flex; justify-content:space-between; gap: 10px;">
+                    <div>
+                        <div style="font-weight:700; color:#1e293b;">${p.nombre}</div>
+                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 3px;">${p.familia} · ${p.presentacion} ${p.unidad}</div>
+                    </div>
+                    <div style="text-align:right; white-space:nowrap;">
+                        <div style="font-weight:700; color:#0f172a;">₡${p.precio.toLocaleString()}</div>
+                        <div style="font-size: 0.82rem; color: #64748b;">₡${precioPorUnidad.toFixed(2)} / ${p.unidad}</div>
+                    </div>
                 </div>
             </div>
         `;
     });
-    
+
     resultadosDiv.innerHTML = html;
     resultadosDiv.style.display = 'block';
 }
@@ -491,51 +503,57 @@ function eliminarProductoCarrito(index) {
 function renderCarritoMerma() {
     const container = document.getElementById('carritoMerma');
     if (!container) return;
-    
+
     if (carritoMerma.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #64748b;">
-                <i class="fas fa-shopping-cart" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                <p>No hay productos agregados</p>
+            <div style="text-align: center; padding: 28px; color: #64748b; background: linear-gradient(180deg, #ffffff, #f8fafc);">
+                <div style="width: 62px; height: 62px; margin: 0 auto 12px; border-radius: 18px; background: #fef2f2; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-shopping-basket" style="font-size: 1.6rem; color: #ef4444;"></i>
+                </div>
+                <div style="font-weight: 700; color:#334155; margin-bottom: 4px;">No hay productos agregados</div>
+                <p style="margin:0; font-size:0.9rem;">Busque un producto y agréguelo al carrito para registrar la merma.</p>
             </div>
         `;
         return;
     }
-    
+
     let html = `
         <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background: #f1f5f9;">
-                    <th style="padding: 8px; text-align: left;">Producto</th>
-                    <th style="padding: 8px; text-align: center;">Cantidad</th>
-                    <th style="padding: 8px; text-align: right;">Costo Unit.</th>
-                    <th style="padding: 8px; text-align: right;">Subtotal</th>
-                    <th style="padding: 8px; text-align: center;">Acción</th>
+            <thead style="background: #f8fafc;">
+                <tr>
+                    <th style="padding: 12px 14px; text-align: left; font-size: 0.82rem; color:#64748b;">Producto</th>
+                    <th style="padding: 12px 14px; text-align: center; font-size: 0.82rem; color:#64748b;">Cantidad</th>
+                    <th style="padding: 12px 14px; text-align: right; font-size: 0.82rem; color:#64748b;">Costo Unit.</th>
+                    <th style="padding: 12px 14px; text-align: right; font-size: 0.82rem; color:#64748b;">Subtotal</th>
+                    <th style="padding: 12px 14px; text-align: center; font-size: 0.82rem; color:#64748b;">Acción</th>
                 </tr>
             </thead>
             <tbody>
     `;
-    
+
     carritoMerma.forEach((item, idx) => {
         html += `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">
-                    <strong>${item.nombre}</strong><br>
-                    <small style="color: #64748b;">${item.familia} | ${item.unidad}</small>
+            <tr style="border-top: 1px solid #eef2f7; transition: background 0.2s ease;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                <td style="padding: 14px;">
+                    <div style="font-weight: 700; color:#1e293b;">${item.nombre}</div>
+                    <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">${item.familia} · ${item.unidad}</div>
                 </td>
-                <td style="padding: 10px; text-align: center;">${item.cantidad.toFixed(2)}</td>
-                <td style="padding: 10px; text-align: right;">₡${item.costoUnitario.toFixed(2)}</td>
-                <td style="padding: 10px; text-align: right; color: #ef4444; font-weight: 600;">₡${item.costoTotal.toFixed(2)}</td>
-                <td style="padding: 10px; text-align: center;">
-                    <button type="button" onclick="window.eliminarProductoCarrito(${idx})" 
-                            style="background: none; border: none; color: #ef4444; cursor: pointer;">
+                <td style="padding: 14px; text-align: center; font-weight:600;">${item.cantidad.toFixed(2)}</td>
+                <td style="padding: 14px; text-align: right; color:#475569;">₡${item.costoUnitario.toFixed(2)}</td>
+                <td style="padding: 14px; text-align: right;">
+                    <span style="background:#fef2f2; color:#b91c1c; padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.88rem;">
+                        ₡${item.costoTotal.toFixed(2)}
+                    </span>
+                </td>
+                <td style="padding: 14px; text-align: center;">
+                    <button type="button" onclick="window.eliminarProductoCarrito(${idx})" style="background: #fef2f2; border: none; color: #ef4444; cursor: pointer; width: 36px; height: 36px; border-radius: 10px;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
-    
+
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
@@ -545,12 +563,17 @@ function renderCarritoMerma() {
 // ============================================
 function actualizarTotalCarrito() {
     const total = carritoMerma.reduce((sum, item) => sum + item.costoTotal, 0);
+
     const totalSpan = document.getElementById('mermaCostoTotal');
     if (totalSpan) {
         totalSpan.textContent = `₡${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    
-    // También actualizar el costo unitario display (limpiarlo)
+
+    const totalFooter = document.getElementById('mermaCostoTotalFooter');
+    if (totalFooter) {
+        totalFooter.textContent = `₡${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
     const costoUnitarioSpan = document.getElementById('mermaCostoUnitario');
     if (costoUnitarioSpan) {
         costoUnitarioSpan.textContent = '₡0 / unidad';
@@ -714,30 +737,38 @@ function mostrarModalCatalogo() {
 function cargarCatalogoProductos() {
     const contenedor = document.getElementById('catalogoProductos');
     if (!contenedor) return;
-    
+
     if (productos.length === 0) {
         contenedor.innerHTML = `<div style="text-align: center; padding: 40px;">No hay productos cargados</div>`;
         return;
     }
-    
+
     let html = `
-        <div style="overflow-x: auto;">
+        <div style="max-height: 55vh; overflow-y: auto; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: white;">
             <table class="table">
-                <thead>
-                    <tr><th>Familia</th><th>Producto</th><th>Presentación</th><th>Unidad</th><th>Precio</th><th>Precio Unitario</th><th>Acciones</th></tr>
+                <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 2;">
+                    <tr>
+                        <th>Familia</th>
+                        <th>Producto</th>
+                        <th>Presentación</th>
+                        <th>Unidad</th>
+                        <th>Precio</th>
+                        <th>Precio Unitario</th>
+                        <th>Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
     `;
-    
+
     productos.forEach(p => {
         const precioUnitario = p.presentacion ? (p.precio / p.presentacion) : p.precio;
         html += `
             <tr>
                 <td>${p.familia || '—'}</td>
                 <td><strong>${p.nombre}</strong></td>
-                <td>${p.presentacion}</td>
+                <td>${p.presentacion || 1}</td>
                 <td>${p.unidad || 'UD'}</td>
-                <td>₡${p.precio.toLocaleString()}</td>
+                <td>₡${(p.precio || 0).toLocaleString()}</td>
                 <td>₡${precioUnitario.toFixed(2)} / ${p.unidad || 'UD'}</td>
                 <td>
                     <button class="btn btn-sm btn-outline" onclick="window.mostrarModalProducto('${p.id}')"><i class="fas fa-edit"></i></button>
@@ -746,23 +777,32 @@ function cargarCatalogoProductos() {
             </tr>
         `;
     });
-    
+
     html += `</tbody></table></div>`;
     contenedor.innerHTML = html;
 }
 
 function mostrarModalProducto(editId = null) {
     if (!esGerencia()) return alert('Solo gerencia');
+
     const modal = document.getElementById('productoModal');
     const overlay = document.getElementById('modalOverlay');
+    const catalogoModal = document.getElementById('catalogoModal');
+
     if (!modal || !overlay) return;
-    
+
+    // Ocultar catálogo mientras se edita el producto
+    if (catalogoModal) {
+        catalogoModal.classList.remove('active');
+        catalogoModal.style.display = 'none';
+    }
+
     document.getElementById('productoFamilia').value = '';
     document.getElementById('productoNombre').value = '';
     document.getElementById('productoPresentacion').value = '1';
     document.getElementById('productoUnidad').value = 'UD';
     document.getElementById('productoPrecio').value = '';
-    
+
     if (editId) {
         const p = productos.find(p => p.id === editId);
         if (p) {
@@ -773,8 +813,9 @@ function mostrarModalProducto(editId = null) {
             document.getElementById('productoPrecio').value = p.precio || '';
         }
     }
-    
+
     modal.classList.add('active');
+    modal.style.display = 'block';
     overlay.classList.add('active');
 }
 
@@ -783,7 +824,8 @@ async function guardarProducto() {
     const nombre = document.getElementById('productoNombre').value;
     const presentacion = parseFloat(document.getElementById('productoPresentacion').value) || 1;
     const unidad = document.getElementById('productoUnidad').value;
-    const precio = parseFloat(document.getElementById('productoPrecio').value) || 0;
+    const precioTexto = (document.getElementById('productoPrecio').value || '').replace(',', '.');
+    const precio = parseFloat(precioTexto) || 0;
     
     if (!familia || !nombre || !precio) {
         alert('Complete todos los campos');
@@ -803,6 +845,7 @@ async function guardarProducto() {
         await firebase.database().ref('productos').push(data);
         alert('✅ Producto guardado');
         cerrarModal('productoModal');
+        mostrarModalCatalogo();
     } catch (error) {
         alert('Error: ' + error.message);
     }
@@ -866,6 +909,69 @@ async function importarProductosDesdeExcel(file) {
     reader.readAsArrayBuffer(file);
 }
 
+function filtrarCatalogo() {
+    const texto = (document.getElementById('buscarProductoCatalogo')?.value || '').toLowerCase().trim();
+    const contenedor = document.getElementById('catalogoProductos');
+    if (!contenedor) return;
+
+    let lista = [...productos];
+
+    if (texto) {
+        lista = lista.filter(p =>
+            (p.nombre || '').toLowerCase().includes(texto) ||
+            (p.familia || '').toLowerCase().includes(texto) ||
+            (p.unidad || '').toLowerCase().includes(texto)
+        );
+    }
+
+    if (lista.length === 0) {
+        contenedor.innerHTML = `<div style="text-align:center; padding:40px;">No se encontraron productos</div>`;
+        return;
+    }
+
+    let html = `
+        <div style="max-height: 55vh; overflow-y: auto; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: white;">
+            <table class="table">
+                <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 2;">
+                    <tr>
+                        <th>Familia</th>
+                        <th>Producto</th>
+                        <th>Presentación</th>
+                        <th>Unidad</th>
+                        <th>Precio</th>
+                        <th>Precio Unitario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    lista.forEach(p => {
+        const precioUnitario = p.presentacion ? (p.precio / p.presentacion) : p.precio;
+        html += `
+            <tr>
+                <td>${p.familia || '—'}</td>
+                <td><strong>${p.nombre}</strong></td>
+                <td>${p.presentacion || 1}</td>
+                <td>${p.unidad || 'UD'}</td>
+                <td>₡${(p.precio || 0).toLocaleString()}</td>
+                <td>₡${precioUnitario.toFixed(2)} / ${p.unidad || 'UD'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline" onclick="window.mostrarModalProducto('${p.id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="window.eliminarProducto('${p.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table></div>`;
+    contenedor.innerHTML = html;
+}
+
 // ============================================
 // EXPORTAR FUNCIONES
 // ============================================
@@ -885,6 +991,6 @@ window.mostrarModalProducto = mostrarModalProducto;
 window.guardarProducto = guardarProducto;
 window.eliminarProducto = eliminarProducto;
 window.mostrarModalImportarProductos = mostrarModalImportarProductos;
-window.filtrarCatalogo = () => {};
+window.filtrarCatalogo = filtrarCatalogo;
 
 console.log('✅ merma.js cargado - Versión con múltiples productos');
