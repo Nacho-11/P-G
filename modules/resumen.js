@@ -217,11 +217,67 @@ function calcularPrestamos(prestamosData, filtroLocal, filtroTiempo, ayerStr, me
         .reduce((sum, p) => sum + (p.totales?.totalPago || 0), 0);
 }
 
+function obtenerFactorPeriodoCostos(filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin) {
+    const hoy = new Date();
+
+    // TODO el historial: dejar mensual base
+    if (filtroTiempo === 'todos') {
+        return 1;
+    }
+
+    // AYER o FECHA PERSONALIZADA: 1 día / días del mes correspondiente
+    if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
+        let fechaBase;
+
+        if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
+            fechaBase = new Date(fechaPersonalizada + 'T12:00:00');
+        } else {
+            fechaBase = new Date();
+            fechaBase.setDate(fechaBase.getDate() - 1);
+        }
+
+        const diasMes = new Date(
+            fechaBase.getFullYear(),
+            fechaBase.getMonth() + 1,
+            0
+        ).getDate();
+
+        return 1 / diasMes;
+    }
+
+    // MES: mes completo = 1
+    if (filtroTiempo === 'mes') {
+        return 1;
+    }
+
+    // RANGO: prorrateo exacto incluso si cruza meses
+    if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
+        let actual = new Date(fechaInicio + 'T12:00:00');
+        const fin = new Date(fechaFin + 'T12:00:00');
+        let factor = 0;
+
+        while (actual <= fin) {
+            const diasMes = new Date(
+                actual.getFullYear(),
+                actual.getMonth() + 1,
+                0
+            ).getDate();
+
+            factor += 1 / diasMes;
+            actual.setDate(actual.getDate() + 1);
+        }
+
+        return factor;
+    }
+
+    return 1;
+}
+
 // ============================================
 // CÁLCULOS DE COSTOS FIJOS
 // ============================================
 
-function calcularCostosFijos(costosData, filtroLocal, periodo) {
+function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin) {
     const resultado = {
         alquilerLocal: 0, secsa: 0, softRestaurant: 0, internetKolbi: 0, televisionKolbi: 0,
         adt: 0, fumigacion: 0, polizaRT: 0, depreciacionActivos: 0, patenteComercial: 0,
@@ -238,26 +294,12 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
 
     if (!costosData || Object.keys(costosData).length === 0) return resultado;
 
-    // ✅ Días reales del mes base del costo, NO días del filtro
-    let diasMesBase = 30;
-
-    if (periodo?.fechaBase) {
-        const fechaBase = new Date(periodo.fechaBase + 'T12:00:00');
-        if (!isNaN(fechaBase.getTime())) {
-            diasMesBase = new Date(
-                fechaBase.getFullYear(),
-                fechaBase.getMonth() + 1,
-                0
-            ).getDate();
-        }
-    }
-
-    // ✅ Cuántos días del filtro se deben aplicar
-    const diasAplicados = Math.max(periodo?.dias || 1, 1);
-
-    // ✅ Prorrateo correcto:
-    // mensual / días del mes * días del período filtrado
-    const multiplicador = diasAplicados / diasMesBase;
+    const factorPeriodo = obtenerFactorPeriodoCostos(
+        filtroTiempo,
+        fechaPersonalizada,
+        fechaInicio,
+        fechaFin
+    );
 
     const idsProcesados = new Set();
 
@@ -273,12 +315,13 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
                 if (costo.id) idsProcesados.add(costo.id);
 
                 const localDelCosto = costo.local || 'Sin Local';
+
                 if (filtroLocal !== 'Todos' && localDelCosto !== filtroLocal) return;
                 if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(localDelCosto)) return;
 
                 const concepto = (costo.concepto || '').toLowerCase().trim();
                 const montoMensual = costo.monto || 0;
-                const montoAplicable = montoMensual * multiplicador;
+                const montoAplicable = montoMensual * factorPeriodo;
 
                 if (montoMensual === 0) return;
 
@@ -558,7 +601,14 @@ function renderResumen() {
     const facturacionBodegasTotal = calcularFacturacionBodegas(facturasFiltradas);
     const mermasTotal = calcularMermas(mermasFiltradas);
     const serviciosCalc = calcularServicios(servicios, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
-    const costosFijos = calcularCostosFijos(costos, filtroLocal, periodo);
+    const costosFijos = calcularCostosFijos(
+        costos,
+        filtroLocal,
+        filtroTiempo,
+        fechaPersonalizada,
+        fechaInicio,
+        fechaFin
+    );
 
     // CARGAS SOCIALES
     const ccss = planillaCalc.total * 0.265;
