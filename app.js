@@ -564,6 +564,82 @@ function cerrarModal(id = null) {
     }
 }
 
+function detectarTemaSistema() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function aplicarTema(tema) {
+    document.body.classList.remove('dark');
+
+    if (tema === 'dark') {
+        document.body.classList.add('dark');
+    }
+}
+
+function cargarTema() {
+    const temaGuardado = localStorage.getItem('tema') || 'auto';
+    const selector = document.getElementById('themeSelector');
+
+    if (selector) {
+        selector.value = temaGuardado;
+    }
+
+    if (temaGuardado === 'auto') {
+        aplicarTema(detectarTemaSistema());
+    } else {
+        aplicarTema(temaGuardado);
+    }
+}
+
+function cambiarTema(tema) {
+    localStorage.setItem('tema', tema);
+
+    if (tema === 'auto') {
+        aplicarTema(detectarTemaSistema());
+    } else {
+        aplicarTema(tema);
+    }
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const temaGuardado = localStorage.getItem('tema') || 'auto';
+    if (temaGuardado === 'auto') {
+        aplicarTema(detectarTemaSistema());
+    }
+
+    if (typeof renderDashboard === 'function' && document.getElementById('dashboard')?.classList.contains('active')) {
+    renderDashboard();
+    }
+    if (typeof renderVentas === 'function' && document.getElementById('ventas')?.classList.contains('active')) {
+        renderVentas();
+    }
+    if (typeof renderCostos === 'function' && document.getElementById('costos')?.classList.contains('active')) {
+        renderCostos();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', cargarTema);
+
+cargarTema();
+
+function getThemeColors() {
+    const esModoOscuro = document.body.classList.contains('dark');
+
+    return {
+        dark: esModoOscuro,
+        text: esModoOscuro ? '#cbd5e1' : '#64748b',
+        title: esModoOscuro ? '#e5edf7' : '#0f172a',
+        grid: esModoOscuro ? '#243041' : '#eef2f7',
+        border: esModoOscuro ? '#60a5fa' : '#2563eb',
+        fill: esModoOscuro ? 'rgba(96, 165, 250, 0.18)' : 'rgba(37, 99, 235, 0.10)',
+        bar: esModoOscuro ? '#60a5fa' : '#2563eb',
+        pointBorder: esModoOscuro ? '#0f172a' : '#ffffff',
+        tooltipBg: esModoOscuro ? '#0f172a' : '#ffffff',
+        tooltipBorder: esModoOscuro ? '#243041' : '#dbe5f0',
+        tooltipText: esModoOscuro ? '#e5edf7' : '#0f172a'
+    };
+}
+
 // Hacer funciones globales
 window.esGerencia = esGerencia;
 window.getLocalesPermitidos = getLocalesPermitidos;
@@ -580,6 +656,7 @@ window.cerrarModal = cerrarModal;
 window.toggleSidebar = toggleSidebar;
 window.cambiarModulo = cambiarModulo;
 window.inicializarFiltros = inicializarFiltros;
+window.getThemeColors = getThemeColors;
 
 // Referencias a funciones de módulos
 window.renderDashboard = window.renderDashboard || null;

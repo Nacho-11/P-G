@@ -175,7 +175,7 @@ function renderPrestamo() {
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0;"><i class="fas fa-list"></i> Listado de Préstamos</h3>
-                    <span style="background: #f1f5f9; padding: 5px 15px; border-radius: 20px;">
+                    <span class="prestamo-total-chip">
                         Total: ₡${totalPrestamos.toLocaleString()}
                     </span>
                 </div>
@@ -207,7 +207,7 @@ function renderPrestamo() {
                     <td>${p.local || '—'}</td>
                     <td>${p.periodo || '—'}</td>
                     <td>${totalHoras.toFixed(1)} h</td>
-                    <td style="color: #8b5cf6; font-weight: 600;">₡${(p.totales?.totalPago || 0).toLocaleString()}</td>
+                    <td class="prestamo-total-pago">₡${(p.totales?.totalPago || 0).toLocaleString()}</td>
                     <td>
                         <div style="display: flex; gap: 5px;">
                             <button class="btn btn-sm btn-outline" onclick="window.editarPrestamo('${p.id}')" title="Ver detalle">
@@ -315,7 +315,10 @@ function seleccionarEmpleado(empleadoId) {
     
     // Mostrar/ocultar campos nocturnos según el local
     const esAñosLocos = empleado.local.includes('Años Locos');
-    document.getElementById('camposNocturnos').style.display = esAñosLocos ? 'block' : 'none';
+    const camposNocturnosEl = document.getElementById('camposNocturnos');
+    if (camposNocturnosEl) {
+        camposNocturnosEl.style.display = esAñosLocos ? 'block' : 'none';
+    }
 
      // ✅ Preseleccionar su local original
     const selectLocalTrabajo = document.getElementById('prestamoLocalTrabajo');
@@ -410,76 +413,102 @@ function crearCamposNocturnos() {
 // ============================================
 function calcularTotalPrestamo() {
     console.log('🧮 Calculando total del préstamo...');
-    
+
     const empleadoId = document.getElementById('prestamoEmpleadoId')?.value;
     const localTrabajo = document.getElementById('prestamoLocalTrabajo')?.value || '';
     const salario = parseFloat(document.getElementById('prestamoEmpleadoSalario')?.value) || 0;
-    
+
+    const valorHoraOrdEl = document.getElementById('valorHoraOrd');
+    const valorHoraExtraEl = document.getElementById('valorHoraExtra');
+    const valorHoraNocturnaEl = document.getElementById('valorHoraNocturna');
+    const valorHoraExtraNocturnaEl = document.getElementById('valorHoraExtraNocturna');
+    const totalPagoCalculadoEl = document.getElementById('totalPagoCalculado');
+    const resumenNocturnoEl = document.getElementById('resumenNocturno');
+
     if (!empleadoId || salario === 0) {
-        document.getElementById('valorHoraOrd').textContent = '₡0';
-        document.getElementById('valorHoraExtra').textContent = '₡0';
-        document.getElementById('totalPagoCalculado').textContent = '₡0';
+        if (valorHoraOrdEl) valorHoraOrdEl.textContent = '₡0';
+        if (valorHoraExtraEl) valorHoraExtraEl.textContent = '₡0';
+        if (valorHoraNocturnaEl) valorHoraNocturnaEl.textContent = '₡0';
+        if (valorHoraExtraNocturnaEl) valorHoraExtraNocturnaEl.textContent = '₡0';
+        if (totalPagoCalculadoEl) totalPagoCalculadoEl.textContent = '₡0';
+        if (resumenNocturnoEl) resumenNocturnoEl.style.display = 'none';
         return;
     }
-    
+
     const esAñosLocos = localTrabajo.includes('Los Años Locos');
-    
-    // Obtener horas
-    const ordinarias = parseFloat(document.getElementById('prestamoOrdinarias').value) || 0;
-    const extras = parseFloat(document.getElementById('prestamoExtras').value) || 0;
+
+    const ordinarias = parseFloat(document.getElementById('prestamoOrdinarias')?.value) || 0;
+    const extras = parseFloat(document.getElementById('prestamoExtras')?.value) || 0;
     const nocturnas = esAñosLocos ? (parseFloat(document.getElementById('prestamoNocturnas')?.value) || 0) : 0;
     const extrasNocturnas = esAñosLocos ? (parseFloat(document.getElementById('prestamoExtrasNocturnas')?.value) || 0) : 0;
-    
-    // ✅ CÁLCULOS CORREGIDOS SEGÚN LEY
+
     const valorHoraDiurna = salario / HORAS_MENSUALES.diurno;
     const valorHoraExtraDiurna = valorHoraDiurna * RECARGOS.extraDiurna;
     const valorHoraNocturna = salario / HORAS_MENSUALES.nocturno;
     const valorHoraExtraNocturna = valorHoraNocturna * RECARGOS.extraNocturna;
-    
-    // Calcular pagos (CON NOMBRES CORRECTOS)
+
     const pagoOrdinariasDiurnas = ordinarias * valorHoraDiurna;
     const pagoExtrasDiurnas = extras * valorHoraExtraDiurna;
     const pagoNocturnas = nocturnas * valorHoraNocturna;
     const pagoExtrasNocturnas = extrasNocturnas * valorHoraExtraNocturna;
-    
+
     const total = pagoOrdinariasDiurnas + pagoExtrasDiurnas + pagoNocturnas + pagoExtrasNocturnas;
-    
-    // ✅ LOG CORREGIDO (sin typos)
+
     console.log('📊 Cálculo corregido:', {
-        ordinarias, extras, nocturnas, extrasNocturnas,
-        valorHoraDiurna, valorHoraNocturna,
-        valorHoraExtraDiurna, valorHoraExtraNocturna,
-        pagoOrdinariasDiurnas,  // ✅ Nombre correcto
+        ordinarias,
+        extras,
+        nocturnas,
+        extrasNocturnas,
+        valorHoraDiurna,
+        valorHoraNocturna,
+        valorHoraExtraDiurna,
+        valorHoraExtraNocturna,
+        pagoOrdinariasDiurnas,
         pagoExtrasDiurnas,
         pagoNocturnas,
         pagoExtrasNocturnas,
         total
     });
-    
-    // Actualizar UI
-    document.getElementById('valorHoraOrd').textContent = `₡${valorHoraDiurna.toFixed(2)}`;
-    document.getElementById('valorHoraExtra').textContent = `₡${valorHoraExtraDiurna.toFixed(2)}`;
-    
+
+    if (valorHoraOrdEl) valorHoraOrdEl.textContent = `₡${valorHoraDiurna.toFixed(2)}`;
+    if (valorHoraExtraEl) valorHoraExtraEl.textContent = `₡${valorHoraExtraDiurna.toFixed(2)}`;
+
     if (esAñosLocos) {
-        document.getElementById('resumenNocturno').style.display = 'grid';
-        document.getElementById('valorHoraNocturna').textContent = `₡${valorHoraNocturna.toFixed(2)}`;
-        document.getElementById('valorHoraExtraNocturna').textContent = `₡${valorHoraExtraNocturna.toFixed(2)}`;
+        if (resumenNocturnoEl) resumenNocturnoEl.style.display = 'grid';
+        if (valorHoraNocturnaEl) valorHoraNocturnaEl.textContent = `₡${valorHoraNocturna.toFixed(2)}`;
+        if (valorHoraExtraNocturnaEl) valorHoraExtraNocturnaEl.textContent = `₡${valorHoraExtraNocturna.toFixed(2)}`;
     } else {
-        document.getElementById('resumenNocturno').style.display = 'none';
+        if (resumenNocturnoEl) resumenNocturnoEl.style.display = 'none';
+        if (valorHoraNocturnaEl) valorHoraNocturnaEl.textContent = '₡0';
+        if (valorHoraExtraNocturnaEl) valorHoraExtraNocturnaEl.textContent = '₡0';
     }
-    
-    document.getElementById('totalPagoCalculado').textContent = `₡${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+
+    if (totalPagoCalculadoEl) {
+        totalPagoCalculadoEl.textContent = `₡${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+    }
 }
 
 // ============================================
 // LIMPIAR SELECCIÓN DE EMPLEADO
 // ============================================
 function limpiarSeleccionEmpleado() {
-    document.getElementById('prestamoEmpleadoId').value = '';
-    document.getElementById('empleadoSeleccionado').style.display = 'none';
-    document.getElementById('resultadosEmpleados').style.display = 'none';
-    document.getElementById('buscadorEmpleado').value = '';
-    document.getElementById('camposNocturnos').style.display = 'none';
+    const empleadoIdEl = document.getElementById('prestamoEmpleadoId');
+    const empleadoSeleccionadoEl = document.getElementById('empleadoSeleccionado');
+    const resultadosEmpleadosEl = document.getElementById('resultadosEmpleados');
+    const buscadorEmpleadoEl = document.getElementById('buscadorEmpleado');
+    const camposNocturnosEl = document.getElementById('camposNocturnos');
+    const localTrabajoEl = document.getElementById('prestamoLocalTrabajo');
+    const salarioEl = document.getElementById('prestamoEmpleadoSalario');
+
+    if (empleadoIdEl) empleadoIdEl.value = '';
+    if (empleadoSeleccionadoEl) empleadoSeleccionadoEl.style.display = 'none';
+    if (resultadosEmpleadosEl) resultadosEmpleadosEl.style.display = 'none';
+    if (buscadorEmpleadoEl) buscadorEmpleadoEl.value = '';
+    if (camposNocturnosEl) camposNocturnosEl.style.display = 'none';
+    if (localTrabajoEl) localTrabajoEl.value = '';
+    if (salarioEl) salarioEl.value = '0';
+
+    calcularTotalPrestamo();
 }
 
 // ============================================
@@ -524,7 +553,7 @@ function mostrarModalPrestamo(editId = null) {
     const observacionesEdit = prestamoEdit?.observaciones || '';
     
     // Determinar si mostrar campos nocturnos
-    const mostrarNocturnos = empleadoLocalEdit.includes('Años Locos');
+    const mostrarNocturnos = (empleadoLocalEdit || '').includes('Años Locos');
     
     let html = `
         <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 20px 25px; display: flex; justify-content: space-between; align-items: center;">
@@ -598,11 +627,6 @@ function mostrarModalPrestamo(editId = null) {
                                 <option value="Parrillita San Pedro">🏠 Parrillita San Pedro</option>
                                 <option value="Parrillita Empanadazo">🏠 Parrillita Empanadazo</option>
                             </select>
-                            
-                            <p style="margin: 8px 0 0; color: #64748b; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
-                                <i class="fas fa-info-circle" style="color: #8b5cf6;"></i>
-                                Si selecciona <strong>Los Años Locos</strong>, aparecerán los campos de horas nocturnas con recargo del 20% y 80%.
-                            </p>
                         </div>
                         
                         <input type="hidden" id="prestamoEmpleadoId" value="${empleadoIdEdit}">
@@ -665,37 +689,27 @@ function mostrarModalPrestamo(editId = null) {
                     </div>
                 
                 <!-- SECCIÓN: Resumen de pago -->
-                <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                    <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1.1rem;">
-                        <i class="fas fa-calculator" style="color: #8b5cf6;"></i> Resumen de Pago
-                    </h3>
-                    
-                    <div style="background: white; border-radius: 12px; padding: 20px;">
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <span style="color: #64748b;">Valor hora ordinaria:</span>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: #8b5cf6;" id="valorHoraOrd">₡0</div>
+                <div class="prestamo-resumen-card">
+                    <div class="prestamo-resumen-title">
+                        <i class="fas fa-calculator"></i> Resumen de Pago
+                    </div>
+
+                    <div class="prestamo-resumen-box">
+                        <div class="prestamo-resumen-grid">
+                            <div class="prestamo-resumen-item">
+                                <label>Valor hora ordinaria:</label>
+                                <span id="valorHoraOrd">₡0</span>
                             </div>
-                            <div>
-                                <span style="color: #64748b;">Valor hora extra:</span>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: #8b5cf6;" id="valorHoraExtra">₡0</div>
-                            </div>
-                        </div>
-                        
-                        <div id="resumenNocturno" style="display: none; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eef2f6;">
-                            <div>
-                                <span style="color: #64748b;">Valor hora nocturna:</span>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: #8b5cf6;" id="valorHoraNocturna">₡0</div>
-                            </div>
-                            <div>
-                                <span style="color: #64748b;">Valor hora extra nocturna:</span>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: #8b5cf6;" id="valorHoraExtraNocturna">₡0</div>
+
+                            <div class="prestamo-resumen-item">
+                                <label>Valor hora extra:</label>
+                                <span id="valorHoraExtra">₡0</span>
                             </div>
                         </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 2px solid #eef2f6;">
-                            <span style="font-size: 1.1rem; font-weight: 600;">Total a pagar:</span>
-                            <span style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="totalPagoCalculado">₡0</span>
+
+                        <div class="prestamo-total-box">
+                            <span>Total a pagar:</span>
+                            <strong id="totalPagoCalculado">₡0</strong>
                         </div>
                     </div>
                 </div>
@@ -725,12 +739,29 @@ function mostrarModalPrestamo(editId = null) {
     document.body.appendChild(modal);
     overlay.classList.add('active');
     modal.classList.add('active');
-    
-    // Si es edición, mostrar resumen nocturno si aplica
-    if (editId && empleadoLocalEdit.includes('Años Locos')) {
-        document.getElementById('resumenNocturno').style.display = 'grid';
-        calcularTotalPrestamo();
+
+    // Si es edición, restaurar valores visuales
+    if (editId) {
+        const resumenNocturnoEl = document.getElementById('resumenNocturno');
+        const camposNocturnosEl = document.getElementById('camposNocturnos');
+        const localTrabajoEl = document.getElementById('prestamoLocalTrabajo');
+
+        if (localTrabajoEl && empleadoLocalEdit) {
+            localTrabajoEl.value = empleadoLocalEdit;
+        }
+
+        const esAniosLocos = (empleadoLocalEdit || '').includes('Años Locos');
+
+        if (camposNocturnosEl) {
+            camposNocturnosEl.style.display = esAniosLocos ? 'block' : 'none';
+        }
+
+        if (resumenNocturnoEl) {
+            resumenNocturnoEl.style.display = esAniosLocos ? 'grid' : 'none';
+        }
     }
+
+    calcularTotalPrestamo();
 }
 
 // ============================================
@@ -878,6 +909,24 @@ function eliminarPrestamo(id) {
             alert('Error al eliminar');
         });
 }
+
+function calcularTotalPago10() {
+    let total = 0;
+
+    for (let i = 1; i <= 5; i++) {
+        const val = parseFloat(document.getElementById(`semana${i}`)?.value) || 0;
+        total += val;
+    }
+
+    const totalEl = document.getElementById('totalPago');
+    if (totalEl) {
+        totalEl.textContent = `₡${total.toLocaleString()}`;
+    }
+}
+
+document.querySelectorAll('#pago10Modal input').forEach(inp => {
+    inp.addEventListener('input', calcularTotalPago10);
+});
 
 // ============================================
 // EXPORTAR FUNCIONES Y VARIABLES

@@ -146,9 +146,6 @@ function renderFacturacion() {
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0;"><i class="fas fa-list"></i> Listado de Facturas</h3>
-                    <span style="background: #f1f5f9; padding: 5px 15px; border-radius: 20px;">
-                        Total: ₡${totalGeneral.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
                 </div>
                 <div class="table-container">
                     <table class="table">

@@ -71,8 +71,8 @@ const COSTOS_CONFIG = {
             "Agua de las bodegas del lavacar",
             "Alquiler de locales del taller",
             "GPS Navsat (transporte)",
-            "Marchamos (3 busetas, 3 camiones, 2 motos, clio)",
-            "Dekra (3 busetas, 3 camiones, 2 motos, clio)",
+            "Marchamos",
+            "Dekra",
             "Mantenimiento de vehiculos"
         ]
     },
@@ -192,230 +192,258 @@ function renderCostos() {
     console.log('Renderizando costos...');
     const costosContent = document.getElementById('costosContent');
     if (!costosContent) return;
-    
-    // Obtener fecha seleccionada
+
     const fechaSeleccionada = getFechaCostos();
     const diasDelMes = getDiasDelMes(fechaSeleccionada);
     const mesTexto = formatearMesAnio(fechaSeleccionada);
     const year = fechaSeleccionada.getFullYear();
     const month = fechaSeleccionada.getMonth();
     const fechaActual = new Date();
-    const esMesActual = fechaSeleccionada.getMonth() === fechaActual.getMonth() && 
-                        fechaSeleccionada.getFullYear() === fechaActual.getFullYear();
-    
+    const esMesActual =
+        fechaSeleccionada.getMonth() === fechaActual.getMonth() &&
+        fechaSeleccionada.getFullYear() === fechaActual.getFullYear();
+
     const filtroLocal = AppState.filtros?.local || 'Todos';
     const costosData = window.costosData || {};
-    
-    console.log('📅 Mes seleccionado:', mesTexto, 'Días:', diasDelMes);
-    console.log('📍 Filtro local:', filtroLocal);
-    console.log('📦 costosData disponible:', costosData);
-    
-    let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-            <h2><i class="fas fa-coins"></i> Costos Fijos</h2>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 10px; background: #f3f4f6; padding: 5px 15px; border-radius: 8px;">
-                    <i class="fas fa-calendar-alt" style="color: #4b5563;"></i>
-                    <input type="month" id="mesSelectorCostos" value="${year}-${String(month + 1).padStart(2, '0')}" 
-                           style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
-                           onchange="cambiarMesCostos(this.value)">
-                    ${!esMesActual ? '<button class="btn btn-sm btn-outline" onclick="irAlMesActual()" style="margin-left: 5px;" title="Volver al mes actual"><i class="fas fa-calendar-week"></i> Actual</button>' : ''}
-                </div>
-                <button class="btn btn-primary" onclick="mostrarModalCosto()">
-                    <i class="fas fa-plus"></i> Nuevo Costo
-                </button>
-            </div>
-        </div>
-        <div style="margin-bottom: 20px; padding: 10px 15px; background: ${esMesActual ? '#eef2ff' : '#fef3c7'}; border-radius: 8px; border-left: 4px solid ${esMesActual ? '#3b82f6' : '#f59e0b'};">
-            <i class="fas fa-chart-line"></i> 
-            <strong>Período:</strong> ${mesTexto} | 
-            <strong>Días del mes:</strong> ${diasDelMes}
-            ${!esMesActual ? ' | <span style="color: #f59e0b;"><i class="fas fa-history"></i> Visualizando datos de un mes anterior</span>' : ''}
-        </div>
-    `;
-    
-    // Obtener locales permitidos desde AppState
     const localesPermitidos = getLocalesPermitidos();
-    
-    // Determinar qué categorías mostrar según filtro local
-    // Mapeo de categoría Firebase a clave en COSTOS_CONFIG
-    const categoriaMapping = {
-        'Oficinas': 'oficinas',
-        'Planta': 'planta',
-        'Planilla': 'planilla',
-        'Restaurante': 'restaurante',
-        'Transporte': 'transporte'
-    };
-    
+
     let totalGeneralMensual = 0;
     let totalGeneralDiario = 0;
-    
-    // Iterar sobre las categorías de COSTOS_CONFIG que corresponden a Firebase
+    let bloquesHtml = '';
+
+    let html = `
+        <div class="card" style="padding: 20px 22px; margin-bottom: 20px; background: linear-gradient(135deg, #ffffff, #f8fbff); border: 1px solid #e5eefb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-coins" style="color: #2563eb;"></i>
+                        Costos Fijos
+                    </h2>
+                    <p style="margin: 6px 0 0; color: #64748b;">
+                        Vista mensual consolidada por categoría y local
+                    </p>
+                </div>
+
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 10px; background: #eff6ff; padding: 8px 14px; border-radius: 14px; border: 1px solid #dbeafe;">
+                        <i class="fas fa-calendar-alt" style="color: #2563eb;"></i>
+                        <input
+                            type="month"
+                            id="mesSelectorCostos"
+                            value="${year}-${String(month + 1).padStart(2, '0')}"
+                            style="padding: 8px 10px; border: 1px solid #bfdbfe; border-radius: 10px; font-size: 0.92rem; background: white;"
+                            onchange="cambiarMesCostos(this.value)"
+                        >
+                        ${!esMesActual ? `
+                            <button class="btn btn-sm btn-outline" onclick="irAlMesActual()" title="Volver al mes actual">
+                                <i class="fas fa-calendar-week"></i> Actual
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    <button class="btn btn-primary" onclick="mostrarModalCosto()" style="border-radius: 12px; box-shadow: 0 8px 20px rgba(37,99,235,0.18);">
+                        <i class="fas fa-plus"></i> Nuevo Costo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px; padding: 16px 18px; background: ${esMesActual ? 'linear-gradient(135deg, #eff6ff, #eef2ff)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)'}; border-left: 5px solid ${esMesActual ? '#2563eb' : '#f59e0b'};">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas ${esMesActual ? 'fa-chart-line' : 'fa-history'}" style="color: ${esMesActual ? '#2563eb' : '#d97706'};"></i>
+                    <div>
+                        <div style="font-weight: 700; color: #1e293b;">Período: ${mesTexto}</div>
+                        <div style="font-size: 0.92rem; color: #64748b;">${diasDelMes} días del mes</div>
+                    </div>
+                </div>
+                ${!esMesActual ? `
+                    <div style="font-size: 0.9rem; color: #b45309; font-weight: 600;">
+                        Visualizando datos históricos
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
     for (const [configKey, config] of Object.entries(COSTOS_CONFIG)) {
-        // Encontrar la categoría en Firebase que corresponde (primera letra mayúscula)
         const firebaseKey = configKey.charAt(0).toUpperCase() + configKey.slice(1);
-        
-        // Verificar si debemos mostrar esta categoría según filtro local
-        // Si el filtro es "Todos", mostramos todas las categorías
-        // Si no, solo mostramos si el local coincide con el local de los costos
-        // Nota: En tu estructura, los costos tienen un campo "local" que indica el local real
-        
-        // Obtener todos los costos de esta categoría desde Firebase
         const costosCategoriaFirebase = costosData[firebaseKey] || {};
-        const subCategoria = configKey; // 'restaurante', 'planta', etc.
-        const costosArray = costosCategoriaFirebase[subCategoria] || [];
-        
-        // Si no hay costos en esta categoría, podemos saltar o mostrar vacío
-        if (costosArray.length === 0 && filtroLocal !== 'Todos') {
-            continue;
-        }
-        
-        // Agrupar costos por local real (el campo 'local' dentro de cada costo)
+        const costosArray = costosCategoriaFirebase[configKey] || [];
+
+        if (costosArray.length === 0 && filtroLocal !== 'Todos') continue;
+
         const costosPorLocal = {};
         costosArray.forEach(costo => {
             const localCosto = costo.local || 'Sin Local';
-            if (!costosPorLocal[localCosto]) {
-                costosPorLocal[localCosto] = [];
-            }
+            if (!costosPorLocal[localCosto]) costosPorLocal[localCosto] = [];
             costosPorLocal[localCosto].push(costo);
         });
-        
-        // Determinar qué locales mostrar
-        const localesAMostrar = filtroLocal === 'Todos' 
+
+        const localesAMostrar = filtroLocal === 'Todos'
             ? Object.keys(costosPorLocal).filter(local => localesPermitidos.includes(local))
             : [filtroLocal].filter(l => costosPorLocal[l] && localesPermitidos.includes(l));
-        
-        if (localesAMostrar.length === 0 && filtroLocal !== 'Todos') {
-            continue;
-        }
-        
-        // Para cada local con costos en esta categoría
+
+        if (localesAMostrar.length === 0 && filtroLocal !== 'Todos') continue;
+
         for (const localNombre of localesAMostrar) {
             const costosDelLocal = costosPorLocal[localNombre] || [];
-            
-            // Crear un mapa de concepto -> monto
+
             const costosMap = {};
             let totalMensualLocal = 0;
+
             costosDelLocal.forEach(costo => {
                 costosMap[costo.concepto] = costo.monto || 0;
                 totalMensualLocal += costo.monto || 0;
             });
-            
+
             const totalDiarioLocal = config.mostrarDiario ? totalMensualLocal / diasDelMes : 0;
             totalGeneralMensual += totalMensualLocal;
             totalGeneralDiario += totalDiarioLocal;
-            
-            // Columnas según si muestra diario
-            const columnas = config.mostrarDiario 
-                ? `<th style="text-align: right; padding: 12px; width: 150px;">Mensual (₡)</th>
-                   <th style="text-align: right; padding: 12px; width: 150px;">Diario (₡)</th>`
-                : `<th style="text-align: right; padding: 12px; width: 200px;">Mensual (₡)</th>`;
-            
-            const columnasAcciones = `<th style="text-align: center; padding: 12px; width: 80px;">Acciones</th>`;
-            
-            html += `
-                <div class="card" style="margin-bottom: 20px; overflow-x: auto;">
-                    <h3 style="background: #1e3a8a; color: white; margin: -15px -20px 15px -20px; padding: 12px 20px; border-radius: 12px 12px 0 0;">
-                        ${config.nombre} - ${localNombre}
-                    </h3>
-                    <table class="table" style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #f3f4f6;">
-                                <th style="text-align: left; padding: 12px;">Concepto</th>
-                                ${columnas}
-                                ${columnasAcciones}
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            // Mostrar cada concepto de la configuración
+
+            let filas = '';
+
             for (const concepto of config.conceptos) {
                 const montoMensual = costosMap[concepto] || 0;
                 const montoDiario = config.mostrarDiario ? montoMensual / diasDelMes : 0;
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 10px 12px;">
-                            <span style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-receipt" style="color: #6b7280; font-size: 0.8rem;"></i>
-                                ${concepto}
-                            </span>
+
+                filas += `
+                    <tr class="costo-row" style="border-bottom: 1px solid #edf2f7; transition: background 0.2s ease;">
+                        <td style="padding: 12px 14px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 32px; height: 32px; border-radius: 10px; background: #eff6ff; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-receipt" style="color: #2563eb; font-size: 0.8rem;"></i>
+                                </div>
+                                <span style="color: #1f2937; font-weight: 500;">${concepto}</span>
+                            </div>
                         </td>
-                        <td style="text-align: right; padding: 10px 12px;">
-                            ${montoMensual > 0 ? `₡${montoMensual.toLocaleString()}` : '<span style="color: #9ca3af;">-</span>'}
+
+                        <td style="text-align: right; padding: 12px 14px; font-weight: 700; color: ${montoMensual > 0 ? '#111827' : '#9ca3af'};">
+                            ${montoMensual > 0 ? `₡${montoMensual.toLocaleString()}` : '—'}
                         </td>
-                `;
-                
-                if (config.mostrarDiario) {
-                    html += `
-                        <td style="text-align: right; padding: 10px 12px;">
-                            ${montoMensual > 0 ? `₡${montoDiario.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '<span style="color: #9ca3af;">-</span>'}
-                        </td>
-                    `;
-                }
-                
-                html += `
-                        <td style="text-align: center; padding: 10px 12px;">
-                            <button class="btn btn-sm btn-outline" onclick="editarCosto('${localNombre}', '${firebaseKey}', '${configKey}', '${concepto}')" style="margin-right: 5px;" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="eliminarCostoPorConcepto('${localNombre}', '${firebaseKey}', '${configKey}', '${concepto}')" title="Eliminar">
-                                <i class="fas fa-trash"></i>
-                            </button>
+
+                        ${config.mostrarDiario ? `
+                            <td style="text-align: right; padding: 12px 14px; font-weight: 600; color: ${montoMensual > 0 ? '#2563eb' : '#9ca3af'};">
+                                ${montoMensual > 0 ? `₡${montoDiario.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                            </td>
+                        ` : ''}
+
+                        <td style="text-align: center; padding: 12px 14px;">
+                            <div style="display: flex; justify-content: center; gap: 8px;">
+                                <button
+                                    class="btn btn-sm btn-outline"
+                                    onclick="editarCosto('${localNombre}', '${firebaseKey}', '${configKey}', '${concepto.replace(/'/g, "\\'")}')"
+                                    title="Editar"
+                                    style="border-radius: 10px;"
+                                >
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button
+                                    class="btn btn-sm btn-danger"
+                                    onclick="eliminarCostoPorConcepto('${localNombre}', '${firebaseKey}', '${configKey}', '${concepto.replace(/'/g, "\\'")}')"
+                                    title="Eliminar"
+                                    style="border-radius: 10px;"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
             }
-            
-            // Fila de total por categoría/local
-            html += `
-                <tr style="background: #eef2ff; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                    <td style="padding: 12px;"><i class="fas fa-calculator"></i> TOTAL ${config.nombre} - ${localNombre}</td>
-                    <td style="text-align: right; padding: 12px;">₡${totalMensualLocal.toLocaleString()}</td>
-            `;
-            
-            if (config.mostrarDiario) {
-                html += `<td style="text-align: right; padding: 12px;">₡${totalDiarioLocal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
-            }
-            
-            html += `<td style="text-align: center;"></td></tr>`;
-            
-            html += `
-                        </tbody>
-                    </table>
+
+            bloquesHtml += `
+                <div class="card" style="margin-bottom: 22px; padding: 0; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 18px 35px rgba(15,23,42,0.06);">
+                    <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 18px 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.05rem;">${config.nombre}</h3>
+                                <p style="margin: 5px 0 0; opacity: 0.88; font-size: 0.9rem;">
+                                    ${localNombre}
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <div style="background: rgba(255,255,255,0.14); padding: 10px 14px; border-radius: 14px;">
+                                    <div style="font-size: 0.72rem; opacity: 0.8;">MENSUAL</div>
+                                    <div style="font-size: 1rem; font-weight: 700;">₡${totalMensualLocal.toLocaleString()}</div>
+                                </div>
+                                ${config.mostrarDiario ? `
+                                    <div style="background: rgba(255,255,255,0.14); padding: 10px 14px; border-radius: 14px;">
+                                        <div style="font-size: 0.72rem; opacity: 0.8;">DIARIO</div>
+                                        <div style="font-size: 1rem; font-weight: 700;">₡${totalDiarioLocal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 14px 16px 18px; background: #fff;">
+                        <div class="table-container" style="border: none;">
+                            <table class="table" style="min-width: 760px;">
+                                <thead>
+                                    <tr style="background: #f8fafc;">
+                                        <th style="padding: 14px;">Concepto</th>
+                                        <th style="text-align: right; padding: 14px;">Mensual</th>
+                                        ${config.mostrarDiario ? `<th style="text-align: right; padding: 14px;">Diario</th>` : ''}
+                                        <th style="text-align: center; padding: 14px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filas}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             `;
         }
     }
-    
-    // Si no hay datos mostrados
-    if (totalGeneralMensual === 0) {
-        html += `
-            <div class="card" style="padding: 40px; text-align: center;">
-                <i class="fas fa-coins" style="font-size: 4rem; color: #9ca3af;"></i>
-                <h3>No hay costos registrados</h3>
-                <p>Haga clic en "Nuevo Costo" para comenzar</p>
+
+    if (!bloquesHtml) {
+        bloquesHtml = `
+            <div class="card" style="padding: 48px 30px; text-align: center;">
+                <div style="width: 84px; height: 84px; margin: 0 auto 18px; border-radius: 24px; background: #eff6ff; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-coins" style="font-size: 2rem; color: #2563eb;"></i>
+                </div>
+                <h3 style="margin-bottom: 8px;">No hay costos registrados</h3>
+                <p style="color: #64748b; margin: 0 0 18px;">Haga clic en "Nuevo Costo" para comenzar</p>
+                <button class="btn btn-primary" onclick="mostrarModalCosto()">
+                    <i class="fas fa-plus"></i> Crear primer costo
+                </button>
             </div>
         `;
-    } else {
-        // Totales generales
+    }
+
+    html += bloquesHtml;
+
+    if (totalGeneralMensual > 0) {
         html += `
-            <div class="card" style="background: linear-gradient(135deg, #1e3a8a, #1e40af); color: white;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div class="card" style="background: linear-gradient(135deg, #0f172a, #1d4ed8); color: white; border: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <h3 style="margin: 0 0 5px 0;"><i class="fas fa-chart-line"></i> TOTAL GENERAL COSTOS FIJOS</h3>
-                        <p style="margin: 0; opacity: 0.9;">Período: ${mesTexto} (${diasDelMes} días)</p>
+                        <h3 style="margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-chart-line"></i>
+                            Total General Costos Fijos
+                        </h3>
+                        <p style="margin: 0; opacity: 0.85;">${mesTexto} · ${diasDelMes} días</p>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 1.1rem;">Mensual: <strong>₡${totalGeneralMensual.toLocaleString()}</strong></div>
-                        ${totalGeneralDiario > 0 ? `<div style="font-size: 1.1rem;">Diario (Restaurante): <strong>₡${totalGeneralDiario.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></div>` : ''}
+                    <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+                        <div style="background: rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 16px; min-width: 180px;">
+                            <div style="font-size: 0.74rem; opacity: 0.8;">TOTAL MENSUAL</div>
+                            <div style="font-size: 1.35rem; font-weight: 800;">₡${totalGeneralMensual.toLocaleString()}</div>
+                        </div>
+                        ${totalGeneralDiario > 0 ? `
+                            <div style="background: rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 16px; min-width: 180px;">
+                                <div style="font-size: 0.74rem; opacity: 0.8;">TOTAL DIARIO</div>
+                                <div style="font-size: 1.35rem; font-weight: 800;">₡${totalGeneralDiario.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
         `;
     }
-    
+
     costosContent.innerHTML = html;
 }
 
@@ -479,30 +507,21 @@ function mostrarModalCosto() {
     // Cargar locales (desde los costos existentes o lista de locales)
     const selectLocal = document.getElementById('costoLocal');
     selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
-    
-    // Obtener locales únicos de los costos existentes
-    const costosData = window.costosData || {};
-    const localesUnicos = new Set();
-    
-    Object.keys(costosData).forEach(categoriaKey => {
-        Object.keys(costosData[categoriaKey]).forEach(subCat => {
-            costosData[categoriaKey][subCat].forEach(costo => {
-                if (costo.local) localesUnicos.add(costo.local);
-            });
-        });
-    });
-    
+
     const localesPermitidos = getLocalesPermitidos();
-    const localesOrdenados = Array.from(localesUnicos).sort();
-    
-    if (localesOrdenados.length === 0) {
-        selectLocal.innerHTML += `<option value="Parrillita Empanadazo">Parrillita Empanadazo</option>`;
-    } else {
-        localesOrdenados.forEach(local => {
+    const localesSistema = (AppState.locales || [])
+        .map(local => typeof local === 'string' ? local : local.nombre)
+        .filter(Boolean)
+        .sort();
+
+    if (localesSistema.length > 0) {
+        localesSistema.forEach(local => {
             if (localesPermitidos.includes(local)) {
                 selectLocal.innerHTML += `<option value="${local}">${local}</option>`;
             }
         });
+    } else {
+        selectLocal.innerHTML += `<option value="Parrillita Empanadazo">Parrillita Empanadazo</option>`;
     }
     
     if (esUsuario() && AppState.usuario?.local) {
@@ -618,43 +637,58 @@ async function guardarCosto() {
 async function editarCosto(local, firebaseCategoriaKey, categoria, concepto) {
     const modal = document.getElementById('costoModal');
     const overlay = document.getElementById('modalOverlay');
-    
+
+    if (!modal || !overlay) {
+        alert('No se encontró el modal de costos');
+        return;
+    }
+
     const costosData = window.costosData || {};
     const costosCategoria = costosData[firebaseCategoriaKey] || {};
     const costosArray = costosCategoria[categoria] || [];
-    
+
     const costoExistente = costosArray.find(c => c.concepto === concepto && c.local === local);
-    
+
     if (!costoExistente) {
         alert('Costo no encontrado');
         return;
     }
-    
-    document.getElementById('costoLocal').value = local;
-    document.getElementById('costoCategoria').value = categoria;
-    document.getElementById('costoMonto').value = costoExistente.monto;
-    document.getElementById('costoEditMode').value = 'true';
-    document.getElementById('costoEditConceptoOriginal').value = concepto;
-    
-    const selectConcepto = document.getElementById('costoConcepto');
+
+    const inputLocal = document.getElementById('costoLocal');
+    const inputCategoria = document.getElementById('costoCategoria');
+    const inputConcepto = document.getElementById('costoConcepto');
+    const inputMonto = document.getElementById('costoMonto');
+    const inputEditMode = document.getElementById('costoEditMode');
+    const inputConceptoOriginal = document.getElementById('costoEditConceptoOriginal');
+
+    if (!inputLocal || !inputCategoria || !inputConcepto || !inputMonto || !inputEditMode || !inputConceptoOriginal) {
+        alert('Faltan campos del formulario de costos');
+        return;
+    }
+
+    inputLocal.value = local;
+    inputCategoria.value = categoria;
+    inputMonto.value = costoExistente.monto;
+    inputEditMode.value = 'true';
+    inputConceptoOriginal.value = concepto;
+
     const conceptos = COSTOS_CONFIG[categoria]?.conceptos || [];
-    selectConcepto.innerHTML = '<option value="">Seleccionar concepto...</option>';
+    inputConcepto.innerHTML = '<option value="">Seleccionar concepto...</option>';
+
     conceptos.forEach(conc => {
         const option = document.createElement('option');
         option.value = conc;
         option.textContent = conc;
-        if (conc === concepto) {
-            option.selected = true;
-        }
-        selectConcepto.appendChild(option);
+        if (conc === concepto) option.selected = true;
+        inputConcepto.appendChild(option);
     });
-    
+
     if (esUsuario() && AppState.usuario?.local) {
-        document.getElementById('costoLocal').disabled = true;
+        inputLocal.disabled = true;
     } else {
-        document.getElementById('costoLocal').disabled = false;
+        inputLocal.disabled = false;
     }
-    
+
     modal.classList.add('active');
     overlay.classList.add('active');
 }

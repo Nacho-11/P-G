@@ -153,6 +153,7 @@ function renderServicios() {
 
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+        
             <div>
                 <h2 style="margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
                     <span style="display:inline-flex; width:48px; height:48px; align-items:center; justify-content:center; border-radius:16px; background: linear-gradient(135deg, #f59e0b, #d97706); color:white;">

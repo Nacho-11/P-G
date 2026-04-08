@@ -296,12 +296,12 @@ function crearGraficoInteligente() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const theme = getThemeColors();
+
     if (window.ventasChart) {
         try {
             window.ventasChart.destroy();
-        } catch (e) {
-            console.log('⚠️ Error al destruir gráfico anterior:', e);
-        }
+        } catch (e) {}
         window.ventasChart = null;
     }
 
@@ -318,7 +318,6 @@ function crearGraficoInteligente() {
     ayer.setDate(hoy.getDate() - 1);
     const ayerStr = ayer.toLocaleDateString('en-CA');
     const mesActual = hoyStr.substring(0, 7);
-    const anioActual = hoyStr.substring(0, 4);
 
     const ventasFiltradas = ventas.filter(v => {
         if (!puedeVerLocal(v.local)) return false;
@@ -329,8 +328,8 @@ function crearGraficoInteligente() {
 
         if (filtroTiempo === 'ayer') return fechaVenta === ayerStr;
         if (filtroTiempo === 'mes') {
-            const mesReferencia = fechaPersonalizada ? fechaPersonalizada.substring(0, 7) : mesActual;
-            return fechaVenta.substring(0, 7) === mesReferencia;
+            const mesRef = fechaPersonalizada ? fechaPersonalizada.substring(0, 7) : mesActual;
+            return fechaVenta.substring(0, 7) === mesRef;
         }
         if (filtroTiempo === 'personalizado') return fechaVenta === fechaPersonalizada;
         if (filtroTiempo === 'rango') {
@@ -344,260 +343,94 @@ function crearGraficoInteligente() {
     if (ventasFiltradas.length === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.font = '14px Inter, sans-serif';
-        ctx.fillStyle = '#64748b';
+        ctx.fillStyle = theme.text;
         ctx.textAlign = 'center';
         ctx.fillText('No hay datos para mostrar', canvas.width / 2, canvas.height / 2);
         return;
     }
 
-    // ==================================================
-// CASO 1: MES o RANGO -> POR DÍA
-// Si local = Todos, comparar locales por día
-// Si local específico, mostrar una sola serie diaria
-// ==================================================
-if (filtroTiempo === 'mes' || filtroTiempo === 'rango') {
-    let fechasBase = [];
-    let tituloGrafico = '';
-
-    if (filtroTiempo === 'mes') {
-        const mesReferencia = fechaPersonalizada ? fechaPersonalizada.substring(0, 7) : mesActual;
-        const [year, month] = mesReferencia.split('-');
-        const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            fechasBase.push(`${year}-${month}-${String(day).padStart(2, '0')}`);
-        }
-
-        tituloGrafico = `Ventas diarias ${filtroLocal === 'Todos' ? 'comparativas por local' : '- ' + filtroLocal} (${mesReferencia})`;
-    }
-
-    if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
-        let fechaCursor = new Date(fechaInicio + 'T12:00:00');
-        const fechaFinal = new Date(fechaFin + 'T12:00:00');
-
-        while (fechaCursor <= fechaFinal) {
-            fechasBase.push(fechaCursor.toLocaleDateString('en-CA'));
-            fechaCursor.setDate(fechaCursor.getDate() + 1);
-        }
-
-        tituloGrafico = `Ventas diarias ${filtroLocal === 'Todos' ? 'comparativas por local' : '- ' + filtroLocal} (${fechaInicio} → ${fechaFin})`;
-    }
-
-    const labels = fechasBase.map(f => {
-        const [a, m, d] = f.split('-');
-        return `${d}/${m}`;
-    });
-
-    // TODOS LOS LOCALES -> varias líneas comparativas
-    if (filtroLocal === 'Todos') {
-        const ventasPorLocalYDia = {};
-        const colores = [
-            '#2563eb', '#dc2626', '#059669', '#8b5cf6', '#f59e0b',
-            '#0891b2', '#db2777', '#65a30d', '#4f46e5', '#b45309'
-        ];
-
-        ventasFiltradas.forEach(v => {
-            const local = v.local || 'Sin local';
-            const fecha = limpiarFecha(v.fecha);
-            if (!fecha || !fechasBase.includes(fecha)) return;
-
-            if (!ventasPorLocalYDia[local]) {
-                ventasPorLocalYDia[local] = {};
-                fechasBase.forEach(f => {
-                    ventasPorLocalYDia[local][f] = 0;
-                });
-            }
-
-            ventasPorLocalYDia[local][fecha] += v.total || 0;
-        });
-
-        const locales = Object.keys(ventasPorLocalYDia).sort();
-
-        const datasets = locales.map((local, i) => ({
-            label: local,
-            data: fechasBase.map(f => ventasPorLocalYDia[local][f] || 0),
-            borderColor: colores[i % colores.length],
-            backgroundColor: colores[i % colores.length] + '22',
-            borderWidth: 2,
-            pointBackgroundColor: colores[i % colores.length],
-            pointBorderColor: 'white',
-            pointBorderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            tension: 0.2,
-            fill: false
-        }));
-
-        window.ventasChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            color: '#64748b'
-                        }
-                    },
-                    y: {
-                        grid: {
-                            color: '#eef2f7'
-                        },
-                        ticks: {
-                            color: '#64748b',
-                            callback: function(value) {
-                                return '₡' + value.toLocaleString();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        return;
-    }
-
-    // LOCAL ESPECÍFICO -> una sola serie diaria
-    const ventasPorDia = {};
-    fechasBase.forEach(f => {
-        ventasPorDia[f] = 0;
-    });
-
-    ventasFiltradas.forEach(v => {
-        const fechaLimpia = limpiarFecha(v.fecha);
-        if (fechaLimpia in ventasPorDia) {
-            ventasPorDia[fechaLimpia] += v.total || 0;
-        }
-    });
-
-    const valores = fechasBase.map(f => ventasPorDia[f] || 0);
-
-    window.ventasChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Ventas diarias',
-                data: valores,
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.10)',
-                borderWidth: 2,
-                pointBackgroundColor: '#2563eb',
-                pointBorderColor: 'white',
-                pointBorderWidth: 2,
-                pointRadius: 3,
-                pointHoverRadius: 5,
-                tension: 0.2,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: tituloGrafico,
-                    font: { size: 14, weight: 'bold' }
-                },
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: (value) => '₡' + Math.round(value).toLocaleString()
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Día'
-                    }
-                }
-            }
-        }
-    });
-
-    return;
-}
-
-    // ==================================================
-    // CASO 2: LOCAL ESPECÍFICO
-    // ==================================================
-
-    // A) MES o RANGO o AYER o PERSONALIZADO -> POR DÍA
-    if (['mes', 'rango', 'ayer', 'personalizado'].includes(filtroTiempo)) {
-        const ventasPorDia = {};
-        let tituloGrafico = `Ventas diarias - ${filtroLocal}`;
+    // ======================================================
+    // CASO 1: MES o RANGO → POR DÍA
+    // ======================================================
+    if (filtroTiempo === 'mes' || filtroTiempo === 'rango') {
         let fechasBase = [];
+        let tituloGrafico = '';
 
         if (filtroTiempo === 'mes') {
-            const mesReferencia = fechaPersonalizada ? fechaPersonalizada.substring(0, 7) : mesActual;
-            const [year, month] = mesReferencia.split('-');
-            const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+            const mesRef = fechaPersonalizada ? fechaPersonalizada.substring(0, 7) : mesActual;
+            const [year, month] = mesRef.split('-');
+            const days = new Date(year, month, 0).getDate();
 
-            for (let day = 1; day <= daysInMonth; day++) {
-                fechasBase.push(`${year}-${month}-${String(day).padStart(2, '0')}`);
+            for (let d = 1; d <= days; d++) {
+                fechasBase.push(`${year}-${month}-${String(d).padStart(2, '0')}`);
             }
 
-            tituloGrafico = `Ventas diarias - ${filtroLocal} (${mesReferencia})`;
+            tituloGrafico = `Ventas diarias ${filtroLocal === 'Todos' ? 'por local' : '- ' + filtroLocal}`;
         }
 
         if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
-            let fechaCursor = new Date(fechaInicio + 'T12:00:00');
-            const fechaFinal = new Date(fechaFin + 'T12:00:00');
+            let cursor = new Date(fechaInicio + 'T12:00:00');
+            const end = new Date(fechaFin + 'T12:00:00');
 
-            while (fechaCursor <= fechaFinal) {
-                fechasBase.push(fechaCursor.toLocaleDateString('en-CA'));
-                fechaCursor.setDate(fechaCursor.getDate() + 1);
+            while (cursor <= end) {
+                fechasBase.push(cursor.toLocaleDateString('en-CA'));
+                cursor.setDate(cursor.getDate() + 1);
             }
 
-            tituloGrafico = `Ventas diarias - ${filtroLocal} (${fechaInicio} → ${fechaFin})`;
+            tituloGrafico = `Ventas (${fechaInicio} → ${fechaFin})`;
         }
 
-        if (filtroTiempo === 'ayer') {
-            fechasBase = [ayerStr];
-            tituloGrafico = `Ventas diarias - ${filtroLocal} (${ayerStr})`;
-        }
-
-        if (filtroTiempo === 'personalizado') {
-            fechasBase = [fechaPersonalizada];
-            tituloGrafico = `Ventas diarias - ${filtroLocal} (${fechaPersonalizada})`;
-        }
-
-        fechasBase.forEach(f => {
-            ventasPorDia[f] = 0;
+        const labels = fechasBase.map(f => {
+            const [y, m, d] = f.split('-');
+            return `${d}/${m}`;
         });
+
+        // ===== TODOS LOS LOCALES =====
+        if (filtroLocal === 'Todos') {
+            const dataLocales = {};
+            const colores = ['#60a5fa','#f87171','#34d399','#a78bfa','#fbbf24'];
+
+            ventasFiltradas.forEach(v => {
+                const local = v.local || 'Sin local';
+                const fecha = limpiarFecha(v.fecha);
+
+                if (!dataLocales[local]) {
+                    dataLocales[local] = {};
+                    fechasBase.forEach(f => dataLocales[local][f] = 0);
+                }
+
+                if (fecha in dataLocales[local]) {
+                    dataLocales[local][fecha] += v.total || 0;
+                }
+            });
+
+            const datasets = Object.keys(dataLocales).map((local, i) => ({
+                label: local,
+                data: fechasBase.map(f => dataLocales[local][f]),
+                borderColor: colores[i % colores.length],
+                backgroundColor: colores[i % colores.length] + '22',
+                borderWidth: 2,
+                pointBackgroundColor: colores[i % colores.length],
+                pointBorderColor: theme.pointBorder,
+                tension: 0.2
+            }));
+
+            window.ventasChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: getChartOptions(theme, tituloGrafico, 'Día')
+            });
+
+            return;
+        }
+
+        // ===== UN SOLO LOCAL =====
+        const dataDia = {};
+        fechasBase.forEach(f => dataDia[f] = 0);
 
         ventasFiltradas.forEach(v => {
-            const fechaLimpia = limpiarFecha(v.fecha);
-            if (fechaLimpia in ventasPorDia) {
-                ventasPorDia[fechaLimpia] += v.total || 0;
-            }
-        });
-
-        const fechasOrdenadas = Object.keys(ventasPorDia).sort();
-        const valores = fechasOrdenadas.map(f => ventasPorDia[f] || 0);
-        const labels = fechasOrdenadas.map(f => {
-            const [a, m, d] = f.split('-');
-            return `${d}/${m}`;
+            const f = limpiarFecha(v.fecha);
+            if (f in dataDia) dataDia[f] += v.total || 0;
         });
 
         window.ventasChart = new Chart(ctx, {
@@ -605,112 +438,105 @@ if (filtroTiempo === 'mes' || filtroTiempo === 'rango') {
             data: {
                 labels,
                 datasets: [{
-                    label: 'Ventas diarias',
-                    data: valores,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.10)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#2563eb',
-                    pointBorderColor: 'white',
+                    label: 'Ventas',
+                    data: fechasBase.map(f => dataDia[f]),
+                    borderColor: theme.border,
+                    backgroundColor: theme.fill,
+                    borderWidth: 3,
+                    pointBackgroundColor: theme.border,
+                    pointBorderColor: theme.pointBorder,
                     pointBorderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.28,
                     fill: true
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: tituloGrafico,
-                        font: { size: 14, weight: 'bold' }
-                    },
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => '₡' + Math.round(value).toLocaleString()
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Día'
-                        }
-                    }
-                }
-            }
+            options: getChartOptions(theme, tituloGrafico, 'Día')
         });
 
         return;
     }
 
-    // B) TODOS o AÑO -> POR MES
+    // ======================================================
+    // CASO 2: POR MES
+    // ======================================================
     const ventasPorMes = {};
 
     ventasFiltradas.forEach(v => {
-        const fechaLimpia = limpiarFecha(v.fecha);
-        if (!fechaLimpia) return;
-        const mes = fechaLimpia.substring(0, 7);
+        const f = limpiarFecha(v.fecha);
+        if (!f) return;
+        const mes = f.substring(0, 7);
         ventasPorMes[mes] = (ventasPorMes[mes] || 0) + (v.total || 0);
     });
 
-    const mesesOrdenados = Object.keys(ventasPorMes).sort();
-    const valoresMensuales = mesesOrdenados.map(m => ventasPorMes[m] || 0);
+    const meses = Object.keys(ventasPorMes).sort();
+
+    const tituloGrafico = filtroLocal === 'Todos'
+        ? 'Ventas por mes - Todos los locales'
+        : `Ventas por mes - ${filtroLocal}`;
 
     window.ventasChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: mesesOrdenados,
+            labels: meses,
             datasets: [{
-                label: 'Ventas por mes',
-                data: valoresMensuales,
-                backgroundColor: '#2563eb',
-                borderRadius: 8
+                label: 'Ventas',
+                data: meses.map(m => ventasPorMes[m]),
+                backgroundColor: theme.bar,
+                borderColor: theme.border,
+                borderWidth: 1.5,
+                borderRadius: 12,
+                hoverBackgroundColor: theme.border
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Ventas por mes - ${filtroLocal}`,
-                    font: { size: 14, weight: 'bold' }
-                },
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => '₡' + Math.round(context.parsed.y).toLocaleString()
-                    }
+        options: getChartOptions(theme, tituloGrafico, 'Mes')
+    });
+}
+
+function getChartOptions(theme, titulo, ejeX) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: titulo,
+                color: theme.title,
+                font: { size: 14, weight: 'bold' }
+            },
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: theme.tooltipBg,
+                titleColor: theme.tooltipText,
+                bodyColor: theme.tooltipText,
+                borderColor: theme.tooltipBorder,
+                borderWidth: 1,
+                callbacks: {
+                    label: (ctx) => '₡' + Math.round(ctx.parsed.y).toLocaleString()
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: theme.grid },
+                ticks: {
+                    color: theme.text,
+                    callback: v => '₡' + Math.round(v).toLocaleString()
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: (value) => '₡' + Math.round(value).toLocaleString()
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Mes'
-                    }
+            x: {
+                grid: { color: theme.grid },
+                ticks: { color: theme.text },
+                title: {
+                    display: true,
+                    text: ejeX,
+                    color: theme.text
                 }
             }
         }
-    });
+    };
 }
 
 // ============================================

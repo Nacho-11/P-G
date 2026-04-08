@@ -211,7 +211,6 @@ function renderPago10() {
                 <div style="text-align: right;">
                     <div style="font-size: 0.9rem; opacity: 0.9;">PROMEDIO DIARIO</div>
                     <div style="font-size: 1.5rem; font-weight: 700;">₡${Math.round(promedioDiario).toLocaleString()}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8;">Período: ${nombrePeriodo} (${diasPeriodo} días)</div>
                 </div>
             </div>
         </div>
@@ -262,7 +261,7 @@ function renderPago10() {
                     <td style="text-align: right;">₡${(item.semana4 || 0).toLocaleString()}</td>
                     <td style="text-align: right;">₡${(item.semana5 || 0).toLocaleString()}</td>
                     <td style="text-align: right; font-weight: 600; color: #f59e0b;">₡${(item.total || 0).toLocaleString()}</td>
-                    <td style="text-align: right; font-weight: 500; color: #059669;">₡${promedioDiarioMes.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} <span style="font-size: 0.7rem;">/día</span></td>
+                    <td style="text-align: right; font-weight: 500; color: #059669;">₡${promedioDiarioMes.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} <span style="font-size: 0.7rem;"></span></td>
                     <td>
                         <div style="display: flex; gap: 5px;">
                             ${esGerencia() ? `
@@ -390,7 +389,7 @@ function mostrarModalPago10(editId = null) {
     `;
     
     semanas.forEach(semana => {
-        html += `<th style="text-align: center; padding: 10px; background: #fef3c7;">Semana ${semana}</th>`;
+        html += `<th class="pago10-semana-head">Semana ${semana}</th>`;
     });
     
     html += `</tr><tr>`;

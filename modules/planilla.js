@@ -282,7 +282,7 @@ function renderPlanilla() {
                     <h3 style="margin: 0; color: var(--primary);">
                         <i class="fas fa-store"></i> ${local}
                     </h3>
-                    <span style="background: #e0f2fe; padding: 5px 15px; border-radius: 20px; text-transform: capitalize;">
+                    <span class="planilla-periodo-badge">
                         ${fechaMostrar} (${empleados.length} empleados)
                     </span>
                 </div>

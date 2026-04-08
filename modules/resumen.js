@@ -235,34 +235,53 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
         gpsNavsat: 0, marchamos: 0, dekra: 0, mantenimientoVehiculos: 0, planillaBodega: 0,
         alexDuque: 0, polizaRTBodega: 0, ccssBodegaOficinas: 0, planillaOficinas: 0
     };
-    
-    const multiplicador = 1 / periodo.dias;
-    
+
     if (!costosData || Object.keys(costosData).length === 0) return resultado;
-    
+
+    // ✅ Días reales del mes base del costo, NO días del filtro
+    let diasMesBase = 30;
+
+    if (periodo?.fechaBase) {
+        const fechaBase = new Date(periodo.fechaBase + 'T12:00:00');
+        if (!isNaN(fechaBase.getTime())) {
+            diasMesBase = new Date(
+                fechaBase.getFullYear(),
+                fechaBase.getMonth() + 1,
+                0
+            ).getDate();
+        }
+    }
+
+    // ✅ Cuántos días del filtro se deben aplicar
+    const diasAplicados = Math.max(periodo?.dias || 1, 1);
+
+    // ✅ Prorrateo correcto:
+    // mensual / días del mes * días del período filtrado
+    const multiplicador = diasAplicados / diasMesBase;
+
     const idsProcesados = new Set();
-    
+
     Object.keys(costosData).forEach(categoriaFirebase => {
         const subCategorias = costosData[categoriaFirebase];
-        
+
         Object.keys(subCategorias).forEach(subCategoria => {
             const costosArray = subCategorias[subCategoria];
             if (!Array.isArray(costosArray)) return;
-            
+
             costosArray.forEach(costo => {
                 if (costo.id && idsProcesados.has(costo.id)) return;
                 if (costo.id) idsProcesados.add(costo.id);
-                
+
                 const localDelCosto = costo.local || 'Sin Local';
                 if (filtroLocal !== 'Todos' && localDelCosto !== filtroLocal) return;
                 if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(localDelCosto)) return;
-                
+
                 const concepto = (costo.concepto || '').toLowerCase().trim();
                 const montoMensual = costo.monto || 0;
                 const montoAplicable = montoMensual * multiplicador;
+
                 if (montoMensual === 0) return;
-                
-                // Mapear según la categoría y concepto (mismo código que antes)
+
                 if (subCategoria === 'restaurante') {
                     if (concepto.includes('alquiler')) resultado.alquilerLocal += montoAplicable;
                     else if (concepto.includes('secsa')) resultado.secsa += montoAplicable;
@@ -286,9 +305,7 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
                     else if (concepto.includes('honorarios contabilidad')) resultado.honorariosContabilidad += montoAplicable;
                     else if (concepto.includes('publicidad')) resultado.publicidad += montoAplicable;
                     else if (concepto.includes('otros servicios')) resultado.otrosServiciosProfesionales += montoAplicable;
-                }
-                // ... resto de categorías igual que antes
-                else if (subCategoria === 'planta') {
+                } else if (subCategoria === 'planta') {
                     if (concepto.includes('electricidad')) resultado.electricidadPlanta += montoAplicable;
                     else if (concepto.includes('agua')) resultado.aguaPlanta += montoAplicable;
                     else if (concepto.includes('adt')) resultado.adtPlanta += montoAplicable;
@@ -296,8 +313,7 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
                     else if (concepto.includes('software secsa')) resultado.softwareSecsaPlanta += montoAplicable;
                     else if (concepto.includes('iva')) resultado.ivaHaciendaPlanta += montoAplicable;
                     else if (concepto.includes('asesoría legal')) resultado.asesoriaLegalPlanta += montoAplicable;
-                }
-                else if (subCategoria === 'oficinas') {
+                } else if (subCategoria === 'oficinas') {
                     if (concepto.includes('electricidad')) resultado.electricidadOficinas += montoAplicable;
                     else if (concepto.includes('agua')) resultado.aguaOficinas += montoAplicable;
                     else if (concepto.includes('internet')) resultado.internetOficinas += montoAplicable;
@@ -305,28 +321,26 @@ function calcularCostosFijos(costosData, filtroLocal, periodo) {
                     else if (concepto.includes('adt')) resultado.adtOficinas += montoAplicable;
                     else if (concepto.includes('mantenimiento') || concepto.includes('papelería')) resultado.mantenimientoPapeleria += montoAplicable;
                     else if (concepto.includes('software') || concepto.includes('hosting') || concepto.includes('office')) resultado.softwareHosting += montoAplicable;
-                }
-                else if (subCategoria === 'transporte') {
+                } else if (subCategoria === 'transporte') {
                     if (concepto.includes('combustible')) resultado.combustible += montoAplicable;
-                    else if (concepto.includes('electricidad') && concepto.includes('bodega')) resultado.electricidadBodegas += montoAplicable;
-                    else if (concepto.includes('agua') && concepto.includes('bodega')) resultado.aguaBodegas += montoAplicable;
+                    else if (concepto.includes('electricidad')) resultado.electricidadBodegas += montoAplicable;
+                    else if (concepto.includes('agua')) resultado.aguaBodegas += montoAplicable;
                     else if (concepto.includes('alquiler')) resultado.alquilerTaller += montoAplicable;
-                    else if (concepto.includes('gps') || concepto.includes('navsat')) resultado.gpsNavsat += montoAplicable;
+                    else if (concepto.includes('gps')) resultado.gpsNavsat += montoAplicable;
                     else if (concepto.includes('marchamo')) resultado.marchamos += montoAplicable;
                     else if (concepto.includes('dekra')) resultado.dekra += montoAplicable;
                     else if (concepto.includes('mantenimiento')) resultado.mantenimientoVehiculos += montoAplicable;
-                }
-                else if (subCategoria === 'planilla') {
-                    if (concepto.includes('bodega') && !concepto.includes('alex')) resultado.planillaBodega += montoAplicable;
+                } else if (subCategoria === 'planilla') {
+                    if (concepto.includes('planilla bodega')) resultado.planillaBodega += montoAplicable;
                     else if (concepto.includes('alex duque')) resultado.alexDuque += montoAplicable;
-                    else if (concepto.includes('póliza') || concepto.includes('rt')) resultado.polizaRTBodega += montoAplicable;
+                    else if (concepto.includes('poliza rt')) resultado.polizaRTBodega += montoAplicable;
                     else if (concepto.includes('ccss')) resultado.ccssBodegaOficinas += montoAplicable;
-                    else if (concepto.includes('oficinas')) resultado.planillaOficinas += montoAplicable;
+                    else if (concepto.includes('planilla oficinas')) resultado.planillaOficinas += montoAplicable;
                 }
             });
         });
     });
-    
+
     return resultado;
 }
 
@@ -392,25 +406,24 @@ function calcularReembolsoDelivery(ventasFiltradas) {
 // CALCULAR PAGO 10% (DESDE EL MÓDULO) - UNA SOLA VEZ
 // ============================================
 function calcularPago10DesdeModulo(ventasFiltradas, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin, diasPeriodo) {
-    // Usar datos del módulo Pago 10% si existen
     if (window.pagos10 && window.pagos10.length > 0 && window.obtenerTotalPago10) {
-        const totalPago10 = window.obtenerTotalPago10(filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin);
-        
-        // Si hay datos en el módulo, usarlos
+        const totalPago10 = window.obtenerTotalPago10(
+            filtroLocal,
+            filtroTiempo,
+            fechaPersonalizada,
+            fechaInicio,
+            fechaFin
+        );
+
         if (totalPago10 > 0) {
             console.log(`📊 Usando datos del módulo Pago 10%: ₡${totalPago10.toLocaleString()}`);
             const promedioDiario = diasPeriodo > 0 ? totalPago10 / diasPeriodo : 0;
-            return { total: totalPago10, promedioDiario: promedioDiario };
+            return { total: totalPago10, promedioDiario };
         }
     }
-    
-    // Fallback: calcular automáticamente como 10% de las ventas
-    const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
-    const total = totalVentas * 0.10;
-    const promedioDiario = diasPeriodo > 0 ? total / diasPeriodo : 0;
-    
-    console.log(`📊 Usando cálculo automático (10% de ventas): ₡${total.toLocaleString()}`);
-    return { total: total, promedioDiario: promedioDiario };
+
+    console.log('📊 No hay registros guardados en Pago 10%, se devuelve 0');
+    return { total: 0, promedioDiario: 0 };
 }
 
 function calcularCostoMateriaPrima(comprasFiltradas) {
@@ -463,7 +476,7 @@ function renderResumen() {
     
     let periodo = { tipo: filtroTiempo, dias: 1 };
     let diasPeriodo = 30;
-    
+
     if (filtroTiempo === 'mes') {
         periodo.dias = diasDelMes;
         diasPeriodo = diasDelMes;
@@ -473,9 +486,13 @@ function renderResumen() {
         const diffTime = Math.abs(fin - inicio);
         periodo.dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         diasPeriodo = periodo.dias;
-    } else {
+    } else if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
         periodo.dias = 1;
         diasPeriodo = 1;
+    } else {
+        // Para "todos", usar el mes base de costos para prorratear
+        periodo.dias = diasDelMes;
+        diasPeriodo = diasDelMes;
     }
 
     const hoy = new Date();
@@ -795,7 +812,7 @@ function renderResumen() {
                         ${fila('Cesantía (5.33%)', gastosOperativos.cesantia)}
                         ${fila('Vacaciones (4.16%)', gastosOperativos.vacaciones)}
                         ${fila('Aguinaldos (8.33%)', gastosOperativos.aguinaldos)}
-                        ${fila('Gasto x Pago 10% (diario)', gastosOperativos.pago10Diario)}
+                        ${fila('Gasto x Pago 10%', gastosOperativos.pago10Diario)}
                         ${fila('Gasto x Arrendamiento', gastosOperativos.arrendamiento)}
                         ${fila('Gasto x Servicio Eléctrico', gastosOperativos.servicioElectrico)}
                         ${fila('Gasto x Servicio Gas (diario)', gastosOperativos.servicioGasDiario)}

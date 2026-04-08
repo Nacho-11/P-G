@@ -146,26 +146,24 @@ function renderMerma() {
 
     let html = `
         <div class="merma-hero">
-            <div class="merma-hero-title-wrap">
+            <div class="merma-hero-left">
                 <div class="merma-hero-icon">
                     <i class="fas fa-trash-alt"></i>
                 </div>
                 <div>
-                    <h2>Control de Mermas</h2>
-                    <p>Registro, seguimiento y análisis de pérdidas por producto y familia</p>
+                    <h2 class="merma-hero-title">Control de Mermas</h2>
+                    <p class="merma-hero-subtitle">Registro, seguimiento y análisis de pérdidas por producto y familia</p>
                 </div>
             </div>
 
-            <div class="merma-toolbar">
-                ${esGerencia() ? `
-                    <button class="btn btn-outline" onclick="window.mostrarModalImportarProductos()">
-                        <i class="fas fa-file-import"></i> Importar Productos
-                    </button>
-                    <button class="btn btn-outline" onclick="window.mostrarModalCatalogo()">
-                        <i class="fas fa-boxes"></i> Gestionar Productos
-                    </button>
-                ` : ''}
-                <button class="btn btn-primary" onclick="window.mostrarModalMerma()">
+            <div class="merma-hero-actions">
+                <button class="btn btn-outline" onclick="window.mostrarModalImportarProductos()">
+                    <i class="fas fa-file-import"></i> Importar Productos
+                </button>
+                <button class="btn btn-outline" onclick="window.mostrarModalCatalogo()">
+                    <i class="fas fa-boxes"></i> Gestionar Productos
+                </button>
+                <button class="btn btn-primary" onclick="mostrarModalMerma()">
                     <i class="fas fa-plus"></i> Registrar Merma
                 </button>
             </div>
@@ -182,18 +180,18 @@ function renderMerma() {
         </div>
 
         <div class="merma-stats-grid">
-            <div class="merma-stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+            <div class="merma-stat-card merma-stat-red">
                 <div class="stat-row">
                     <div class="stat-icon"><i class="fas fa-trash-alt"></i></div>
                     <div>
                         <div class="stat-label">TOTAL MERMAS</div>
                         <div class="stat-value">₡${totalMermas.toLocaleString()}</div>
-                        <div style="font-size:0.82rem; opacity:0.85;">${mermasFiltradas.length} registros</div>
+                        <div class="stat-subtext">${mermasFiltradas.length} registros</div>
                     </div>
                 </div>
             </div>
 
-            <div class="merma-stat-card" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <div class="merma-stat-card merma-stat-blue">
                 <div class="stat-row">
                     <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
                     <div>
@@ -203,13 +201,13 @@ function renderMerma() {
                 </div>
             </div>
 
-            <div class="merma-stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <div class="merma-stat-card merma-stat-orange">
                 <div class="stat-row">
                     <div class="stat-icon"><i class="fas fa-tag"></i></div>
                     <div>
                         <div class="stat-label">MAYOR MERMA POR FAMILIA</div>
-                        <div style="font-size:1rem; font-weight:800; margin-top:6px;">${familiasOrdenadas[0]?.[0] || 'Sin datos'}</div>
-                        <div style="font-size:0.92rem; margin-top:4px;">₡${familiasOrdenadas[0]?.[1].costo.toLocaleString() || '0'}</div>
+                        <div class="stat-family-name">${familiasOrdenadas[0]?.[0] || 'Sin datos'}</div>
+                        <div class="stat-family-value">₡${familiasOrdenadas[0]?.[1].costo.toLocaleString() || '0'}</div>
                     </div>
                 </div>
             </div>
@@ -229,7 +227,7 @@ function renderMerma() {
                 <div class="merma-bar-item">
                     <div class="merma-bar-head">
                         <span><strong>${familia}</strong> (${data.count} registros)</span>
-                        <span style="color:#b91c1c; font-weight:700;">₡${data.costo.toLocaleString()}</span>
+                        <span class="merma-bar-value">₡${data.costo.toLocaleString()}</span>
                     </div>
                     <div class="merma-bar-track">
                         <div class="merma-bar-fill" style="width:${porcentaje}%"></div>

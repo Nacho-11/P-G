@@ -127,6 +127,11 @@
                 <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
+                <select id="themeSelector" class="filter-select" onchange="cambiarTema(this.value)" style="min-width: 150px;">
+                    <option value="auto">Tema del sistema</option>
+                    <option value="light">Claro</option>
+                    <option value="dark">Oscuro</option>
+                </select>
 
                 <div class="filters">
                     <!-- Filtro por Local -->
@@ -268,96 +273,105 @@
     </div>
     
     <!-- Modal de Usuario -->
-    <div class="modal" id="usuarioModal" style="max-width: 550px; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
-        <div class="modal-header" id="usuarioModalHeader" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <i class="fas" id="usuarioModalIcon" style="font-size: 2rem; color: white;"></i>
+    <div class="modal" id="usuarioModal">
+        <div class="modal-header" id="usuarioModalHeader">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(255,255,255,0.16); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-user-plus" id="usuarioModalIcon" style="font-size: 1.3rem; color: white;"></i>
+                </div>
                 <div>
-                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;" id="usuarioModalTitle">Nuevo Usuario</h2>
-                    <p style="margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem;" id="usuarioModalSubtitle">Complete los datos del nuevo usuario</p>
+                    <h2 style="margin: 0; font-size: 1.35rem; font-weight: 700;" id="usuarioModalTitle">Nuevo Usuario</h2>
+                    <p style="margin: 4px 0 0; opacity: 0.88; font-size: 0.84rem;" id="usuarioModalSubtitle">
+                        Complete los datos del nuevo usuario
+                    </p>
                 </div>
             </div>
         </div>
-        
-        <div class="modal-body" style="padding: 30px; background: #f8fafd;">
+
+        <div class="modal-body">
             <form id="usuarioForm" onsubmit="event.preventDefault(); document.getElementById('usuarioModal').dataset.editUid ? actualizarUsuario() : guardarUsuario();">
-                
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-store" style="color: #3498db;"></i> Local asignado
+
+                <div class="usuario-card">
+                    <label class="usuario-label">
+                        <i class="fas fa-store"></i> Local asignado
                     </label>
-                    <select id="usuarioLocal" required style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px;">
+                    <select id="usuarioLocal" required>
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
-                
-                <div id="campoLocalSoloLectura" style="background: linear-gradient(135deg, #f8fafc, #ffffff); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #eef2f6; display: none;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="background: #f1f5f9; width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-store" style="color: #3498db; font-size: 1.4rem;"></i>
+
+                <div id="campoLocalSoloLectura" class="usuario-card" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="background: #eff6ff; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-store" style="color: #2563eb; font-size: 1.2rem;"></i>
                         </div>
                         <div style="flex: 1;">
-                            <div style="color: #64748b; font-size: 0.75rem;">LOCAL ASIGNADO</div>
-                            <div style="font-weight: 600; font-size: 1.1rem; color: #1e293b;" id="usuarioLocalDisplay">-</div>
+                            <div style="color: #64748b; font-size: 0.74rem;">LOCAL ASIGNADO</div>
+                            <div style="font-weight: 700; font-size: 1.02rem; color: #0f172a;" id="usuarioLocalDisplay">-</div>
                         </div>
-                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 30px; color: #64748b; font-size: 0.8rem;">
+                        <div style="background: #f8fafc; padding: 8px 12px; border-radius: 999px; color: #64748b; font-size: 0.78rem; border: 1px solid #e2e8f0;">
                             <i class="fas fa-lock"></i> Fijo
                         </div>
                     </div>
                 </div>
-                
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-user" style="color: #3498db;"></i> Nombre
+
+                <div class="usuario-card">
+                    <label class="usuario-label">
+                        <i class="fas fa-user"></i> Nombre
                     </label>
-                    <input type="text" id="usuarioNombre" placeholder="Ej: Ignacio Calderón" style="width: 100%; padding: 14px 16px; border: 2px solid #eef2f6; border-radius: 16px;">
+                    <input type="text" id="usuarioNombre" placeholder="Ej: Juan Pérez" required>
                 </div>
-                
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-envelope" style="color: #3498db;"></i> Correo electrónico
+
+                <div class="usuario-card">
+                    <label class="usuario-label">
+                        <i class="fas fa-envelope"></i> Correo electrónico
                     </label>
-                    <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
-                        <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
-                            <i class="fas fa-at"></i>
-                        </span>
-                        <input type="email" id="usuarioEmail" required placeholder="ej: gerencia@parrillita.com" style="flex: 1; padding: 14px 16px; border: none; outline: none; background: transparent;">
+                    <div class="input-icon-wrap" id="usuarioEmailWrap">
+                        <span><i class="fas fa-at"></i></span>
+                        <input type="email" id="usuarioEmail" required placeholder="ej: usuario@dominio.com">
                     </div>
+                    <div class="input-error" id="usuarioEmailError">Ingrese un correo válido.</div>
+                    <div class="input-success" id="usuarioEmailSuccess">Correo válido.</div>
                 </div>
-                
-                <div style="background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <i class="fas fa-lock" style="color: #3498db;"></i> Contraseña
+
+                <div class="usuario-card">
+                    <label class="usuario-label">
+                        <i class="fas fa-lock"></i> Contraseña
                     </label>
-                    <div style="display: flex; align-items: center; background: #f8fafc; border: 2px solid #eef2f6; border-radius: 16px; overflow: hidden;">
-                        <span style="padding: 14px 16px; background: #f1f5f9; color: #475569; border-right: 2px solid #eef2f6;">
-                            <i class="fas fa-key"></i>
-                        </span>
-                        <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)" style="flex: 1; padding: 14px 16px; border: none; outline: none; background: transparent;">
+                    <div class="input-icon-wrap" id="usuarioPasswordWrap">
+                        <span><i class="fas fa-key"></i></span>
+                        <input type="password" id="usuarioPassword" placeholder="•••••••• (mínimo 6 caracteres)">
+                        <button type="button" class="password-toggle" id="toggleUsuarioPassword" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
+                    <div class="input-help">Debe tener al menos 6 caracteres.</div>
+                    <div class="input-error" id="usuarioPasswordError">La contraseña debe tener al menos 6 caracteres.</div>
+                    <div class="input-success" id="usuarioPasswordSuccess">Contraseña válida.</div>
                 </div>
-                
-                <div style="background: white; border-radius: 20px; padding: 16px 20px; margin-bottom: 25px;">
-                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <input type="checkbox" id="usuarioActivo" checked style="width: 20px; height: 20px; accent-color: #3498db;">
-                        <div>
-                            <span style="font-weight: 500; color: #1e293b;">Usuario activo</span>
-                            <span style="display: block; font-size: 0.8rem; color: #64748b;">El usuario podrá acceder al sistema</span>
-                        </div>
-                    </label>
-                </div>
-                
-                <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                    <button type="button" onclick="cerrarModal('usuarioModal')" style="padding: 14px 28px; border: 2px solid #eef2f6; background: white; color: #64748b; border-radius: 18px; font-weight: 600; cursor: pointer;">
+
+                <label class="usuario-check">
+                    <input type="checkbox" id="usuarioActivo" checked>
+                    <div class="usuario-check-text">
+                        <strong>Usuario activo</strong>
+                        <span>El usuario podrá acceder al sistema</span>
+                    </div>
+                </label>
+
+                <div class="modal-alert error" id="usuarioModalError"></div>
+                <div class="modal-alert success" id="usuarioModalSuccess"></div>
+
+                <div class="acciones-modal">
+                    <button type="button" class="btn-cancelar" id="usuarioCancelBtn" onclick="cerrarModal('usuarioModal')">
                         Cancelar
                     </button>
-                    <button type="submit" id="usuarioSubmitBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #2c3e50, #3498db); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);">
+                    <button type="submit" id="usuarioSubmitBtn" class="btn-guardar">
                         <i class="fas fa-save"></i> Guardar Usuario
                     </button>
                 </div>
             </form>
         </div>
-    </div>
+    </div>    
 
     <!-- Modal de Venta - VERSIÓN COMPACTA CON BOTONES VISIBLES -->
     <div class="modal" id="ventaModal" style="max-width: 1100px; width: 95%; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);">
@@ -528,45 +542,60 @@
         </div>
     </div>
 
-    <!-- Modal de Costos - SIMPLIFICADO (valores mensuales como en Excel) -->
-    <div class="modal" id="costoModal" style="max-width: 550px; border-radius: 24px; overflow: hidden;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px 30px;">
-            <h2 style="margin: 0;">Nuevo Costo Fijo Mensual</h2>
-            <p style="margin: 4px 0 0; opacity: 0.8;">El valor se dividirá entre los días del mes para el cálculo diario</p>
+    <!-- Modal de Costo -->
+    <div class="modal" id="costoModal" style="max-width: 600px; width: 95%; border-radius: 24px; overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.35rem;">Costo Fijo</h2>
+                <p style="margin: 4px 0 0; opacity: 0.9; font-size: 0.9rem;">Registrar o editar costo mensual</p>
+            </div>
         </div>
-        <div class="modal-body" style="padding: 30px; background: #f8fafc;">
+
+        <div class="modal-body" style="padding: 24px; background: #f8fafc;">
             <form id="costoForm" onsubmit="event.preventDefault(); guardarCosto();">
+
                 <div style="margin-bottom: 20px;">
-                    <label>Local</label>
-                    <select id="costoLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Local</label>
+                    <select id="costoLocal" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px;">
                         <option value="">Seleccionar local...</option>
                     </select>
                 </div>
+
                 <div style="margin-bottom: 20px;">
-                    <label>Categoría</label>
-                    <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Categoría</label>
+                    <select id="costoCategoria" required onchange="cargarConceptosPorCategoria(this.value)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px;">
                         <option value="">Seleccionar categoría...</option>
                         <option value="restaurante">Restaurante</option>
                         <option value="planta">Planta Producción</option>
                         <option value="oficinas">Oficinas</option>
                         <option value="transporte">Transporte</option>
-                        <option value="planilla">Planilla Logística</option>
+                        <option value="planilla">Planilla</option>
                     </select>
                 </div>
+
                 <div style="margin-bottom: 20px;">
-                    <label>Concepto</label>
-                    <select id="costoConcepto" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Concepto</label>
+                    <select id="costoConcepto" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px;">
                         <option value="">Seleccionar concepto...</option>
                     </select>
                 </div>
+
                 <div style="margin-bottom: 20px;">
-                    <label>Monto MENSUAL (₡)</label>
-                    <input type="number" id="costoMonto" min="0" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
-                    <small style="color: #64748b;">Este es el valor que pagas cada mes. Para el cálculo diario se dividirá entre los días del mes.</small>
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Monto mensual (₡)</label>
+                    <input type="number" id="costoMonto" min="0" step="0.01" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px;">
+                    <small style="color: #64748b;">Este valor se usa como monto mensual del costo.</small>
                 </div>
-                <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                    <button type="button" onclick="cerrarModal('costoModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 8px;">Cancelar</button>
-                    <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #2563eb, #1e40af); color: white; border: none; border-radius: 8px;">Guardar</button>
+
+                <input type="hidden" id="costoEditMode" value="">
+                <input type="hidden" id="costoEditConceptoOriginal" value="">
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" onclick="cerrarModal('costoModal')" style="padding: 12px 24px; border: 2px solid #e2e8f0; background: white; border-radius: 10px; font-weight: 600;">
+                        Cancelar
+                    </button>
+                    <button type="submit" style="padding: 12px 28px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: 10px; font-weight: 700;">
+                        Guardar
+                    </button>
                 </div>
             </form>
         </div>
@@ -904,38 +933,38 @@
                 </div>
                 
                 <!-- Precios (solo lectura) -->
-                <div style="background: #f1f5f9; border-radius: 16px; padding: 15px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <i class="fas fa-dollar-sign" style="color: #f59e0b;"></i>
-                        <span style="font-weight: 600;">Precios configurados para este local:</span>
+                <div class="servicio-precios-panel">
+                    <div class="servicio-precios-header">
+                        <i class="fas fa-dollar-sign servicio-precios-icon"></i>
+                        <span class="servicio-precios-title">Precios configurados para este local:</span>
                     </div>
                     
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                            <i class="fas fa-water" style="color: #3b82f6; font-size: 1.2rem;"></i>
+                    <div class="servicio-precios-grid">
+                        <div class="servicio-precio-card">
+                            <i class="fas fa-water servicio-precio-icon agua"></i>
                             <div>
-                                <div style="font-size: 0.7rem; color: #64748b;">AGUA</div>
-                                <div style="display: flex; align-items: baseline; gap: 2px;">
-                                    <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioAguaDisplay">1500</span>
-                                    <span style="font-size: 0.8rem; color: #64748b;">₡/M³</span>
+                                <div class="servicio-precio-label">AGUA</div>
+                                <div class="servicio-precio-valor-wrap">
+                                    <span class="servicio-precio-valor" id="precioAguaDisplay">1500</span>
+                                    <span class="servicio-precio-unidad">₡/M³</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="background: white; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                            <i class="fas fa-bolt" style="color: #f59e0b; font-size: 1.2rem;"></i>
+                        <div class="servicio-precio-card">
+                            <i class="fas fa-bolt servicio-precio-icon electricidad"></i>
                             <div>
-                                <div style="font-size: 0.7rem; color: #64748b;">ELECTRICIDAD</div>
-                                <div style="display: flex; align-items: baseline; gap: 2px;">
-                                    <span style="font-size: 1.2rem; font-weight: 700; color: #059669;" id="precioElectricidadDisplay">120</span>
-                                    <span style="font-size: 0.8rem; color: #64748b;">₡/kWh</span>
+                                <div class="servicio-precio-label">ELECTRICIDAD</div>
+                                <div class="servicio-precio-valor-wrap">
+                                    <span class="servicio-precio-valor" id="precioElectricidadDisplay">120</span>
+                                    <span class="servicio-precio-unidad">₡/kWh</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 12px; color: #64748b; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; background: white; padding: 8px 12px; border-radius: 30px;">
-                        <i class="fas fa-info-circle" style="color: #3b82f6;"></i>
+                    <div class="servicio-precios-note">
+                        <i class="fas fa-info-circle"></i>
                         <span>Los precios se configuran en el botón "Precios Agua/Luz"</span>
                     </div>
                 </div>
@@ -1160,17 +1189,17 @@
                 </div>
 
                 <!-- Footer -->
-                <div style="position: sticky; bottom: 0; background: rgba(248,250,252,0.96); backdrop-filter: blur(10px); padding: 16px 0 0; margin-top: 18px; border-top: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
-                    <div style="background: linear-gradient(135deg, #0f172a, #111827); color:white; border-radius: 18px; padding: 14px 18px; min-width: 220px; box-shadow: 0 12px 24px rgba(15,23,42,0.18);">
-                        <div style="font-size:0.74rem; opacity:0.75; letter-spacing:0.04em;">TOTAL ESTIMADO</div>
-                        <div style="font-size:1.45rem; font-weight:800; margin-top:4px;" id="mermaCostoTotalFooter">₡0</div>
+                <div class="modal-footer-bar merma-modal-footer">
+                    <div class="modal-total-box merma-total-box">
+                        <div class="merma-total-label">TOTAL ESTIMADO</div>
+                        <div class="merma-total-value" id="mermaTotalDisplay">₡0</div>
                     </div>
 
-                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-left:auto;">
-                        <button type="button" onclick="cerrarModal('mermaModal')" style="padding: 14px 24px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 16px; font-weight: 700; cursor: pointer; min-width: 130px;">
+                    <div class="merma-footer-actions">
+                        <button type="button" class="btn-cancelar" id="usuarioCancelBtn" onclick="cerrarModal('mermaModal')">
                             Cancelar
                         </button>
-                        <button type="submit" class="btn-primary" style="padding: 14px 28px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 20px rgba(239,68,68,0.24); min-width: 190px;">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Guardar Merma
                         </button>
                     </div>
@@ -1244,5 +1273,7 @@
     <script src="modules/compras.js"></script>
     <script src="modules/resumen.js"></script>
     <script src="modules/pago10.js"></script>
+
+    <div class="toast-container" id="toastContainer"></div>
 </body>
 </html>

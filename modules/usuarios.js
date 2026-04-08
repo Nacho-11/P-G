@@ -147,24 +147,23 @@ function renderTablaUsuarios(usuarios) {
 // ============================================
 function mostrarModalNuevoUsuario() {
     console.log('➕ Mostrando modal nuevo usuario');
+
     const modal = document.getElementById('usuarioModal');
     const overlay = document.getElementById('modalOverlay');
-    
+
     if (!modal || !overlay) return;
-    
-    // Limpiar cualquier UID de edición
+
     delete modal.dataset.editUid;
-    
-    // Limpiar formulario
+
     document.getElementById('usuarioNombre').value = '';
     document.getElementById('usuarioEmail').value = '';
     document.getElementById('usuarioEmail').disabled = false;
     document.getElementById('usuarioPassword').value = '';
+    document.getElementById('usuarioPassword').type = 'password';
     document.getElementById('usuarioPassword').required = true;
     document.getElementById('usuarioPassword').placeholder = '•••••••• (mínimo 6 caracteres)';
     document.getElementById('usuarioActivo').checked = true;
-    
-    // 🔥 Cargar locales en el select
+
     const selectLocal = document.getElementById('usuarioLocal');
     if (selectLocal) {
         selectLocal.innerHTML = '<option value="">Seleccionar local...</option>';
@@ -172,17 +171,29 @@ function mostrarModalNuevoUsuario() {
             selectLocal.innerHTML += `<option value="${local.nombre}">${local.nombre}</option>`;
         });
     }
-    
-    // Restaurar título y botón
-    document.getElementById('usuarioModalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Nuevo Usuario';
-    
-    const submitBtn = modal.querySelector('button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.textContent = 'Guardar Usuario';
-    }
-    
+
+    const titulo = document.getElementById('usuarioModalTitle');
+    const subtitulo = document.getElementById('usuarioModalSubtitle');
+    const icono = document.getElementById('usuarioModalIcon');
+    const toggleBtn = document.getElementById('toggleUsuarioPassword');
+
+    if (titulo) titulo.textContent = 'Nuevo Usuario';
+    if (subtitulo) subtitulo.textContent = 'Complete los datos del nuevo usuario';
+    if (icono) icono.className = 'fas fa-user-plus';
+    if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+
+    limpiarMensajesUsuario();
+    setFieldState('usuarioEmail', 'usuarioEmailWrap', null, 'usuarioEmailError', 'usuarioEmailSuccess');
+    setFieldState('usuarioPassword', 'usuarioPasswordWrap', null, 'usuarioPasswordError', 'usuarioPasswordSuccess');
+    setUsuarioLoading(false, 'Guardar Usuario');
+    inicializarUXUsuarioModal();
+
     modal.classList.add('active');
     overlay.classList.add('active');
+
+    setTimeout(() => {
+        document.getElementById('usuarioNombre')?.focus();
+    }, 100);
 }
 
 // ============================================
@@ -190,42 +201,48 @@ function mostrarModalNuevoUsuario() {
 // ============================================
 async function guardarUsuario() {
     console.log('💾 Guardando nuevo usuario...');
-    
-    const nombre = document.getElementById('usuarioNombre').value;
-    const email = document.getElementById('usuarioEmail').value;
+
+    limpiarMensajesUsuario();
+
+    const nombre = document.getElementById('usuarioNombre').value.trim();
+    const email = document.getElementById('usuarioEmail').value.trim();
     const password = document.getElementById('usuarioPassword').value;
     const local = document.getElementById('usuarioLocal').value;
     const activo = document.getElementById('usuarioActivo').checked;
-    
-    if (!email || !password) {
-        alert('Por favor complete los campos obligatorios');
-        return;
-    }
-    
-    if (password.length < 6) {
-        alert('La contraseña debe tener al menos 6 caracteres');
-        return;
-    }
-    
+
+    const modal = document.getElementById('usuarioModal');
+    const uidEditando = modal.dataset.editUid;
+
+    const emailValido = validarEmailUsuario();
+    const passwordValida = validarPasswordUsuario();
+
     if (!local) {
-        alert('Debe seleccionar un local asignado');
+        mostrarMensajeUsuario('error', 'Debe seleccionar un local asignado.');
         return;
     }
-    
+
+    if (!emailValido) {
+        mostrarMensajeUsuario('error', 'Revise el correo electrónico.');
+        return;
+    }
+
+    if (!uidEditando && !passwordValida) {
+        mostrarMensajeUsuario('error', 'La contraseña debe tener al menos 6 caracteres.');
+        return;
+    }
+
     try {
-        const modal = document.getElementById('usuarioModal');
-        const uidEditando = modal.dataset.editUid;
-        
+        setUsuarioLoading(true, uidEditando ? 'Actualizar Usuario' : 'Guardar Usuario');
+
         if (uidEditando) {
             await actualizarUsuario();
+            setUsuarioLoading(false, 'Actualizar Usuario');
             return;
         }
-        
-        // ✅ Crear usuario en Authentication (SÍ, es necesario)
+
         const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
         const uid = userCredential.user.uid;
-        
-        // ✅ Guardar datos en Realtime Database
+
         await firebase.database().ref(`usuarios/${uid}`).set({
             email: email,
             nombre: nombre || email.split('@')[0],
@@ -234,26 +251,31 @@ async function guardarUsuario() {
             activo: activo,
             creadoPor: AppState.usuario?.uid || 'sistema',
             fechaCreacion: new Date().toISOString()
-            // ⚠️ NO guardar password en texto plano
         });
-        
-        alert('✅ Usuario creado exitosamente');
-        cerrarModal('usuarioModal');
-        
-        // ⚠️ Esto cerrará tu sesión actual
-        console.log('⚠️ Tu sesión se cerrará porque creaste un nuevo usuario');
-        
+
+        mostrarMensajeUsuario('success', '✅ Usuario creado exitosamente');
+        setUsuarioLoading(false, 'Guardar Usuario');
+
+        setTimeout(() => {
+            cerrarModal('usuarioModal');
+        }, 900);
+
     } catch (error) {
         console.error('Error creando usuario:', error);
-        
+
         let mensaje = 'Error al crear usuario';
         if (error.code === 'auth/email-already-in-use') {
             mensaje = 'Este correo electrónico ya está registrado';
+        } else if (error.code === 'auth/invalid-email') {
+            mensaje = 'El correo electrónico no es válido';
         } else if (error.code === 'auth/weak-password') {
-            mensaje = 'La contraseña debe tener al menos 6 caracteres';
+            mensaje = 'La contraseña es demasiado débil';
+        } else if (error.code === 'auth/network-request-failed') {
+            mensaje = 'Error de red. Verifique su conexión';
         }
-        
-        alert('❌ ' + mensaje);
+
+        mostrarMensajeUsuario('error', mensaje);
+        setUsuarioLoading(false, 'Guardar Usuario');
     }
 }
 
@@ -262,45 +284,58 @@ async function guardarUsuario() {
 // ============================================
 async function editarUsuario(uid) {
     console.log('✏️ Editando usuario:', uid);
-    
+
+    const modal = document.getElementById('usuarioModal');
+    const overlay = document.getElementById('modalOverlay');
+
+    if (!modal || !overlay) {
+        console.error('No existe usuarioModal o modalOverlay');
+        return;
+    }
+
     try {
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
         const userData = snapshot.val();
-        
+
         if (!userData) {
             alert('Usuario no encontrado');
             return;
         }
-        
-        const modal = document.getElementById('usuarioModal');
-        
-        // Limpiar formulario
+
         document.getElementById('usuarioNombre').value = userData.nombre || '';
-        document.getElementById('usuarioEmail').value = userData.email;
-        document.getElementById('usuarioEmail').disabled = true; // No se puede cambiar el email
+        document.getElementById('usuarioEmail').value = userData.email || '';
+        document.getElementById('usuarioEmail').disabled = true;
         document.getElementById('usuarioPassword').value = '';
+        document.getElementById('usuarioPassword').type = 'password';
         document.getElementById('usuarioPassword').placeholder = '•••••••• (dejar vacío para no cambiar)';
         document.getElementById('usuarioPassword').required = false;
         document.getElementById('usuarioActivo').checked = userData.activo !== false;
-        
-        // Guardar UID
+
         modal.dataset.editUid = uid;
-        
-        // Cambiar título a "EDITAR USUARIO"
-        document.getElementById('usuarioModalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Editar Usuario';
-        
-        // Cambiar texto del botón
-        const submitBtn = modal.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.textContent = 'Actualizar Usuario';
-        }
-        
+
+        const titulo = document.getElementById('usuarioModalTitle');
+        const subtitulo = document.getElementById('usuarioModalSubtitle');
+        const icono = document.getElementById('usuarioModalIcon');
+        const toggleBtn = document.getElementById('toggleUsuarioPassword');
+
+        if (titulo) titulo.textContent = 'Editar Usuario';
+        if (subtitulo) subtitulo.textContent = 'Modifique la información del usuario';
+        if (icono) icono.className = 'fas fa-user-edit';
+        if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+
+        limpiarMensajesUsuario();
+        setFieldState('usuarioEmail', 'usuarioEmailWrap', null, 'usuarioEmailError', 'usuarioEmailSuccess');
+        setFieldState('usuarioPassword', 'usuarioPasswordWrap', null, 'usuarioPasswordError', 'usuarioPasswordSuccess');
+        setUsuarioLoading(false, 'Actualizar Usuario');
+        inicializarUXUsuarioModal();
+
         modal.classList.add('active');
-        document.getElementById('modalOverlay').classList.add('active');
-        
+        overlay.classList.add('active');
+
     } catch (error) {
         console.error('Error cargando usuario:', error);
         alert('Error al cargar datos del usuario');
+        return;
     }
 }
 
@@ -403,6 +438,173 @@ async function eliminarUsuario(uid) {
         console.error('Error eliminando usuario:', error);
         alert('Error al eliminar usuario');
     }
+}
+
+function mostrarMensajeUsuario(tipo, mensaje) {
+    const errorBox = document.getElementById('usuarioModalError');
+    const successBox = document.getElementById('usuarioModalSuccess');
+
+    if (errorBox) {
+        errorBox.classList.remove('active');
+        errorBox.textContent = '';
+    }
+    if (successBox) {
+        successBox.classList.remove('active');
+        successBox.textContent = '';
+    }
+
+    const box = tipo === 'success' ? successBox : errorBox;
+    if (box) {
+        box.textContent = mensaje;
+        box.classList.add('active');
+    }
+
+    mostrarToast(tipo === 'success' ? 'success' : 'error', mensaje);
+}
+
+function limpiarMensajesUsuario() {
+    ['usuarioModalError', 'usuarioModalSuccess'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = '';
+            el.classList.remove('active');
+        }
+    });
+}
+
+function setFieldState(inputId, wrapId, state, errorId, successId) {
+    const input = document.getElementById(inputId);
+    const wrap = wrapId ? document.getElementById(wrapId) : null;
+    const error = errorId ? document.getElementById(errorId) : null;
+    const success = successId ? document.getElementById(successId) : null;
+
+    if (input) {
+        input.classList.remove('error', 'success');
+        if (state) input.classList.add(state);
+    }
+
+    if (wrap) {
+        wrap.classList.remove('error', 'success');
+        if (state) wrap.classList.add(state);
+    }
+
+    if (error) error.classList.remove('active');
+    if (success) success.classList.remove('active');
+
+    if (state === 'error' && error) error.classList.add('active');
+    if (state === 'success' && success) success.classList.add('active');
+}
+
+function validarEmailUsuario() {
+    const email = document.getElementById('usuarioEmail')?.value.trim() || '';
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email) {
+        setFieldState('usuarioEmail', 'usuarioEmailWrap', null, 'usuarioEmailError', 'usuarioEmailSuccess');
+        return false;
+    }
+
+    if (!regex.test(email)) {
+        setFieldState('usuarioEmail', 'usuarioEmailWrap', 'error', 'usuarioEmailError', 'usuarioEmailSuccess');
+        return false;
+    }
+
+    setFieldState('usuarioEmail', 'usuarioEmailWrap', 'success', 'usuarioEmailError', 'usuarioEmailSuccess');
+    return true;
+}
+
+function validarPasswordUsuario() {
+    const input = document.getElementById('usuarioPassword');
+    if (!input) return false;
+
+    const password = input.value || '';
+    const modal = document.getElementById('usuarioModal');
+    const editando = !!modal?.dataset.editUid;
+
+    if (!password) {
+        if (editando) {
+            setFieldState('usuarioPassword', 'usuarioPasswordWrap', null, 'usuarioPasswordError', 'usuarioPasswordSuccess');
+            return true;
+        }
+        setFieldState('usuarioPassword', 'usuarioPasswordWrap', null, 'usuarioPasswordError', 'usuarioPasswordSuccess');
+        return false;
+    }
+
+    if (password.length < 6) {
+        setFieldState('usuarioPassword', 'usuarioPasswordWrap', 'error', 'usuarioPasswordError', 'usuarioPasswordSuccess');
+        return false;
+    }
+
+    setFieldState('usuarioPassword', 'usuarioPasswordWrap', 'success', 'usuarioPasswordError', 'usuarioPasswordSuccess');
+    return true;
+}
+
+function setUsuarioLoading(loading, texto = 'Guardar Usuario') {
+    const submitBtn = document.getElementById('usuarioSubmitBtn');
+    const cancelBtn = document.getElementById('usuarioCancelBtn');
+
+    if (!submitBtn) return;
+
+    if (loading) {
+        submitBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitBtn.innerHTML = `<span class="btn-spinner"></span>Guardando...`;
+    } else {
+        submitBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        submitBtn.innerHTML = `<i class="fas fa-save"></i> ${texto}`;
+    }
+}
+
+function inicializarUXUsuarioModal() {
+    const email = document.getElementById('usuarioEmail');
+    const password = document.getElementById('usuarioPassword');
+    const toggle = document.getElementById('toggleUsuarioPassword');
+
+    if (email && !email.dataset.eventsBound) {
+        email.addEventListener('input', validarEmailUsuario);
+        email.addEventListener('blur', validarEmailUsuario);
+        email.dataset.eventsBound = 'true';
+    }
+
+    if (password && !password.dataset.eventsBound) {
+        password.addEventListener('input', validarPasswordUsuario);
+        password.addEventListener('blur', validarPasswordUsuario);
+        password.dataset.eventsBound = 'true';
+    }
+
+    if (toggle && !toggle.dataset.eventsBound) {
+        toggle.addEventListener('click', () => {
+            const isPassword = password.type === 'password';
+            password.type = isPassword ? 'text' : 'password';
+            toggle.innerHTML = `<i class="fas ${isPassword ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+        });
+        toggle.dataset.eventsBound = 'true';
+    }
+}
+
+function mostrarToast(tipo, mensaje) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${tipo}`;
+
+    let icono = 'fa-circle-info';
+    if (tipo === 'success') icono = 'fa-circle-check';
+    if (tipo === 'error') icono = 'fa-circle-xmark';
+
+    toast.innerHTML = `<i class="fas ${icono}"></i><span>${mensaje}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        toast.style.transition = 'all 0.2s ease';
+        setTimeout(() => toast.remove(), 200);
+    }, 2600);
 }
 
 // ============================================

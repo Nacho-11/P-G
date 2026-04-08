@@ -327,149 +327,152 @@ function obtenerPeriodoActual() {
 // CONFIGURAR PORCENTAJES MANUALES
 // ============================================
 function configurarPorcentajesLogistica() {
-    if (!window.esGerencia || !window.esGerencia()) {
-        alert('Solo gerencia puede configurar porcentajes');
-        return;
-    }
-    
-    const overlay = document.getElementById('modalOverlay');
-    
-    const modalExistente = document.getElementById('configurarPorcentajesModal');
-    if (modalExistente) modalExistente.remove();
-    
+    const modalId = 'configurarPorcentajesModal';
+
+    // Eliminar si ya existe
+    document.getElementById(modalId)?.remove();
+
     const modal = document.createElement('div');
-    modal.id = 'configurarPorcentajesModal';
-    modal.className = 'modal';
-    modal.style.maxWidth = '600px';
+    modal.className = 'modal active';
+    modal.id = modalId;
+
+    modal.style.maxWidth = '700px';
+    modal.style.width = '95%';
     modal.style.borderRadius = '24px';
     modal.style.overflow = 'hidden';
-    
-    const localesPermitidos = getLocalesPermitidos();
-    const locales = AppState.locales.filter(l => localesPermitidos.includes(l.nombre));
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+
     const porcentajesGuardados = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
-    
+
     let html = `
-        <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 25px 30px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-percent" style="font-size: 1.8rem;"></i>
+        <!-- HEADER -->
+        <div class="modal-header" style="
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            color: white;
+            border-bottom: none;
+        ">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="
+                    width:42px;
+                    height:42px;
+                    border-radius:12px;
+                    background:rgba(255,255,255,0.2);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                ">
+                    <i class="fas fa-percent"></i>
                 </div>
                 <div>
-                    <h2 style="margin: 0; font-size: 1.5rem;">Configurar Porcentajes</h2>
-                    <p style="margin: 4px 0 0; opacity: 0.8;">Distribución de costos logísticos por local</p>
+                    <div style="font-size:1.3rem; font-weight:600;">
+                        Configurar Porcentajes
+                    </div>
+                    <div style="font-size:0.9rem; opacity:0.85;">
+                        Distribución de costos logísticos por local
+                    </div>
                 </div>
             </div>
-            <button class="modal-close" onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" 
-                    style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; cursor: pointer;">
-                <i class="fas fa-times"></i>
+
+            <button onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');"
+                style="
+                    background: rgba(255,255,255,0.2);
+                    border:none;
+                    width:36px;
+                    height:36px;
+                    border-radius:10px;
+                    color:white;
+                    cursor:pointer;
+                ">
+                ✕
             </button>
         </div>
-        
-        <div class="modal-body" style="padding: 30px; background: #f8fafc; max-height: 70vh; overflow-y: auto;">
-            <p style="margin-bottom: 20px; color: #4b5563; background: #fef3c7; padding: 12px; border-radius: 12px;">
-                <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
-                Ingrese el porcentaje de distribución para cada local. <strong>La suma no necesita ser 100%</strong>, cada local recibirá el porcentaje que asigne.
-            </p>
-            
-            <div id="porcentajes-container" style="margin-bottom: 25px;">
+
+        <!-- BODY SCROLL -->
+        <div class="modal-body logistica-modal-body">
+
+            <!-- INFO -->
+            <div style="
+                background:#fef3c7;
+                border-radius:10px;
+                padding:12px 16px;
+                margin-bottom:20px;
+                font-size:0.9rem;
+                color:#92400e;
+            ">
+                <i class="fas fa-info-circle"></i>
+                Asigne el porcentaje de distribución para cada local.
+            </div>
     `;
-    
-    locales.forEach(local => {
-        const valorActual = porcentajesGuardados[local.nombre] || 0;
-        const localId = local.nombre.replace(/\s+/g, '_');
-        
+
+    AppState.locales.forEach(local => {
+        const valor = porcentajesGuardados[local.nombre] || 0;
+
         html += `
-            <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <div style="background: #f1f5f9; width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-store" style="color: #f59e0b;"></i>
-                    </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; margin-bottom: 8px;">${local.nombre}</div>
-                        <input type="range" id="pct_slider_${localId}" 
-                               min="0" max="100" step="1" value="${valorActual}" 
-                               oninput="document.getElementById('pct_input_${localId}').value = this.value; actualizarTotalPorcentajes()"
-                               style="width: 100%; height: 8px; border-radius: 4px; accent-color: #f59e0b;">
-                    </div>
-                    <div style="min-width: 120px; text-align: right;">
-                        <input type="number" id="pct_input_${localId}" 
-                               value="${valorActual}" min="0" max="100" step="1" 
-                               oninput="document.getElementById('pct_slider_${localId}').value = this.value; actualizarTotalPorcentajes()"
-                               style="width: 80px; padding: 8px; border: 2px solid #e2e8f0; border-radius: 8px; text-align: right;">
-                        <span style="margin-left: 5px;">%</span>
-                    </div>
+            <div style="
+                background:#0f172a;
+                border-radius:14px;
+                padding:16px;
+                margin-bottom:12px;
+                border:1px solid rgba(255,255,255,0.05);
+            ">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <i class="fas fa-store" style="color:#f59e0b;"></i>
+                    <strong>${local.nombre}</strong>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <input type="range"
+                        min="0"
+                        max="100"
+                        value="${valor}"
+                        data-local="${local.nombre}"
+                        style="flex:1;"
+                        oninput="this.nextElementSibling.value = this.value">
+
+                    <input type="number"
+                        min="0"
+                        max="100"
+                        value="${valor}"
+                        data-local="${local.nombre}"
+                        style="
+                            width:70px;
+                            padding:6px;
+                            border-radius:8px;
+                            border:1px solid #334155;
+                            background:#020617;
+                            color:white;
+                        "
+                        oninput="this.previousElementSibling.value = this.value">
+
+                    <span>%</span>
                 </div>
             </div>
         `;
     });
-    
-    let totalActual = Object.values(porcentajesGuardados).reduce((a, b) => a + b, 0);
-    
+
     html += `
-            </div>
-            
-            <div style="background: #f1f5f9; border-radius: 16px; padding: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 600;">Total ingresado:</span>
-                <span style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="totalPorcentajes">${totalActual}%</span>
-            </div>
-            
-            <div style="background: #f1f5f9; border-radius: 12px; padding: 15px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0; color: #4b5563;">
-                    <i class="fas fa-lightbulb" style="color: #f59e0b; margin-right: 8px;"></i>
-                    <strong>Nota:</strong> Si no configura porcentajes, se usarán los cálculos automáticos desde facturación.
-                </p>
-            </div>
-            
-            <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px;">
-                <button type="button" onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');" 
-                        style="padding: 12px 28px; border: 2px solid #eef2f6; background: white; border-radius: 14px; font-weight: 600; cursor: pointer;">
+        </div>
+
+        <!-- FOOTER FIJO -->
+            <div class="logistica-footer-bar">
+                <button class="btn btn-outline"
+                    onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');">
                     Cancelar
                 </button>
-                <button type="button" onclick="guardarPorcentajesLogistica()" 
-                        style="padding: 12px 32px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 14px; font-weight: 600; cursor: pointer;">
-                    <i class="fas fa-save"></i> Guardar Porcentajes
+
+                <button class="btn btn-primary logistica-save-btn"
+                    onclick="guardarPorcentajesLogistica()">
+                    <i class="fas fa-save"></i> Guardar
                 </button>
             </div>
         </div>
     `;
-    
+
     modal.innerHTML = html;
+
     document.body.appendChild(modal);
-    overlay.classList.add('active');
-    modal.classList.add('active');
-    
-    window.actualizarTotalPorcentajes = function() {
-        let total = 0;
-        locales.forEach(local => {
-            const localId = local.nombre.replace(/\s+/g, '_');
-            const input = document.getElementById(`pct_input_${localId}`);
-            if (input) total += parseFloat(input.value) || 0;
-        });
-        const totalSpan = document.getElementById('totalPorcentajes');
-        if (totalSpan) totalSpan.textContent = total + '%';
-    };
-    
-    window.guardarPorcentajesLogistica = function() {
-        const nuevosPorcentajes = {};
-        locales.forEach(local => {
-            const localId = local.nombre.replace(/\s+/g, '_');
-            const input = document.getElementById(`pct_input_${localId}`);
-            if (input) {
-                const valor = parseFloat(input.value) || 0;
-                if (valor > 0) {
-                    nuevosPorcentajes[local.nombre] = valor;
-                }
-            }
-        });
-        
-        localStorage.setItem('porcentajesLogistica', JSON.stringify(nuevosPorcentajes));
-        alert('✅ Porcentajes guardados correctamente');
-        
-        document.getElementById('configurarPorcentajesModal').remove();
-        document.getElementById('modalOverlay').classList.remove('active');
-        
-        renderLogistica();
-    };
+    document.getElementById('modalOverlay').classList.add('active');
 }
 
 // ============================================
@@ -663,11 +666,9 @@ function renderLogistica() {
                     <i class="fas fa-chart-pie" style="color: #f59e0b;"></i>
                     Distribución por Local - ${periodo.nombre}
                 </h3>
-                <div style="background: #f1f5f9; padding: 8px 15px; border-radius: 20px;">
-                    <span style="font-weight: 600;">Total Costos Logística Diarios:</span>
-                    <span style="color: #059669; font-weight: 700; margin-left: 10px;">
-                        ₡${Math.round(costosDiarios.total).toLocaleString()}
-                    </span>
+                <div class="logistica-total-box">
+                    <span class="logistica-total-label">Total Costos Logística Diarios:</span>
+                    <span class="logistica-total-value">₡${Math.round(costosDiarios.total).toLocaleString()}</span>
                 </div>
             </div>
             
@@ -695,19 +696,33 @@ function renderLogistica() {
                 </td>
             </tr>
         `;
-    } else {
+    } else if (distribucionPorLocal.length > 0) {
         distribucionPorLocal.forEach(item => {
             html += `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
+                <tr class="logistica-row">
                     <td><strong>${item.local}</strong></td>
-                    <td><span style="background: #e0f2fe; padding: 4px 12px; border-radius: 20px;">${item.porcentaje.toFixed(2)}%</span></td>
-                    <td style="text-align: right;">₡${Math.round(item.planta).toLocaleString()}</td>
-                    <td style="text-align: right;">₡${Math.round(item.oficinas).toLocaleString()}</td>
-                    <td style="text-align: right;">₡${Math.round(item.transporte).toLocaleString()}</td>
-                    <td style="text-align: right; font-weight: 600; color: #059669;">₡${Math.round(item.total).toLocaleString()}</td>
+                    <td>
+                        <span class="logistica-percent-badge">${item.porcentaje.toFixed(2)}%</span>
+                    </td>
+                    <td class="logistica-number-cell">₡${Math.round(item.planta).toLocaleString()}</td>
+                    <td class="logistica-number-cell">₡${Math.round(item.oficinas).toLocaleString()}</td>
+                    <td class="logistica-number-cell">₡${Math.round(item.transporte).toLocaleString()}</td>
+                    <td class="logistica-number-cell logistica-total-assigned">₡${Math.round(item.total).toLocaleString()}</td>
                 </tr>
             `;
         });
+
+        html += `
+            <tr class="logistica-total-row">
+                <td>TOTAL</td>
+                <td>—</td>
+                <td class="logistica-number-cell">₡${Math.round(totalPlanta).toLocaleString()}</td>
+                <td class="logistica-number-cell">₡${Math.round(totalOficinas).toLocaleString()}</td>
+                <td class="logistica-number-cell">₡${Math.round(totalTransporte).toLocaleString()}</td>
+                <td class="logistica-number-cell logistica-total-assigned">₡${Math.round(totalGeneral).toLocaleString()}</td>
+            </tr>
+        `;
+    } else {
         
         html += `
             <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0;">

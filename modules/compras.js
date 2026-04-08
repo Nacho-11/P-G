@@ -168,15 +168,15 @@ function renderCompras() {
             const fechaFormateada = new Date(fecha + 'T12:00:00').toLocaleDateString('es-CR');
             
             html += `
-                <div class="card" style="margin-bottom: 20px; padding: 0; overflow: hidden;">
-                    <div style="background: #f1f5f9; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0;">
-                        <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">
-                            <i class="fas fa-calendar-alt" style="color: #f59e0b;"></i> ${fechaFormateada}
+                <div class="card compras-dia-card">
+                    <div class="compras-dia-header">
+                        <h3 class="compras-dia-title">
+                            <i class="fas fa-calendar-alt"></i> ${fechaFormateada}
                         </h3>
-                        <span style="background: #f59e0b; color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600;">
-                            Total: ₡${totalDia.toLocaleString()}
-                        </span>
+                        <span class="compras-dia-total">₡${totalDia.toLocaleString()}</span>
                     </div>
+                    
+                    <div class="compras-dia-body">
                     
                     <div style="padding: 20px;">
                         <div class="table-container">
@@ -196,10 +196,10 @@ function renderCompras() {
             comprasDia.forEach(c => {
                 html += `
                     <tr>
-                        <td><span style="background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem;">${c.local || '—'}</span></td>
+                        <td><span class="compras-local-chip">${c.local || '—'}</span></td>
                         <td><strong>${c.proveedor || '—'}</strong></td>
                         <td>${c.numeroFactura || '—'}</td>
-                        <td style="color: #f59e0b; font-weight: 600;">₡${(c.monto || 0).toLocaleString()}</td>
+                        <td class="compras-monto-cell">₡${(c.monto || 0).toLocaleString()}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
                                 <button class="btn btn-sm btn-outline" onclick="window.editarCompra('${c.id}')" title="Editar">
@@ -287,11 +287,11 @@ function mostrarModalCompra(editId = null) {
             </div>  
         </div>
         
-        <div class="modal-body" style="padding: 30px; background: #f8fafc;">
+        <div class="modal-body compras-modal-body">
             <form id="compraForm" onsubmit="event.preventDefault(); window.guardarCompra('${editId || ''}');">
                 
                 <!-- Fecha -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="compras-modal-section">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-calendar-alt" style="color: #f59e0b;"></i> Fecha
                     </label>
@@ -299,7 +299,7 @@ function mostrarModalCompra(editId = null) {
                 </div>
                 
                 <!-- Local -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="compras-modal-section">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-store" style="color: #f59e0b;"></i> Local
                     </label>
@@ -321,7 +321,7 @@ function mostrarModalCompra(editId = null) {
                 </div>
                 
                 <!-- Proveedor -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="compras-modal-section">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-store" style="color: #f59e0b;"></i> Proveedor
                     </label>
@@ -329,7 +329,7 @@ function mostrarModalCompra(editId = null) {
                 </div>
                 
                 <!-- Número de factura -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="compras-modal-section">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-hashtag" style="color: #f59e0b;"></i> Número de factura
                     </label>
@@ -337,7 +337,7 @@ function mostrarModalCompra(editId = null) {
                 </div>
                 
                 <!-- Monto -->
-                <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="compras-modal-section">
                     <label style="font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                         <i class="fas fa-dollar-sign" style="color: #f59e0b;"></i> Monto (₡)
                     </label>
@@ -351,45 +351,18 @@ function mostrarModalCompra(editId = null) {
                 <div style="display: flex; gap: 15px; justify-content: flex-end; border-top: 2px solid #eef2f6; padding-top: 20px; margin-top: 10px;">
                     
                     <!-- Botón Cancelar -->
-                    <button type="button" 
+                    <button type="button"
+                            class="btn btn-outline compras-btn-cancelar"
                             onclick="(function(){ 
                                 const modal = document.getElementById('compraModal'); 
                                 if(modal) modal.remove(); 
                                 document.getElementById('modalOverlay').classList.remove('active'); 
-                            })();" 
-                            style="padding: 14px 28px; 
-                                   border: 2px solid #e2e8f0; 
-                                   background: white; 
-                                   color: #475569; 
-                                   border-radius: 14px; 
-                                   font-weight: 600; 
-                                   font-size: 1rem; 
-                                   cursor: pointer; 
-                                   transition: all 0.2s;
-                                   display: inline-flex;
-                                   align-items: center;
-                                   justify-content: center;
-                                   min-width: 120px;">
+                            })();">
                         Cancelar
                     </button>
                     
                     <!-- Botón Guardar/Actualizar -->
-                    <button type="submit" 
-                            style="padding: 14px 32px; 
-                                   background: linear-gradient(135deg, #f59e0b, #d97706); 
-                                   color: white; 
-                                   border: none; 
-                                   border-radius: 14px; 
-                                   font-weight: 700; 
-                                   font-size: 1rem; 
-                                   cursor: pointer; 
-                                   box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3); 
-                                   transition: all 0.2s;
-                                   display: inline-flex;
-                                   align-items: center;
-                                   justify-content: center;
-                                   gap: 8px;
-                                   min-width: 160px;">
+                    <button type="submit" class="btn btn-primary compras-btn-guardar">
                         <i class="fas fa-save"></i> 
                         ${editId ? 'Actualizar' : 'Guardar'} Compra
                     </button>
