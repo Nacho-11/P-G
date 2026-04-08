@@ -747,10 +747,46 @@ function renderLogistica() {
 }
 
 // ============================================
+// GUARDAR PORCENTAJES MANUALES
+// ============================================
+function guardarPorcentajesLogistica() {
+    try {
+        const modal = document.getElementById('configurarPorcentajesModal');
+        if (!modal) return;
+
+        const inputs = modal.querySelectorAll('input[type="number"][data-local]');
+        const porcentajes = {};
+
+        inputs.forEach(input => {
+            const local = input.dataset.local;
+            let valor = parseFloat(input.value) || 0;
+
+            if (valor < 0) valor = 0;
+
+            porcentajes[local] = valor;
+        });
+
+        localStorage.setItem('porcentajesLogistica', JSON.stringify(porcentajes));
+
+        modal.remove();
+        const overlay = document.getElementById('modalOverlay');
+        if (overlay) overlay.classList.remove('active');
+
+        renderLogistica();
+
+        alert('✅ Porcentajes guardados correctamente');
+    } catch (error) {
+        console.error('❌ Error al guardar porcentajes de logística:', error);
+        alert('Error al guardar los porcentajes');
+    }
+}
+
+// ============================================
 // EXPORTAR FUNCIONES
 // ============================================
 window.initLogistica = initLogistica;
 window.renderLogistica = renderLogistica;
 window.configurarPorcentajesLogistica = configurarPorcentajesLogistica;
+window.guardarPorcentajesLogistica = guardarPorcentajesLogistica;
 
 console.log('✅ logistica.js cargado - Con cálculo por días del mes');
