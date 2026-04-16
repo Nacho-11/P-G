@@ -321,6 +321,13 @@ function mostrarModalMerma(editId = null) {
     
     if (!modal || !overlay) return;
     
+    // ✅ Aplicar modo oscuro si está activo
+    if (document.body.classList.contains('dark-mode')) {
+        modal.classList.add('dark-mode');
+    } else {
+        modal.classList.remove('dark-mode');
+    }
+    
     // Resetear carrito
     carritoMerma = [];
     
@@ -359,15 +366,23 @@ function mostrarModalMerma(editId = null) {
     document.getElementById('mermaCantidad').value = '';
     
     // Limpiar resumen de costos
-    document.getElementById('mermaCostoUnitario').textContent = '₡0 / unidad';
-    document.getElementById('mermaCostoTotal').textContent = '₡0';
+    const costoUnitario = document.getElementById('mermaCostoUnitario');
+    if (costoUnitario) costoUnitario.textContent = '₡0 / unidad';
+
+    const costoPreview = document.getElementById('mermaCostoTotal');
+    if (costoPreview) costoPreview.textContent = '₡0.00';
+
+    const totalCarrito = document.getElementById('mermaTotalCarrito');
+    if (totalCarrito) totalCarrito.textContent = '₡0.00';
     
     // Renderizar carrito vacío
     renderCarritoMerma();
+    actualizarTotalCarrito();
     
     modal.dataset.editId = editId || '';
     modal.classList.add('active');
     overlay.classList.add('active');
+
 }
 
 // ============================================
@@ -400,11 +415,11 @@ function buscarProductos() {
             <div onclick="window.seleccionarProducto('${p.id}')" style="padding: 14px 16px; border-bottom: 1px solid #eef2f7; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                 <div style="display:flex; justify-content:space-between; gap: 10px;">
                     <div>
-                        <div style="font-weight:700; color:#1e293b;">${p.nombre}</div>
+                        <div style="font-weight:700; color:inherit;">${p.nombre}</div>
                         <div style="font-size: 0.82rem; color: #64748b; margin-top: 3px;">${p.familia} · ${p.presentacion} ${p.unidad}</div>
                     </div>
                     <div style="text-align:right; white-space:nowrap;">
-                        <div style="font-weight:700; color:#0f172a;">₡${p.precio.toLocaleString()}</div>
+                        <div style="font-weight:700; color:inherit;">₡${p.precio.toLocaleString()}</div>
                         <div style="font-size: 0.82rem; color: #64748b;">₡${precioPorUnidad.toFixed(2)} / ${p.unidad}</div>
                     </div>
                 </div>
@@ -458,8 +473,9 @@ function agregarProductoAlCarrito() {
     const producto = productos.find(p => p.id === productoId);
     if (!producto) return;
     
+    // ✅ Calcular con precisión
     const precioPorUnidad = producto.precio / (producto.presentacion || 1);
-    const costoTotal = precioPorUnidad * cantidad;
+    const costoTotal = Math.round((precioPorUnidad * cantidad) * 100) / 100;
     
     carritoMerma.push({
         productoId: producto.id,
@@ -468,7 +484,7 @@ function agregarProductoAlCarrito() {
         unidad: producto.unidad,
         presentacion: producto.presentacion,
         cantidad: cantidad,
-        costoUnitario: precioPorUnidad,
+        costoUnitario: Math.round(precioPorUnidad * 100) / 100,
         costoTotal: costoTotal
     });
     
@@ -480,19 +496,20 @@ function agregarProductoAlCarrito() {
     
     // Renderizar carrito y actualizar total
     renderCarritoMerma();
-    actualizarTotalCarrito();
+    actualizarTotalCarrito(); // ✅ Asegurar que se actualiza
     
-    // Mostrar mensaje de éxito
-    console.log(`✅ Producto ${producto.nombre} agregado al carrito`);
+    console.log(`✅ Producto ${producto.nombre} agregado al carrito - Total: ₡${costoTotal}`);
 }
 
 // ============================================
 // ELIMINAR PRODUCTO DEL CARRITO
 // ============================================
 function eliminarProductoCarrito(index) {
-    carritoMerma.splice(index, 1);
-    renderCarritoMerma();
-    actualizarTotalCarrito();
+    if (index >= 0 && index < carritoMerma.length) {
+        carritoMerma.splice(index, 1);
+        renderCarritoMerma();
+        actualizarTotalCarrito(); // ✅ Ya está, pero asegúrate que esté presente
+    }
 }
 
 // ============================================
@@ -554,27 +571,20 @@ function renderCarritoMerma() {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+
+    actualizarTotalCarrito();
 }
 
 // ============================================
-// ACTUALIZAR TOTAL DEL CARRITO
+// ACTUALIZAR TOTAL DEL CARRITO (CORREGIDO)
 // ============================================
 function actualizarTotalCarrito() {
-    const total = carritoMerma.reduce((sum, item) => sum + item.costoTotal, 0);
+    let total = carritoMerma.reduce((sum, p) => sum + (p.costoTotal || 0), 0);
+    total = Math.round(total * 100) / 100;
 
-    const totalSpan = document.getElementById('mermaCostoTotal');
-    if (totalSpan) {
-        totalSpan.textContent = `₡${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    const totalFooter = document.getElementById('mermaCostoTotalFooter');
-    if (totalFooter) {
-        totalFooter.textContent = `₡${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    const costoUnitarioSpan = document.getElementById('mermaCostoUnitario');
-    if (costoUnitarioSpan) {
-        costoUnitarioSpan.textContent = '₡0 / unidad';
+    const totalCarrito = document.getElementById('mermaTotalCarrito');
+    if (totalCarrito) {
+        totalCarrito.textContent = `₡${total.toFixed(2)}`;
     }
 }
 
@@ -596,18 +606,20 @@ function limpiarSeleccionProducto() {
 function calcularCostoMerma() {
     const productoId = document.getElementById('mermaProductoId').value;
     const cantidad = parseFloat(document.getElementById('mermaCantidad').value) || 0;
-    
+
     if (!productoId || cantidad === 0) {
-        document.getElementById('mermaCostoTotal').textContent = '₡0';
+        document.getElementById('mermaCostoTotal').textContent = '₡0.00';
         return;
     }
-    
+
     const producto = productos.find(p => p.id === productoId);
     if (!producto) return;
-    
+
     const precioPorUnidad = producto.precio / (producto.presentacion || 1);
-    const costoTotal = precioPorUnidad * cantidad;
-    document.getElementById('mermaCostoTotal').textContent = `₡${costoTotal.toFixed(2)}`;
+    const costoProductoActual = Math.round((precioPorUnidad * cantidad) * 100) / 100;
+
+    document.getElementById('mermaCostoUnitario').textContent = `₡${precioPorUnidad.toFixed(2)} / ${producto.unidad}`;
+    document.getElementById('mermaCostoTotal').textContent = `₡${costoProductoActual.toFixed(2)}`;
 }
 
 // ============================================

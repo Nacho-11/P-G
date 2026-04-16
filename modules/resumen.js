@@ -865,7 +865,7 @@ function renderResumen() {
                         ${fila('Gasto x Pago 10%', gastosOperativos.pago10Diario)}
                         ${fila('Gasto x Arrendamiento', gastosOperativos.arrendamiento)}
                         ${fila('Gasto x Servicio Eléctrico', gastosOperativos.servicioElectrico)}
-                        ${fila('Gasto x Servicio Gas (diario)', gastosOperativos.servicioGasDiario)}
+                        ${fila('Gasto x Servicio Gas', gastosOperativos.servicioGasDiario)}
                         ${fila('Gasto x Servicio Agua', gastosOperativos.servicioAgua)}
                         ${fila('GASTO x COMPRA PROVEEDORES', gastosOperativos.comprasProveedores)}
                         ${fila('Gasto x Costo Diario (MATERIA PRIMA)', gastosOperativos.costoDiarioMateriaPrima)}

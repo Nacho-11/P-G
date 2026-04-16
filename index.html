@@ -124,14 +124,26 @@
         <!-- Main Content -->
         <main class="main-content" id="mainContent">
             <header class="top-bar">
-                <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+                <button class="menu-toggle-modern" id="menuToggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
-                <select id="themeSelector" class="filter-select" onchange="cambiarTema(this.value)" style="min-width: 150px;">
-                    <option value="auto">Tema del sistema</option>
-                    <option value="light">Claro</option>
-                    <option value="dark">Oscuro</option>
-                </select>
+                <div class="theme-switcher-pro" id="themeSwitcher">
+                    <button type="button" class="theme-toggle-pro" id="themeToggle" onclick="toggleThemeMode()" aria-label="Cambiar tema">
+                        <span class="theme-side theme-side-sun">
+                            <i class="fas fa-sun"></i>
+                        </span>
+
+                        <span class="theme-track">
+                            <span class="theme-thumb" id="themeThumb">
+                                <i class="fas fa-moon" id="themeThumbIcon"></i>
+                            </span>
+                        </span>
+
+                        <span class="theme-side theme-side-moon">
+                            <i class="fas fa-moon"></i>
+                        </span>
+                    </button>
+                </div>
 
                 <div class="filters">
                     <!-- Filtro por Local -->
@@ -1172,8 +1184,8 @@
                             <p style="margin:4px 0 0; color:#64748b; font-size:0.88rem;">Productos agregados para este registro</p>
                         </div>
 
-                        <div style="background: #fef2f2; color:#b91c1c; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.88rem;">
-                            Total: <span id="mermaCostoTotal">₡0</span>
+                        <div class="merma-total-badge">
+                            Total: <span id="mermaTotalCarrito">₡0.00</span>
                         </div>
                     </div>
 
@@ -1188,15 +1200,9 @@
                     <textarea id="mermaMotivo" rows="3" placeholder="Ej: producto vencido, daño por manipulación, error de preparación..." style="width:100%; padding:14px; border:2px solid #e2e8f0; border-radius:14px; resize: vertical; font-family: inherit;"></textarea>
                 </div>
 
-                <!-- Footer -->
-                <div class="modal-footer-bar merma-modal-footer">
-                    <div class="modal-total-box merma-total-box">
-                        <div class="merma-total-label">TOTAL ESTIMADO</div>
-                        <div class="merma-total-value" id="mermaTotalDisplay">₡0</div>
-                    </div>
-
+                <!-- Botones de acción -->
                     <div class="merma-footer-actions">
-                        <button type="button" class="btn-cancelar" id="usuarioCancelBtn" onclick="cerrarModal('mermaModal')">
+                        <button type="button" class="btn-cancelar-merma" onclick="cerrarModal('mermaModal')">
                             Cancelar
                         </button>
                         <button type="submit" class="btn btn-primary">
