@@ -782,11 +782,30 @@ function guardarPorcentajesLogistica() {
 }
 
 // ============================================
+// OBTENER GASTO DE PLANTA PRODUCCIÓN PARA RESUMEN
+// ============================================
+function getPlantaProduccionParaResumen(localNombre) {
+    const periodo = obtenerPeriodoActual();
+    const costosMensuales = obtenerCostosLogistica();
+    const { porcentajes } = obtenerPorcentajesPorLocal(periodo);
+    
+    const pct = porcentajes[localNombre] || 0;
+    const dias = periodo.dias || 30;
+    
+    // Costo diario de planta * porcentaje del local
+    const plantaDiaria = dias > 0 ? costosMensuales.planta.mensual / dias : 0;
+    const plantaLocal = plantaDiaria * pct;
+    
+    return plantaLocal;
+}
+
+// ============================================
 // EXPORTAR FUNCIONES
 // ============================================
 window.initLogistica = initLogistica;
 window.renderLogistica = renderLogistica;
 window.configurarPorcentajesLogistica = configurarPorcentajesLogistica;
 window.guardarPorcentajesLogistica = guardarPorcentajesLogistica;
+window.getPlantaProduccionParaResumen = getPlantaProduccionParaResumen;
 
 console.log('✅ logistica.js cargado - Con cálculo por días del mes');

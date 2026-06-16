@@ -54,8 +54,6 @@ const COSTOS_CONFIG = {
             "Electricidad",
             "Agua",
             "Internet KOLBI",
-            "Agua oficinas",
-            "Electricidad oficinas",
             "Telefono central telefonica y celulares administrativos",
             "ADT",
             "Gastos por mantenimiento y papelería",
