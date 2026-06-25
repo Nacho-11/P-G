@@ -32,6 +32,13 @@ const CATEGORIAS_LOGISTICA = {
         subCategoria: 'transporte',
         color: '#f59e0b',
         icono: 'fa-warehouse'
+    },
+    planilla: {
+        nombre: 'Planillas (SALARIOS LOGÍSTICA)',
+        categoriaFirebase: 'Planilla',
+        subCategoria: 'planilla',
+        color: '#8b5cf6',
+        icono: 'fa-users'
     }
 };
 
@@ -95,12 +102,12 @@ function obtenerCostosLogistica() {
     const resultado = {
         planta: { mensual: 0, diario: 0, items: [] },
         oficinas: { mensual: 0, diario: 0, items: [] },
-        transporte: { mensual: 0, diario: 0, items: [] }
+        transporte: { mensual: 0, diario: 0, items: [] },
+        planilla: { mensual: 0, diario: 0, items: [] }
     };
     
     console.log('📊 costosData recibido:', costosData);
     
-    // Recorrer la estructura de costosData
     Object.keys(costosData).forEach(categoriaFirebase => {
         const subCategorias = costosData[categoriaFirebase];
         
@@ -122,6 +129,9 @@ function obtenerCostosLogistica() {
                 } else if (subCategoria === 'transporte') {
                     resultado.transporte.mensual += monto;
                     resultado.transporte.items.push(costo);
+                } else if (subCategoria === 'planilla') {
+                    resultado.planilla.mensual += monto;
+                    resultado.planilla.items.push(costo);
                 }
             });
         });
@@ -130,7 +140,8 @@ function obtenerCostosLogistica() {
     console.log('📊 Costos mensuales calculados:', {
         planta: resultado.planta.mensual,
         oficinas: resultado.oficinas.mensual,
-        transporte: resultado.transporte.mensual
+        transporte: resultado.transporte.mensual,
+        planilla: resultado.planilla.mensual
     });
     
     return resultado;
@@ -140,10 +151,8 @@ function obtenerCostosLogistica() {
 // OBTENER PORCENTAJES (MANUALES O DESDE FACTURACIÓN)
 // ============================================
 function obtenerPorcentajesPorLocal(periodo) {
-    // Porcentajes manuales guardados por gerencia
     const porcentajesManuales = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
     
-    // Si hay porcentajes manuales configurados, usarlos
     if (Object.keys(porcentajesManuales).length > 0) {
         console.log('📊 Usando porcentajes manuales:', porcentajesManuales);
         const porcentajes = {};
@@ -153,12 +162,10 @@ function obtenerPorcentajesPorLocal(periodo) {
         return { porcentajes, totalFacturacion: 0, facturacionPeriodo: [], esManual: true };
     }
     
-    // Si no hay porcentajes manuales, calcular desde facturación
     console.log('📊 Calculando porcentajes desde facturación para período:', periodo);
     const porcentajes = {};
     let totalFacturacion = 0;
     
-    // Normalizar período para filtrar facturas
     let anio = null, mes = null;
     if (periodo.tipo === 'mes' && periodo.valor) {
         const [year, month] = periodo.valor.split('-');
@@ -192,7 +199,6 @@ function obtenerPorcentajesPorLocal(periodo) {
     console.log(`📊 Total facturación período: ₡${totalFacturacion.toLocaleString()}`);
     
     if (totalFacturacion === 0) {
-        // Distribución equitativa
         const localesCount = AppState?.locales?.length || 1;
         const pctEquitativo = 1 / localesCount;
         AppState?.locales?.forEach(local => {
@@ -202,7 +208,6 @@ function obtenerPorcentajesPorLocal(periodo) {
         return { porcentajes, totalFacturacion: 0, facturacionPeriodo: [], esManual: false };
     }
     
-    // Calcular porcentaje por local
     AppState?.locales?.forEach(local => {
         const montoLocal = facturacionPeriodo
             .filter(f => f.local === local.nombre)
@@ -219,7 +224,7 @@ function obtenerPorcentajesPorLocal(periodo) {
 }
 
 // ============================================
-// CALCULAR PERÍODO ACTUAL (CON DÍAS CORRECTOS POR MES)
+// CALCULAR PERÍODO ACTUAL
 // ============================================
 function obtenerPeriodoActual() {
     const filtroTiempo = AppState?.filtros?.tiempo || 'todos';
@@ -232,13 +237,14 @@ function obtenerPeriodoActual() {
                     mesReferencia: null, anioReferencia: null,
                     fechaInicio: null, fechaFin: null };
     
+    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
     switch(filtroTiempo) {
         case 'todos':
             periodo.tipo = 'mes';
             periodo.valor = hoy.toLocaleDateString('en-CA').substring(0, 7);
-            const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            periodo.nombre = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+            periodo.nombre = `${mesesNombres[hoy.getMonth()]} ${hoy.getFullYear()}`;
             periodo.dias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
             periodo.mesReferencia = hoy.getMonth() + 1;
             periodo.anioReferencia = hoy.getFullYear();
@@ -261,10 +267,9 @@ function obtenerPeriodoActual() {
                 periodo.anioReferencia = null;
                 console.log(`📅 Rango de fechas: ${periodo.nombre}, días: ${periodo.dias}`);
             } else {
-                // Si no hay fechas, usar mes actual
                 periodo.tipo = 'mes';
                 periodo.valor = hoy.toLocaleDateString('en-CA').substring(0, 7);
-                periodo.nombre = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+                periodo.nombre = `${mesesNombres[hoy.getMonth()]} ${hoy.getFullYear()}`;
                 periodo.dias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
             }
             break;
@@ -281,8 +286,6 @@ function obtenerPeriodoActual() {
             
         case 'mes':
             periodo.valor = hoy.toLocaleDateString('en-CA').substring(0, 7);
-            const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             periodo.nombre = `${mesesNombres[hoy.getMonth()]} ${hoy.getFullYear()}`;
             periodo.dias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
             periodo.mesReferencia = hoy.getMonth() + 1;
@@ -311,9 +314,7 @@ function obtenerPeriodoActual() {
         default:
             periodo.tipo = 'mes';
             periodo.valor = hoy.toLocaleDateString('en-CA').substring(0, 7);
-            const mesesDefault = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            periodo.nombre = `${mesesDefault[hoy.getMonth()]} ${hoy.getFullYear()}`;
+            periodo.nombre = `${mesesNombres[hoy.getMonth()]} ${hoy.getFullYear()}`;
             periodo.dias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
             periodo.mesReferencia = hoy.getMonth() + 1;
             periodo.anioReferencia = hoy.getFullYear();
@@ -329,7 +330,6 @@ function obtenerPeriodoActual() {
 function configurarPorcentajesLogistica() {
     const modalId = 'configurarPorcentajesModal';
 
-    // Eliminar si ya existe
     document.getElementById(modalId)?.remove();
 
     const modal = document.createElement('div');
@@ -455,17 +455,16 @@ function configurarPorcentajesLogistica() {
         </div>
 
         <!-- FOOTER FIJO -->
-            <div class="logistica-footer-bar">
-                <button class="btn btn-outline"
-                    onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');">
-                    Cancelar
-                </button>
+        <div class="logistica-footer-bar">
+            <button class="btn btn-outline"
+                onclick="this.closest('.modal').remove(); document.getElementById('modalOverlay').classList.remove('active');">
+                Cancelar
+            </button>
 
-                <button class="btn btn-primary logistica-save-btn"
-                    onclick="guardarPorcentajesLogistica()">
-                    <i class="fas fa-save"></i> Guardar
-                </button>
-            </div>
+            <button class="btn btn-primary logistica-save-btn"
+                onclick="guardarPorcentajesLogistica()">
+                <i class="fas fa-save"></i> Guardar
+            </button>
         </div>
     `;
 
@@ -489,35 +488,38 @@ function renderLogistica() {
     
     console.log(`📅 Período: ${periodo.nombre}, Días: ${periodo.dias}`);
     
-    // Obtener costos fijos mensuales
     const costosMensuales = obtenerCostosLogistica();
     
-    // ✅ VERIFICAR QUE LOS COSTOS MENSUALES SON CORRECTOS
     console.log('📊 COSTOS MENSUALES:', {
         planta: costosMensuales.planta.mensual,
         oficinas: costosMensuales.oficinas.mensual,
-        transporte: costosMensuales.transporte.mensual
+        transporte: costosMensuales.transporte.mensual,
+        planilla: costosMensuales.planilla.mensual
     });
     
-    // Calcular costos diarios (DIVIDIR entre los días del período)
     const costosDiarios = {
         planta: periodo.dias > 0 ? costosMensuales.planta.mensual / periodo.dias : 0,
         oficinas: periodo.dias > 0 ? costosMensuales.oficinas.mensual / periodo.dias : 0,
         transporte: periodo.dias > 0 ? costosMensuales.transporte.mensual / periodo.dias : 0,
-        total: periodo.dias > 0 ? (costosMensuales.planta.mensual + costosMensuales.oficinas.mensual + costosMensuales.transporte.mensual) / periodo.dias : 0
+        planilla: periodo.dias > 0 ? costosMensuales.planilla.mensual / periodo.dias : 0,
+        total: periodo.dias > 0 ? (
+            costosMensuales.planta.mensual + 
+            costosMensuales.oficinas.mensual + 
+            costosMensuales.transporte.mensual +
+            costosMensuales.planilla.mensual
+        ) / periodo.dias : 0
     };
     
     console.log('📊 COSTOS DIARIOS CALCULADOS:', {
         dias: periodo.dias,
         planta: costosDiarios.planta,
         oficinas: costosDiarios.oficinas,
-        transporte: costosDiarios.transporte
+        transporte: costosDiarios.transporte,
+        planilla: costosDiarios.planilla
     });
     
-    // Obtener porcentajes por local
     const { porcentajes, totalFacturacion, facturacionPeriodo, esManual } = obtenerPorcentajesPorLocal(periodo);
     
-    // Obtener locales a mostrar
     const puedeVerLocal = (local) => {
         if (window.esGerencia && window.esGerencia()) return true;
         return AppState?.usuario?.local === local;
@@ -527,8 +529,10 @@ function renderLogistica() {
         ? AppState?.locales?.filter(l => puedeVerLocal(l.nombre)) || []
         : AppState?.locales?.filter(l => l.nombre === filtroLocal && puedeVerLocal(l.nombre)) || [];
     
-    // Calcular totales por local
-    let totalPlanta = 0, totalOficinas = 0, totalTransporte = 0, totalGeneral = 0;
+    // ============================================
+    // ✅ CORREGIDO: Declarar TODAS las variables
+    // ============================================
+    let totalPlanta = 0, totalOficinas = 0, totalTransporte = 0, totalPlanilla = 0, totalGeneral = 0;
     const distribucionPorLocal = [];
     
     localesAMostrar.forEach(local => {
@@ -536,11 +540,13 @@ function renderLogistica() {
         const planta = costosDiarios.planta * pct;
         const oficinas = costosDiarios.oficinas * pct;
         const transporte = costosDiarios.transporte * pct;
-        const total = planta + oficinas + transporte;
+        const planilla = costosDiarios.planilla * pct;
+        const total = planta + oficinas + transporte + planilla;
         
         totalPlanta += planta;
         totalOficinas += oficinas;
         totalTransporte += transporte;
+        totalPlanilla += planilla;
         totalGeneral += total;
         
         distribucionPorLocal.push({
@@ -549,22 +555,23 @@ function renderLogistica() {
             planta,
             oficinas,
             transporte,
+            planilla,
             total
         });
     });
     
     distribucionPorLocal.sort((a, b) => b.total - a.total);
     
-    // Generar HTML
+    // ============================================
+    // CONSTRUIR HTML
+    // ============================================
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
             <h2><i class="fas fa-truck" style="color: #f59e0b;"></i> Logística - Distribución de Costos</h2>
             <div style="display: flex; gap: 10px;">
-                ${esGerencia() ? `
-                    <button class="btn btn-outline" onclick="window.configurarPorcentajesLogistica()">
-                        <i class="fas fa-percent"></i> Configurar %
-                    </button>
-                ` : ''}
+                ${window.esGerencia ? `<button class="btn btn-outline" onclick="window.configurarPorcentajesLogistica()">
+                    <i class="fas fa-percent"></i> Configurar %
+                </button>` : ''}
             </div>
         </div>
         
@@ -596,8 +603,10 @@ function renderLogistica() {
             </div>
         </div>
         
-        <!-- Tarjetas de costos fijos -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+        <!-- Tarjetas de costos fijos (4 tarjetas) -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
+            
+            <!-- Planta -->
             <div style="background: linear-gradient(135deg, ${CATEGORIAS_LOGISTICA.planta.color}, ${CATEGORIAS_LOGISTICA.planta.color}dd); border-radius: 16px; padding: 20px; color: white;">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                     <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -618,6 +627,7 @@ function renderLogistica() {
                 </div>
             </div>
             
+            <!-- Oficinas -->
             <div style="background: linear-gradient(135deg, ${CATEGORIAS_LOGISTICA.oficinas.color}, ${CATEGORIAS_LOGISTICA.oficinas.color}dd); border-radius: 16px; padding: 20px; color: white;">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                     <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -638,6 +648,7 @@ function renderLogistica() {
                 </div>
             </div>
             
+            <!-- Transporte -->
             <div style="background: linear-gradient(135deg, ${CATEGORIAS_LOGISTICA.transporte.color}, ${CATEGORIAS_LOGISTICA.transporte.color}dd); border-radius: 16px; padding: 20px; color: white;">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                     <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -655,6 +666,27 @@ function renderLogistica() {
                 <div style="display: flex; justify-content: space-between;">
                     <span>Diario (${periodo.dias} días)</span>
                     <span style="font-size: 1rem; font-weight: 600;">₡${Math.round(costosDiarios.transporte).toLocaleString()}</span>
+                </div>
+            </div>
+            
+            <!-- Planilla (NUEVO) -->
+            <div style="background: linear-gradient(135deg, ${CATEGORIAS_LOGISTICA.planilla.color}, ${CATEGORIAS_LOGISTICA.planilla.color}dd); border-radius: 16px; padding: 20px; color: white;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas ${CATEGORIAS_LOGISTICA.planilla.icono}" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">${CATEGORIAS_LOGISTICA.planilla.nombre}</div>
+                        <div style="font-size: 0.7rem; opacity: 0.7;">${costosMensuales.planilla.items.length} costos</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>Mensual</span>
+                    <span style="font-size: 1.2rem; font-weight: 700;">₡${Math.round(costosMensuales.planilla.mensual).toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Diario (${periodo.dias} días)</span>
+                    <span style="font-size: 1rem; font-weight: 600;">₡${Math.round(costosDiarios.planilla).toLocaleString()}</span>
                 </div>
             </div>
         </div>
@@ -681,6 +713,7 @@ function renderLogistica() {
                             <th>Planta (₡)</th>
                             <th>Oficinas (₡)</th>
                             <th>Transporte (₡)</th>
+                            <th>Planilla (₡)</th>
                             <th>Total Asignado (₡)</th>
                         </tr>
                     </thead>
@@ -690,13 +723,13 @@ function renderLogistica() {
     if (distribucionPorLocal.length === 0) {
         html += `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 40px;">
+                <td colspan="7" style="text-align: center; padding: 40px;">
                     <i class="fas fa-store" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px;"></i>
                     <p>No hay locales para mostrar</p>
                 </td>
             </tr>
         `;
-    } else if (distribucionPorLocal.length > 0) {
+    } else {
         distribucionPorLocal.forEach(item => {
             html += `
                 <tr class="logistica-row">
@@ -707,31 +740,21 @@ function renderLogistica() {
                     <td class="logistica-number-cell">₡${Math.round(item.planta).toLocaleString()}</td>
                     <td class="logistica-number-cell">₡${Math.round(item.oficinas).toLocaleString()}</td>
                     <td class="logistica-number-cell">₡${Math.round(item.transporte).toLocaleString()}</td>
+                    <td class="logistica-number-cell">₡${Math.round(item.planilla).toLocaleString()}</td>
                     <td class="logistica-number-cell logistica-total-assigned">₡${Math.round(item.total).toLocaleString()}</td>
                 </tr>
             `;
         });
 
         html += `
-            <tr class="logistica-total-row">
-                <td>TOTAL</td>
+            <tr class="logistica-total-row" style="background: #f1f5f9; font-weight: 700; border-top: 2px solid #e2e8f0;">
+                <td><strong>TOTAL</strong></td>
                 <td>—</td>
-                <td class="logistica-number-cell">₡${Math.round(totalPlanta).toLocaleString()}</td>
-                <td class="logistica-number-cell">₡${Math.round(totalOficinas).toLocaleString()}</td>
-                <td class="logistica-number-cell">₡${Math.round(totalTransporte).toLocaleString()}</td>
-                <td class="logistica-number-cell logistica-total-assigned">₡${Math.round(totalGeneral).toLocaleString()}</td>
-            </tr>
-        `;
-    } else {
-        
-        html += `
-            <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0;">
-                <td>TOTAL</td>
-                <td>—</td>
-                <td style="text-align: right;">₡${Math.round(totalPlanta).toLocaleString()}</td>
-                <td style="text-align: right;">₡${Math.round(totalOficinas).toLocaleString()}</td>
-                <td style="text-align: right;">₡${Math.round(totalTransporte).toLocaleString()}</td>
-                <td style="text-align: right; color: #059669;">₡${Math.round(totalGeneral).toLocaleString()}</td>
+                <td class="logistica-number-cell"><strong>₡${Math.round(totalPlanta).toLocaleString()}</strong></td>
+                <td class="logistica-number-cell"><strong>₡${Math.round(totalOficinas).toLocaleString()}</strong></td>
+                <td class="logistica-number-cell"><strong>₡${Math.round(totalTransporte).toLocaleString()}</strong></td>
+                <td class="logistica-number-cell"><strong>₡${Math.round(totalPlanilla).toLocaleString()}</strong></td>
+                <td class="logistica-number-cell logistica-total-assigned"><strong>₡${Math.round(totalGeneral).toLocaleString()}</strong></td>
             </tr>
         `;
     }
@@ -792,7 +815,6 @@ function getPlantaProduccionParaResumen(localNombre) {
     const pct = porcentajes[localNombre] || 0;
     const dias = periodo.dias || 30;
     
-    // Costo diario de planta * porcentaje del local
     const plantaDiaria = dias > 0 ? costosMensuales.planta.mensual / dias : 0;
     const plantaLocal = plantaDiaria * pct;
     

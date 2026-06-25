@@ -106,6 +106,7 @@ function filtrarPorFecha(item, filtroTiempo, ayerStr, mesActual, anioActual, fec
     if (filtroTiempo === 'todos') return true;
     if (filtroTiempo === 'ayer') return fechaItem === ayerStr;
     if (filtroTiempo === 'mes') return fechaItem.substring(0, 7) === mesActual;
+    if (filtroTiempo === 'anio') return fechaItem.substring(0, 4) === anioActual;
     if (filtroTiempo === 'personalizado') return fechaItem === fechaPersonalizada;
     if (filtroTiempo === 'rango') {
         if (!fechaInicio || !fechaFin) return true;
@@ -114,10 +115,35 @@ function filtrarPorFecha(item, filtroTiempo, ayerStr, mesActual, anioActual, fec
     return true;
 }
 
-function filtrarPorLocal(item, filtroLocal) {
-    if (!item.local) return false;
-    if (filtroLocal === 'Todos') return true;
-    return item.local === filtroLocal;
+// ============================================
+// FUNCIÓN PARA OBTENER DATOS DE SERVICIOS (CORREGIDA)
+// ============================================
+
+function obtenerServiciosData() {
+    // Si los datos ya están cargados, devolverlos
+    if (window.serviciosData && Object.keys(window.serviciosData).length > 0) {
+        console.log('📊 Datos de servicios obtenidos de window.serviciosData:', Object.keys(window.serviciosData));
+        return window.serviciosData;
+    }
+    
+    // Si hay datos pero están vacíos, forzar carga desde Firebase
+    if (window.serviciosData && Object.keys(window.serviciosData).length === 0) {
+        console.log('⏳ Datos de servicios vacíos, forzando carga...');
+        if (typeof window.cargarServiciosFirebase === 'function') {
+            window.cargarServiciosFirebase();
+        }
+    }
+    
+    // Si no hay datos en window.serviciosData, intentar obtener de otra forma
+    if (!window.serviciosData) {
+        console.log('⏳ window.serviciosData no existe, esperando...');
+        // Intentar obtener de firebase directamente si es posible
+        if (typeof window.cargarServiciosFirebase === 'function') {
+            window.cargarServiciosFirebase();
+        }
+    }
+    
+    return window.serviciosData || {};
 }
 
 // ============================================
@@ -220,12 +246,10 @@ function calcularPrestamos(prestamosData, filtroLocal, filtroTiempo, ayerStr, me
 function obtenerFactorPeriodoCostos(filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin) {
     const hoy = new Date();
 
-    // TODO el historial: dejar mensual base
     if (filtroTiempo === 'todos') {
         return 1;
     }
 
-    // AYER o FECHA PERSONALIZADA: 1 día / días del mes correspondiente
     if (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado') {
         let fechaBase;
 
@@ -245,12 +269,10 @@ function obtenerFactorPeriodoCostos(filtroTiempo, fechaPersonalizada, fechaInici
         return 1 / diasMes;
     }
 
-    // MES: mes completo = 1
     if (filtroTiempo === 'mes') {
         return 1;
     }
 
-    // RANGO: prorrateo exacto incluso si cruza meses
     if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
         let actual = new Date(fechaInicio + 'T12:00:00');
         const fin = new Date(fechaFin + 'T12:00:00');
@@ -279,20 +301,46 @@ function obtenerFactorPeriodoCostos(filtroTiempo, fechaPersonalizada, fechaInici
 
 function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin) {
     const resultado = {
+        // Restaurante
         alquilerLocal: 0, secsa: 0, softRestaurant: 0, internetKolbi: 0, televisionKolbi: 0,
         adt: 0, fumigacion: 0, polizaRT: 0, depreciacionActivos: 0, patenteComercial: 0,
         patenteLicores: 0, basuraMunicipal: 0, interesesMoraPatente: 0, certificacionGas: 0,
-        certificacionElectrica: 0, renovacionMinisterioSalud: 0, haciendaIVA: 0,
-        asesoriaLegalRH: 0, honorariosContabilidad: 0, publicidad: 0, otrosServiciosProfesionales: 0,
-        electricidadPlanta: 0, aguaPlanta: 0, adtPlanta: 0, fumigacionPlanta: 0, softwareSecsaPlanta: 0,
-        ivaHaciendaPlanta: 0, asesoriaLegalPlanta: 0, electricidadOficinas: 0, aguaOficinas: 0,
-        internetOficinas: 0, telefonoCelulares: 0, adtOficinas: 0, mantenimientoPapeleria: 0,
-        softwareHosting: 0, combustible: 0, electricidadBodegas: 0, aguaBodegas: 0, alquilerTaller: 0,
-        gpsNavsat: 0, marchamos: 0, dekra: 0, mantenimientoVehiculos: 0, planillaBodega: 0,
-        alexDuque: 0, polizaRTBodega: 0, ccssBodegaOficinas: 0, planillaOficinas: 0
+        certificacionElectrica: 0, renovacionMinisterioSalud: 0, asesoriaLegalRH: 0,
+        honorariosContabilidad: 0, publicidad: 0, otrosServiciosProfesionales: 0,
+        
+        // Planta
+        electricidadPlanta: 0, aguaPlanta: 0, adtPlanta: 0, fumigacionPlanta: 0,
+        softwareSecsaPlanta: 0, ivaHaciendaPlanta: 0, asesoriaLegalPlanta: 0,
+        
+        // Oficinas
+        electricidadOficinas: 0, aguaOficinas: 0, internetOficinas: 0,
+        telefonoCelulares: 0, adtOficinas: 0, mantenimientoPapeleria: 0,
+        softwareHosting: 0,
+        
+        // Transporte
+        combustible: 0, electricidadBodegas: 0, aguaBodegas: 0, alquilerTaller: 0,
+        gpsNavsat: 0, marchamos: 0, dekra: 0, mantenimientoVehiculos: 0,
+        
+        // Planilla Logística
+        planillaBodega: 0, alexDuque: 0, polizaRTBodega: 0,
+        ccssBodegaOficinas: 0, planillaOficinas: 0,
+        
+        // Impuestos
+        iva: 0,
+        impuestoRenta: 0,
+        
+        // Totales por categoría
+        totalRestaurante: 0,
+        totalPlanta: 0,
+        totalOficinas: 0,
+        totalTransporte: 0,
+        totalPlanillaLogistica: 0
     };
 
-    if (!costosData || Object.keys(costosData).length === 0) return resultado;
+    if (!costosData || Object.keys(costosData).length === 0) {
+        console.warn('⚠️ No hay datos de costos disponibles');
+        return resultado;
+    }
 
     const factorPeriodo = obtenerFactorPeriodoCostos(
         filtroTiempo,
@@ -300,6 +348,8 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
         fechaInicio,
         fechaFin
     );
+
+    console.log(`📊 Factor de período para costos: ${factorPeriodo}`);
 
     const idsProcesados = new Set();
 
@@ -325,82 +375,141 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
 
                 if (montoMensual === 0) return;
 
+                // RESTAURANTE
                 if (subCategoria === 'restaurante') {
                     const conceptoLower = concepto.toLowerCase();
-    
-                    if (conceptoLower.includes('alquiler')) {
+                    
+                    if (conceptoLower.includes('hacienda') && conceptoLower.includes('iva')) {
+                        resultado.iva += montoAplicable;
+                    } else if (conceptoLower.includes('iva') && !conceptoLower.includes('renta') && !conceptoLower.includes('hacienda')) {
+                        resultado.iva += montoAplicable;
+                    } else if (conceptoLower.includes('alquiler') && !conceptoLower.includes('iva')) {
                         resultado.alquilerLocal += montoAplicable;
                     } else if (conceptoLower.includes('secsa')) {
                         resultado.secsa += montoAplicable;
                     } else if (conceptoLower.includes('soft restaurant') || conceptoLower.includes('soft-restaurant')) {
                         resultado.softRestaurant += montoAplicable;
-                    } else if (conceptoLower.includes('internet')) {
+                    } else if (conceptoLower.includes('internet') && !conceptoLower.includes('iva')) {
                         resultado.internetKolbi += montoAplicable;
-                    } else if (conceptoLower.includes('television') || conceptoLower.includes('tv')) {
+                    } else if ((conceptoLower.includes('television') || conceptoLower.includes('tv')) && !conceptoLower.includes('iva')) {
                         resultado.televisionKolbi += montoAplicable;
-                    } else if (conceptoLower.includes('adt') || conceptoLower.includes('alarma')) {
+                    } else if ((conceptoLower.includes('adt') || conceptoLower.includes('alarma')) && !conceptoLower.includes('iva')) {
                         resultado.adt += montoAplicable;
-                    } else if (conceptoLower.includes('fumigacion')) {
+                    } else if (conceptoLower.includes('fumigacion') && !conceptoLower.includes('iva')) {
                         resultado.fumigacion += montoAplicable;
-                    } else if (conceptoLower.includes('poliza') || conceptoLower.includes('póliza') || conceptoLower.includes('rt')) {
+                    } else if ((conceptoLower.includes('poliza') || conceptoLower.includes('póliza') || conceptoLower.includes('rt')) && !conceptoLower.includes('iva')) {
                         resultado.polizaRT += montoAplicable;
-                    } else if (conceptoLower.includes('depreciacion')) {
+                    } else if (conceptoLower.includes('depreciacion') && !conceptoLower.includes('iva')) {
                         resultado.depreciacionActivos += montoAplicable;
                     } else if (conceptoLower.includes('patente comercial')) {
                         resultado.patenteComercial += montoAplicable;
                     } else if (conceptoLower.includes('patente licores')) {
                         resultado.patenteLicores += montoAplicable;
-                    } else if (conceptoLower.includes('basura')) {
+                    } else if (conceptoLower.includes('basura') && !conceptoLower.includes('iva')) {
                         resultado.basuraMunicipal += montoAplicable;
-                    } else if (conceptoLower.includes('interes') || conceptoLower.includes('mora')) {
+                    } else if ((conceptoLower.includes('interes') || conceptoLower.includes('mora')) && !conceptoLower.includes('iva')) {
                         resultado.interesesMoraPatente += montoAplicable;
-                    } else if (conceptoLower.includes('certificacion gas') || conceptoLower.includes('certificación gas')) {
+                    } else if ((conceptoLower.includes('certificacion gas') || conceptoLower.includes('certificación gas')) && !conceptoLower.includes('iva')) {
                         resultado.certificacionGas += montoAplicable;
-                    } else if (conceptoLower.includes('certificacion electrica') || conceptoLower.includes('certificación eléctrica')) {
+                    } else if ((conceptoLower.includes('certificacion electrica') || conceptoLower.includes('certificación eléctrica')) && !conceptoLower.includes('iva')) {
                         resultado.certificacionElectrica += montoAplicable;
-                    } else if (conceptoLower.includes('renovacion') || conceptoLower.includes('ministerio') || conceptoLower.includes('renovación')) {
+                    } else if ((conceptoLower.includes('renovacion') || conceptoLower.includes('ministerio') || conceptoLower.includes('renovación')) && !conceptoLower.includes('iva')) {
                         resultado.renovacionMinisterioSalud += montoAplicable;
-                    } else if (conceptoLower.includes('hacienda') || conceptoLower.includes('iva')) {
-                        resultado.haciendaIVA += montoAplicable;
                     } else if (conceptoLower.includes('asesoria legal') || conceptoLower.includes('asesoría legal')) {
                         resultado.asesoriaLegalRH += montoAplicable;
-                    } else if (conceptoLower.includes('honorarios contabilidad')) {
+                    } else if (conceptoLower.includes('honorarios contabilidad') && !conceptoLower.includes('iva')) {
                         resultado.honorariosContabilidad += montoAplicable;
-                    } else if (conceptoLower.includes('publicidad')) {
+                    } else if (conceptoLower.includes('publicidad') && !conceptoLower.includes('iva')) {
                         resultado.publicidad += montoAplicable;
-                    } else if (conceptoLower.includes('otros servicios') || conceptoLower.includes('otros servicios profesionales')) {
+                    } else if ((conceptoLower.includes('otros servicios') || conceptoLower.includes('otros servicios profesionales')) && !conceptoLower.includes('iva')) {
                         resultado.otrosServiciosProfesionales += montoAplicable;
                     }
+                    
+                    resultado.totalRestaurante += montoAplicable;
+                    
+                // PLANTA
                 } else if (subCategoria === 'planta') {
-                    if (concepto.includes('fumigación')) resultado.fumigacionPlanta += montoAplicable;
-                    else if (concepto.includes('software secsa')) resultado.softwareSecsaPlanta += montoAplicable;
-                    else if (concepto.includes('iva')) resultado.ivaHaciendaPlanta += montoAplicable;
-                    else if (concepto.includes('asesoría legal')) resultado.asesoriaLegalPlanta += montoAplicable;
+                    if (concepto.includes('electricidad')) {
+                        resultado.electricidadPlanta += montoAplicable;
+                    } else if (concepto.includes('agua')) {
+                        resultado.aguaPlanta += montoAplicable;
+                    } else if (concepto.includes('adt') || concepto.includes('alarma')) {
+                        resultado.adtPlanta += montoAplicable;
+                    } else if (concepto.includes('fumigación')) {
+                        resultado.fumigacionPlanta += montoAplicable;
+                    } else if (concepto.includes('software secsa')) {
+                        resultado.softwareSecsaPlanta += montoAplicable;
+                    } else if (concepto.includes('iva')) {
+                        resultado.ivaHaciendaPlanta += montoAplicable;
+                    } else if (concepto.includes('asesoría legal')) {
+                        resultado.asesoriaLegalPlanta += montoAplicable;
+                    }
+                    resultado.totalPlanta += montoAplicable;
+                    
+                // OFICINAS
                 } else if (subCategoria === 'oficinas') {
-                    if (concepto.includes('electricidad')) resultado.electricidadOficinas += montoAplicable;
-                    else if (concepto.includes('agua')) resultado.aguaOficinas += montoAplicable;
-                    else if (concepto.includes('internet')) resultado.internetOficinas += montoAplicable;
-                    else if (concepto.includes('teléfono') || concepto.includes('telefono') || concepto.includes('celular')) resultado.telefonoCelulares += montoAplicable;
-                    else if (concepto.includes('adt')) resultado.adtOficinas += montoAplicable;
-                    else if (concepto.includes('software') || concepto.includes('hosting') || concepto.includes('office')) resultado.softwareHosting += montoAplicable;
+                    if (concepto.includes('electricidad')) {
+                        resultado.electricidadOficinas += montoAplicable;
+                    } else if (concepto.includes('agua')) {
+                        resultado.aguaOficinas += montoAplicable;
+                    } else if (concepto.includes('internet')) {
+                        resultado.internetOficinas += montoAplicable;
+                    } else if (concepto.includes('teléfono') || concepto.includes('telefono') || concepto.includes('celular')) {
+                        resultado.telefonoCelulares += montoAplicable;
+                    } else if (concepto.includes('adt')) {
+                        resultado.adtOficinas += montoAplicable;
+                    } else if (concepto.includes('software') || concepto.includes('hosting') || concepto.includes('office')) {
+                        resultado.softwareHosting += montoAplicable;
+                    }
+                    resultado.totalOficinas += montoAplicable;
+                    
+                // TRANSPORTE
                 } else if (subCategoria === 'transporte') {
-                    if (concepto.includes('combustible')) resultado.combustible += montoAplicable;
-                    else if (concepto.includes('electricidad')) resultado.electricidadBodegas += montoAplicable;
-                    else if (concepto.includes('agua')) resultado.aguaBodegas += montoAplicable;
-                    else if (concepto.includes('alquiler')) resultado.alquilerTaller += montoAplicable;
-                    else if (concepto.includes('gps')) resultado.gpsNavsat += montoAplicable;
-                    else if (concepto.includes('marchamo')) resultado.marchamos += montoAplicable;
-                    else if (concepto.includes('dekra')) resultado.dekra += montoAplicable;
-                    else if (concepto.includes('mantenimiento')) resultado.mantenimientoVehiculos += montoAplicable;
+                    if (concepto.includes('combustible')) {
+                        resultado.combustible += montoAplicable;
+                    } else if (concepto.includes('electricidad')) {
+                        resultado.electricidadBodegas += montoAplicable;
+                    } else if (concepto.includes('agua')) {
+                        resultado.aguaBodegas += montoAplicable;
+                    } else if (concepto.includes('alquiler')) {
+                        resultado.alquilerTaller += montoAplicable;
+                    } else if (concepto.includes('gps')) {
+                        resultado.gpsNavsat += montoAplicable;
+                    } else if (concepto.includes('marchamo')) {
+                        resultado.marchamos += montoAplicable;
+                    } else if (concepto.includes('dekra')) {
+                        resultado.dekra += montoAplicable;
+                    } else if (concepto.includes('mantenimiento')) {
+                        resultado.mantenimientoVehiculos += montoAplicable;
+                    }
+                    resultado.totalTransporte += montoAplicable;
+                    
+                // PLANILLA LOGÍSTICA
                 } else if (subCategoria === 'planilla') {
-                    if (concepto.includes('planilla bodega')) resultado.planillaBodega += montoAplicable;
-                    else if (concepto.includes('alex duque')) resultado.alexDuque += montoAplicable;
-                    else if (concepto.includes('poliza rt')) resultado.polizaRTBodega += montoAplicable;
-                    else if (concepto.includes('ccss')) resultado.ccssBodegaOficinas += montoAplicable;
-                    else if (concepto.includes('planilla oficinas')) resultado.planillaOficinas += montoAplicable;
+                    if (concepto.includes('planilla bodega')) {
+                        resultado.planillaBodega += montoAplicable;
+                    } else if (concepto.includes('alex duque')) {
+                        resultado.alexDuque += montoAplicable;
+                    } else if (concepto.includes('poliza rt')) {
+                        resultado.polizaRTBodega += montoAplicable;
+                    } else if (concepto.includes('ccss')) {
+                        resultado.ccssBodegaOficinas += montoAplicable;
+                    } else if (concepto.includes('planilla oficinas')) {
+                        resultado.planillaOficinas += montoAplicable;
+                    }
+                    resultado.totalPlanillaLogistica += montoAplicable;
                 }
             });
         });
+    });
+
+    console.log('📊 Resultado de costos fijos:', {
+        iva: resultado.iva,
+        totalRestaurante: resultado.totalRestaurante,
+        totalPlanta: resultado.totalPlanta,
+        totalOficinas: resultado.totalOficinas,
+        totalTransporte: resultado.totalTransporte,
+        totalPlanillaLogistica: resultado.totalPlanillaLogistica
     });
 
     return resultado;
@@ -410,32 +519,120 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
 // CÁLCULOS DE SERVICIOS
 // ============================================
 
-function calcularServicios(serviciosData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) {
+function calcularServicios(filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) {
+    // OBTENER DATOS DE SERVICIOS
+    const serviciosData = obtenerServiciosData();
+    
+    // Si no hay datos de servicios, devolver ceros
+    if (!serviciosData || Object.keys(serviciosData).length === 0) {
+        console.warn('⚠️ No hay datos de servicios disponibles en calcularServicios');
+        return { agua: 0, electricidad: 0, gas: 0, gasTotalPeriodo: 0, gasPromedioDiario: 0, total: 0 };
+    }
+    
+    console.log('📊 Datos de servicios recibidos en calcularServicios:', serviciosData);
+    console.log('📊 Filtros aplicados:', { filtroLocal, filtroTiempo, ayerStr, mesActual, fechaPersonalizada, fechaInicio, fechaFin });
+    
     let agua = 0, electricidad = 0, gas = 0, total = 0;
     let gasPromedioDiario = 0;
-    let gasTotalPeriodo = 0;  // ✅ Para el total del período
+    let gasTotalPeriodo = 0;
+    let contadorGas = 0;
+    let contadorTotal = 0;
     
+    // Recorrer todos los locales
     Object.keys(serviciosData).forEach(local => {
-        if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
-        if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(local)) return;
+        // Filtrar por local - IMPORTANTE: si filtroLocal es 'Todos', mostrar todos
+        if (filtroLocal !== 'Todos' && local !== filtroLocal) {
+            console.log(`⏭️ Saltando local ${local} (filtro: ${filtroLocal})`);
+            return;
+        }
+        if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(local)) {
+            console.log(`⏭️ Saltando local ${local} (sin permisos)`);
+            return;
+        }
+        
+        console.log(`📊 Procesando local: ${local}, servicios: ${serviciosData[local].length}`);
         
         (serviciosData[local] || []).forEach(s => {
-            if (!filtrarPorFecha(s, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin)) return;
+            // Verificar que el servicio tenga fecha
+            if (!s.fecha) {
+                console.log(`⏭️ Servicio sin fecha:`, s);
+                return;
+            }
             
-            const monto = s.monto || 0;
-            total += monto;
+            // Extraer fecha en formato YYYY-MM-DD
+            let fechaItem = s.fecha;
+            if (fechaItem.includes('T')) fechaItem = fechaItem.split('T')[0];
             
-            if (s.servicio === 'Agua') agua += monto;
-            if (s.servicio === 'Electricidad') electricidad += monto;
+            // FILTRAR POR FECHA - CORREGIDO
+            let fechaValida = false;
             
-            if (s.servicio === 'Gas') {
-                gas += monto;
-                gasTotalPeriodo += monto;  // ✅ Suma para el período
+            if (filtroTiempo === 'todos') {
+                fechaValida = true;
+            } else if (filtroTiempo === 'ayer') {
+                fechaValida = fechaItem === ayerStr;
+            } else if (filtroTiempo === 'mes') {
+                fechaValida = fechaItem.substring(0, 7) === mesActual;
+            } else if (filtroTiempo === 'anio') {
+                fechaValida = fechaItem.substring(0, 4) === anioActual;
+            } else if (filtroTiempo === 'personalizado') {
+                fechaValida = fechaItem === fechaPersonalizada;
+            } else if (filtroTiempo === 'rango') {
+                if (!fechaInicio || !fechaFin) {
+                    fechaValida = true;
+                } else {
+                    fechaValida = fechaItem >= fechaInicio && fechaItem <= fechaFin;
+                }
+            } else {
+                fechaValida = true;
+            }
+            
+            if (!fechaValida) {
+                console.log(`⏭️ Servicio ${s.servicio} fecha ${fechaItem} no coincide con filtro ${filtroTiempo}`);
+                return;
+            }
+            
+            contadorTotal++;
+            console.log(`📊 ✅ Servicio válido: ${s.servicio}, fecha: ${fechaItem}, monto: ${s.monto}, consumoTotal: ${s.consumoTotal}`);
+            
+            // Calcular monto del servicio
+            let montoServicio = 0;
+            
+            if (montoServicio === 0 && s.consumoTotal && s.consumoTotal > 0) {
+                let precio = 0;
+                if (s.servicio === 'Agua') {
+                    precio = window.obtenerPrecioLocal ? window.obtenerPrecioLocal(local, 'Agua') : 1528.68;
+                } else if (s.servicio === 'Electricidad') {
+                    precio = window.obtenerPrecioLocal ? window.obtenerPrecioLocal(local, 'Electricidad') : 126.84;
+                }
+                montoServicio = s.consumoTotal * precio;
+                console.log(`📊 Monto calculado para ${s.servicio}: ${montoServicio} (${s.consumoTotal} * ${precio})`);
+            }
+            
+            total += montoServicio;
+            
+            if (s.servicio === 'Agua') {
+                agua += montoServicio;
+                console.log(`💧 Agua acumulado: ${agua} (sumando ${montoServicio})`);
+            } else if (s.servicio === 'Electricidad') {
+                electricidad += montoServicio;
+                console.log(`⚡ Electricidad acumulado: ${electricidad} (sumando ${montoServicio})`);
+            } else if (s.servicio === 'Gas') {
+                gas += montoServicio;
+                gasTotalPeriodo += montoServicio;
                 const diasGas = s.dias || 30;
-                gasPromedioDiario += diasGas > 0 ? monto / diasGas : 0;
+                gasPromedioDiario += diasGas > 0 ? montoServicio / diasGas : 0;
+                contadorGas++;
+                console.log(`🔥 Gas acumulado: ${gas} (sumando ${montoServicio})`);
             }
         });
     });
+    
+    // Si hay múltiples registros de gas, promediar el costo diario
+    if (contadorGas > 0) {
+        gasPromedioDiario = gasPromedioDiario / contadorGas;
+    }
+    
+    console.log(`📊 RESULTADO FINAL: ${contadorTotal} servicios procesados`, { agua, electricidad, gas, gasTotalPeriodo, gasPromedioDiario, total });
     
     return { agua, electricidad, gas, gasTotalPeriodo, gasPromedioDiario, total };
 }
@@ -445,19 +642,45 @@ function calcularServicios(serviciosData, filtroLocal, filtroTiempo, ayerStr, me
 // ============================================
 
 function calcularComisionesVentas(ventasFiltradas) {
-    const COMISIONES = { uber: 0.44, pedidosYa: 0.18, didi: 0.18, bac: 0.0225 };
+    // Usar las comisiones que ya están calculadas en cada venta
+    let comisionUber = 0;
+    let comisionPedidosYa = 0;
+    let comisionDidi = 0;
+    let comisionDatafonos = 0;
     
-    const comisionUber = ventasFiltradas.reduce((sum, v) => sum + ((v.uber || 0) * COMISIONES.uber), 0);
-    const comisionPedidosYa = ventasFiltradas.reduce((sum, v) => sum + ((v.pedidosYa || 0) * COMISIONES.pedidosYa), 0);
-    const comisionDidi = ventasFiltradas.reduce((sum, v) => sum + ((v.didi || 0) * COMISIONES.didi), 0);
-    const comisionDatafonos = ventasFiltradas.reduce((sum, v) => sum + ((v.bac || 0) * COMISIONES.bac), 0);
+    ventasFiltradas.forEach(v => {
+        // Si la venta tiene el objeto comisiones, usarlo
+        if (v.comisiones) {
+            comisionUber += v.comisiones.uber || 0;
+            comisionPedidosYa += v.comisiones.pedidosYa || 0;
+            comisionDidi += v.comisiones.didi || 0;
+            comisionDatafonos += v.comisiones.bac || 0;
+        } else {
+            // Fallback: si no tiene comisiones, calcularlas (pero esto no debería pasar)
+            console.warn('⚠️ Venta sin comisiones calculadas:', v.id);
+            comisionUber += (v.uber || 0) * 0.44;
+            comisionPedidosYa += (v.pedidosYa || 0) * 0.18;
+            comisionDidi += (v.didi || 0) * 0.18;
+            comisionDatafonos += (v.bac || 0) * 0.0225;
+        }
+    });
+    
+    const total = comisionUber + comisionPedidosYa + comisionDidi + comisionDatafonos;
+    
+    console.log('📊 COMISIONES CALCULADAS:', {
+        uber: comisionUber,
+        pedidosYa: comisionPedidosYa,
+        didi: comisionDidi,
+        datafonos: comisionDatafonos,
+        total: total
+    });
     
     return {
         uber: comisionUber,
         pedidosYa: comisionPedidosYa,
         didi: comisionDidi,
         datafonos: comisionDatafonos,
-        total: comisionUber + comisionPedidosYa + comisionDidi + comisionDatafonos
+        total: total
     };
 }
 
@@ -467,8 +690,9 @@ function calcularReembolsoDelivery(ventasFiltradas) {
 }
 
 // ============================================
-// CALCULAR PAGO 10% (DESDE EL MÓDULO) - UNA SOLA VEZ
+// CALCULAR PAGO 10%
 // ============================================
+
 function calcularPago10DesdeModulo(ventasFiltradas, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin, diasPeriodo) {
     if (window.pagos10 && window.pagos10.length > 0 && window.obtenerTotalPago10) {
         const totalPago10 = window.obtenerTotalPago10(
@@ -503,7 +727,7 @@ function calcularMermas(mermasFiltradas) {
 }
 
 // ============================================
-// RENDERIZAR RESUMEN
+// RENDERIZAR RESUMEN (VERSIÓN COMPLETA CORREGIDA)
 // ============================================
 
 function renderResumen() {
@@ -536,7 +760,6 @@ function renderResumen() {
     
     const diasDelMes = getDiasDelMes(fechaBaseCostos);
     const mesTexto = formatearMesAnio(fechaBaseCostos);
-    const esVistaDiaria = (filtroTiempo === 'ayer' || filtroTiempo === 'personalizado' || filtroTiempo === 'rango');
     
     let periodo = { tipo: filtroTiempo, dias: 1 };
     let diasPeriodo = 30;
@@ -554,7 +777,6 @@ function renderResumen() {
         periodo.dias = 1;
         diasPeriodo = 1;
     } else {
-        // Para "todos", usar el mes base de costos para prorratear
         periodo.dias = diasDelMes;
         diasPeriodo = diasDelMes;
     }
@@ -573,35 +795,36 @@ function renderResumen() {
     const compras = window.comprasExternas || [];
     const facturas = window.facturacionBodegas || [];
     const mermas = window.mermas || [];
-    const servicios = window.serviciosData || {};
-    const costos = window.costosData || {};;
+    const costos = window.costosData || {};
 
-    const filtrarPorLocal = (item, local) => {
+    const filtrarPorLocalFn = (item, local) => {
         if (local === 'Todos') return true;
         return item.local === local;
     };
 
     const ventasFiltradas = ventas.filter(v => 
         filtrarPorFecha(v, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
-        filtrarPorLocal(v, filtroLocal)
+        filtrarPorLocalFn(v, filtroLocal)
     );
 
     const comprasFiltradas = compras.filter(c => 
         filtrarPorFecha(c, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
-        filtrarPorLocal(c, filtroLocal)
+        filtrarPorLocalFn(c, filtroLocal)
     );
     
     const facturasFiltradas = facturas.filter(f => 
         filtrarPorFecha(f, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
-        filtrarPorLocal(f, filtroLocal)
+        filtrarPorLocalFn(f, filtroLocal)
     );
     
     const mermasFiltradas = mermas.filter(m => 
         filtrarPorFecha(m, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) && 
-        filtrarPorLocal(m, filtroLocal)
+        filtrarPorLocalFn(m, filtroLocal)
     );
     
+    // ============================================
     // INGRESOS
+    // ============================================
     const totalVentas = ventasFiltradas.reduce((sum, v) => sum + (v.total || 0), 0);
     const ventaEfectivo = ventasFiltradas.reduce((sum, v) => sum + (v.efectivo || 0), 0);
     const ventaBAC = ventasFiltradas.reduce((sum, v) => sum + (v.bac || 0), 0);
@@ -610,18 +833,33 @@ function renderResumen() {
     const ventaDidi = ventasFiltradas.reduce((sum, v) => sum + (v.didi || 0), 0);
     const ventaPersonal = ventasFiltradas.reduce((sum, v) => sum + (v.personal || 0), 0);
     
+    // ============================================
     // GASTOS BASE
+    // ============================================
     const planillaCalc = calcularPlanilla(planilla, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
     const prestamosTotal = calcularPrestamos(prestamos, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
     const comisiones = calcularComisionesVentas(ventasFiltradas);
-    const reembolsoDelivery = 0;
     const pago10Result = calcularPago10DesdeModulo(ventasFiltradas, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin, diasPeriodo);
     const pago10 = pago10Result.total;
     const pago10PromedioDiario = pago10Result.promedioDiario;
     const costoMateriaPrima = calcularCostoMateriaPrima(comprasFiltradas);
     const facturacionBodegasTotal = calcularFacturacionBodegas(facturasFiltradas);
     const mermasTotal = calcularMermas(mermasFiltradas);
-    const serviciosCalc = calcularServicios(servicios, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin);
+    
+    // ============================================
+    // SERVICIOS (CORREGIDO - AHORA USA LOS DATOS DE window.serviciosData)
+    // ============================================
+    const serviciosCalc = calcularServicios(
+        filtroLocal,
+        filtroTiempo,
+        ayerStr,
+        mesActual,
+        anioActual,
+        fechaPersonalizada,
+        fechaInicio,
+        fechaFin
+    );
+    
     const costosFijos = calcularCostosFijos(
         costos,
         filtroLocal,
@@ -632,147 +870,173 @@ function renderResumen() {
     );
 
     // ============================================
-    // OBTENER GASTO DE PLANTA PRODUCCIÓN DESDE LOGÍSTICA
-    // ============================================
-    let gastoPlantaProduccion = 0;
-    
-    // Si el módulo de logística está disponible
-    if (typeof window.obtenerCostosLogistica === 'function' && window.costosData) {
-        try {
-            // Obtener costos mensuales de planta
-            const costosMensuales = window.obtenerCostosLogistica();
-            const totalPlantaMensual = costosMensuales.planta?.mensual || 0;
-            
-            // Obtener porcentaje de distribución para el local
-            let porcentajeLocal = 1;
-            
-            if (filtroLocal !== 'Todos') {
-                // Crear un periodo simulado para obtener porcentajes
-                const periodoSimulado = {
-                    tipo: filtroTiempo,
-                    dias: diasPeriodo,
-                    mesReferencia: fechaBaseCostos.getMonth() + 1,
-                    anioReferencia: fechaBaseCostos.getFullYear()
-                };
-                
-                if (typeof window.obtenerPorcentajesPorLocal === 'function') {
-                    const { porcentajes } = window.obtenerPorcentajesPorLocal(periodoSimulado);
-                    porcentajeLocal = porcentajes[filtroLocal] || 0;
-                }
-            }
-            
-            // Calcular gasto diario de planta * días del período * porcentaje del local
-            const gastoPlantaDiario = diasPeriodo > 0 ? totalPlantaMensual / diasPeriodo : 0;
-            gastoPlantaProduccion = gastoPlantaDiario * porcentajeLocal;
-            
-            console.log(`📊 Planta Producción para ${filtroLocal}: ₡${gastoPlantaProduccion.toLocaleString()}`);
-        } catch(e) {
-            console.warn('Error calculando gasto de planta:', e);
-        }
-    }
-
     // CARGAS SOCIALES
+    // ============================================
     const ccss = planillaCalc.total * 0.265;
     const cesantia = (planillaCalc.salarioBase + planillaCalc.horasExtras) * 0.0533;
-    const vacaciones = (planillaCalc.salarioBase) * 0.0416;
+    const vacaciones = planillaCalc.salarioBase * 0.0416;
     const aguinaldos = (planillaCalc.horasExtras + ccss) * 0.0833;
 
-    // =========================
+    // ============================================
     // GASTOS OPERATIVOS
-    // =========================
+    // ============================================
     let valorGas = 0;
-    if (filtroTiempo === 'mes' || filtroTiempo === 'rango') {
+    
+    if (filtroTiempo === 'mes' || filtroTiempo === 'todos' || filtroTiempo === 'rango') {
         valorGas = serviciosCalc.gasTotalPeriodo || 0;
     } else {
         valorGas = serviciosCalc.gasPromedioDiario || 0;
     }
 
-    const gastosOperativos = {
-        planillaBase: planillaCalc.salarioBase,
-        horasExtras: planillaCalc.horasExtras,
-        horasNocturnas: planillaCalc.nocturnas,
-        extrasNocturnas: planillaCalc.extrasNocturnas,
-        ccss,
-        cesantia,
-        vacaciones,
-        aguinaldos,
-        pago10Diario: pago10PromedioDiario,
-        arrendamiento: costosFijos.alquilerLocal || 0,
-        servicioElectrico: serviciosCalc.electricidad || 0,
-        servicioGas: valorGas,  // ✅ Usar el valor calculado
-        servicioAgua: serviciosCalc.agua || 0,
-        comprasProveedores: costoMateriaPrima || 0,
-        costoDiarioMateriaPrima: facturacionBodegasTotal || 0,
-        mermas: mermasTotal || 0,
-        prestamosEmpleados: prestamosTotal || 0
+    const getValorCostosFijos = (valorMensual) => {
+        if (!valorMensual) return 0;
+        if (filtroTiempo === 'mes' || filtroTiempo === 'todos' || filtroTiempo === 'rango') {
+            return valorMensual;
+        }
+        const dias = diasPeriodo || 30;
+        return valorMensual / dias;
     };
 
-    const totalGastosOperativos = Object.values(gastosOperativos).reduce((a, b) => a + (b || 0), 0);
+    const gastosOperativos = [
+        { label: 'Gasto x Nómina - Planilla Base', value: planillaCalc.salarioBase },
+        { label: 'Gasto x Nómina - Hrs Extras', value: planillaCalc.horasExtras },
+        { label: 'Gasto x Nómina - Horas Nocturnas', value: planillaCalc.nocturnas },
+        { label: 'Gasto x Nómina - Horas Extra Nocturnas', value: planillaCalc.extrasNocturnas },
+        { label: 'Gasto x CCSS - Planilla Base (26.5%)', value: ccss },
+        { label: 'Cesantía (5.33%)', value: cesantia },
+        { label: 'Ajuste Planilla (Préstamo Locales)', value: prestamosTotal },
+        { label: 'Gasto x Provisiones - Vacaciones (4.16%)', value: vacaciones },
+        { label: 'Gasto x Provisiones - Aguinaldos (8.33%)', value: aguinaldos },
+        { label: 'Gasto x Pago 10%', value: pago10PromedioDiario },
+        { label: 'Gasto x Arrendamiento', value: getValorCostosFijos(costosFijos.alquilerLocal || 0) },
+        { label: 'Caja Chica', value: 0 },
+        { label: 'Gasto x Servicio Eléctrico', value: serviciosCalc.electricidad || 0 },
+        { label: 'Gasto x Servicio Gas', value: valorGas },
+        { label: 'Gasto por Cortesía', value: 0 },
+        { label: 'Gasto x Servicio Agua', value: serviciosCalc.agua || 0 },
+        { label: 'TELEVISIÓN', value: getValorCostosFijos(costosFijos.televisionKolbi || 0) },
+        { label: 'Gasto x Servicio ADT', value: getValorCostosFijos(costosFijos.adt || 0) },
+        { label: 'Gasto x Servicio Fumigación', value: getValorCostosFijos(costosFijos.fumigacion || 0) },
+        { label: 'Gasto por Póliza RT', value: getValorCostosFijos(costosFijos.polizaRT || 0) },
+        { label: 'GASTO x SOFTWARE SECSA', value: getValorCostosFijos(costosFijos.secsa || 0) },
+        { label: 'GASTO por SOFTWARE SOFT-RESTAURANT', value: getValorCostosFijos(costosFijos.softRestaurant || 0) },
+        { label: 'GASTO por PATENTE COMERCIAL', value: getValorCostosFijos(costosFijos.patenteComercial || 0) },
+        { label: 'GASTO por PATENTE DE LICORES', value: getValorCostosFijos(costosFijos.patenteLicores || 0) },
+        { label: 'BASURA MUNICIPAL', value: getValorCostosFijos(costosFijos.basuraMunicipal || 0) },
+        { label: 'INTERESES POR MORA DE PATENTE', value: getValorCostosFijos(costosFijos.interesesMoraPatente || 0) },
+        { label: 'CERTIFICACIÓN DE GAS', value: getValorCostosFijos(costosFijos.certificacionGas || 0) },
+        { label: 'CERTIFICACIÓN ELÉCTRICA', value: getValorCostosFijos(costosFijos.certificacionElectrica || 0) },
+        { label: 'GASTO por RENOVACIÓN MINISTERIO DE SALUD', value: getValorCostosFijos(costosFijos.renovacionMinisterioSalud || 0) },
+        { label: 'Gasto x Comisión Datafonos (BAC)', value: comisiones.datafonos || 0 },
+        { label: 'GASTO x DEPRECIACIÓN DE ACTIVOS', value: getValorCostosFijos(costosFijos.depreciacionActivos || 0) },
+        { label: 'Gasto x comisión (UBER)', value: comisiones.uber || 0 },
+        { label: 'Gasto x comisión (PEDIDOS YA)', value: comisiones.pedidosYa || 0 },
+        { label: 'Gasto x Comisión (DIDI FOOD)', value: comisiones.didi || 0 },
+        { label: 'GASTO x COMPRA PROVEEDORES EXTERNOS', value: costoMateriaPrima || 0 },
+        { label: 'Gasto x Costo Diario (MATERIA PRIMA)', value: facturacionBodegasTotal || 0 },
+        { label: 'Gasto x Merma', value: mermasTotal || 0 },
+        { label: 'Reembolso Delivery', value: 0 },
+        { label: 'INTERNET-INTERNET', value: getValorCostosFijos(costosFijos.internetKolbi || 0) }
+    ];
 
-    // =========================
+    const totalGastosOperativos = gastosOperativos.reduce((sum, item) => sum + (item.value || 0), 0);
+
+    // ============================================
     // GASTOS ADMINISTRATIVOS & LOGÍSTICA
-    // =========================
-    const gastosAdminLogistica = {
-        secsa: costosFijos.secsa || 0,
-        softRestaurant: costosFijos.softRestaurant || 0,
-        internetKolbi: costosFijos.internetKolbi || 0,
-        televisionKolbi: costosFijos.televisionKolbi || 0,
-        adt: costosFijos.adt || 0,
-        fumigacion: costosFijos.fumigacion || 0,
-        polizaRT: costosFijos.polizaRT || 0,
-        depreciacionActivos: costosFijos.depreciacionActivos || 0,
-        patenteComercial: costosFijos.patenteComercial || 0,
-        patenteLicores: costosFijos.patenteLicores || 0,
-        basuraMunicipal: costosFijos.basuraMunicipal || 0,
-        interesesMoraPatente: costosFijos.interesesMoraPatente || 0,
-        certificacionGas: costosFijos.certificacionGas || 0,
-        certificacionElectrica: costosFijos.certificacionElectrica || 0,
-        renovacionMinisterioSalud: costosFijos.renovacionMinisterioSalud || 0,
-        asesoriaLegalRH: costosFijos.asesoriaLegalRH || 0,
-        honorariosContabilidad: costosFijos.honorariosContabilidad || 0,
-        publicidad: costosFijos.publicidad || 0,
-        otrosServiciosProfesionales: costosFijos.otrosServiciosProfesionales || 0,
-        gastoPlantaProduccion: gastoPlantaProduccion,   
-        comisionBAC: comisiones.datafonos || 0,
-        comisionUber: comisiones.uber || 0,
-        comisionPedidosYa: comisiones.pedidosYa || 0,
-        comisionDidi: comisiones.didi || 0
+    // ============================================
+    let porcentajeLocal = 1;
+    if (filtroLocal !== 'Todos' && filtroLocal !== 'Todos los locales') {
+        porcentajeLocal = obtenerPorcentajeLocal(filtroLocal);
+        console.log(`📊 Porcentaje para ${filtroLocal}: ${(porcentajeLocal * 100).toFixed(2)}%`);
+    }
+
+    const getValor = (valorMensual) => {
+        if (!valorMensual) return 0;
+        if (filtroTiempo === 'mes' || filtroTiempo === 'todos' || filtroTiempo === 'rango') {
+            return valorMensual * porcentajeLocal;
+        }
+        const dias = diasPeriodo || 30;
+        return (valorMensual / dias) * porcentajeLocal;
     };
 
-    const totalGastosAdminLogistica = Object.values(gastosAdminLogistica).reduce((a, b) => a + (b || 0), 0);
+    const gastosAdminLogistica = [
+        { label: 'Gasto x Honorarios Servicios Asesoria Legal RH', value: costosFijos.asesoriaLegalRH || 0 },
+        { label: 'Gasto x Honorarios Contabilidad', value: costosFijos.honorariosContabilidad || 0 },
+        { label: 'Gasto x Servicios Publicidad', value: costosFijos.publicidad || 0 },
+        { label: 'Gasto x Otros Servicios Profesionales', value: costosFijos.otrosServiciosProfesionales || 0 },
+        { label: 'Gasto x Planta Producción (Costos Fijos)', value: getValor(costosFijos.totalPlanta || 0) },
+        { label: 'Gasto x Oficinas (Costos Fijos)', value: getValor(costosFijos.totalOficinas || 0) },
+        { label: 'Gasto x Bodega & Transporte (Costos Fijos)', value: getValor(costosFijos.totalTransporte || 0) },
+        { label: 'Gasto x Planillas (SALARIOS LOGÍSTICA)', value: getValor(costosFijos.totalPlanillaLogistica || 0) }
+    ];
 
-    // =========================
+    const totalGastosAdminLogistica = gastosAdminLogistica.reduce((sum, item) => sum + (item.value || 0), 0);
+
+    // ============================================
     // TOTALES E IMPUESTOS
-    // =========================
+    // ============================================
     const totalGastos = totalGastosOperativos + totalGastosAdminLogistica;
     const utilidadAntesImpuestos = totalVentas - totalGastos;
-    const iva = totalVentas * 0.13;
+
+    const iva = costosFijos.iva || costosFijos.haciendaIVA || 0;
+    console.log(`📊 IVA desde costos fijos: ₡${iva}`);
+
     const retencionTarjetaVenta = ventaBAC * 0.0531;
+    const retencionTarjetaRenta = ventaBAC * 0.0171;
+
+    console.log(`📊 ventaBAC: ₡${ventaBAC.toLocaleString()}`);
+    console.log(`📊 Retención Tarjeta (5.31%): ₡${retencionTarjetaVenta.toLocaleString()}`);
+    console.log(`📊 Retención Tarjeta (1.71%): ₡${retencionTarjetaRenta.toLocaleString()}`);
+
     const utilidadAntesRenta = utilidadAntesImpuestos - iva - retencionTarjetaVenta;
     const impuestoRenta = utilidadAntesRenta > 0 ? utilidadAntesRenta * 0.30 : 0;
-    const retencionTarjetaRenta = ventaBAC * 0.0171;
-    const utilidadNeta = Math.round((utilidadAntesRenta - impuestoRenta - retencionTarjetaRenta) * 1000) / 1000;
+    const utilidadDespuesRenta = utilidadAntesRenta - impuestoRenta;
+    const utilidadNeta = utilidadDespuesRenta - retencionTarjetaRenta;
     const margenUtilidad = totalVentas > 0 ? ((totalVentas - totalGastos) / totalVentas) * 100 : 0;
 
+    const esUtilidad = utilidadNeta >= 0;
+    const tipoResultado = esUtilidad ? 'UTILIDAD' : 'PÉRDIDA';
+
+    console.log('📊 Resumen de utilidades:', {
+        totalVentas,
+        totalGastos,
+        totalGastosOperativos,
+        totalGastosAdminLogistica,
+        utilidadAntesImpuestos,
+        iva,
+        retencionTarjetaVenta,
+        utilidadAntesRenta,
+        impuestoRenta,
+        utilidadDespuesRenta,
+        retencionTarjetaRenta,
+        utilidadNeta
+    });
+
+    // ============================================
+    // FUNCIONES DE FORMATO
+    // ============================================
     const porcentaje = (valor, base = totalVentas) => base > 0 ? ((valor / base) * 100).toFixed(2) : '0.00';
     const money = (n) => `₡${Math.round(n || 0).toLocaleString()}`;
 
     const fila = (label, value, percent = true, extraStyle = '') => `
         <tr style="${extraStyle}">
-            <td style="padding: 11px 20px 11px 40px;">${label}</td>
-            <td style="padding: 11px 20px; text-align: right; font-weight: 600;">${money(value)}</td>
-            <td style="padding: 11px 20px; text-align: right; color: #64748b; font-weight: 600;">${percent ? porcentaje(value) + '%' : '—'}</td>
+            <td style="padding: 8px 20px 8px 40px; font-size: 0.9rem; color: #334155;">${label}</td>
+            <td style="padding: 8px 20px; text-align: right; font-weight: 600;">${money(value)}</td>
+            <td style="padding: 8px 20px; text-align: right; color: #64748b; font-weight: 600;">${percent ? porcentaje(value) + '%' : '—'}</td>
         </tr>
     `;
 
     const filaTotal = (label, value, bg, color) => `
         <tr style="background:${bg}; font-weight:800; border-top:2px solid #e2e8f0;">
-            <td style="padding: 14px 20px;">${label}</td>
-            <td style="padding: 14px 20px; text-align: right; color:${color}; font-weight:800;">${money(value)}</td>
-            <td style="padding: 14px 20px; text-align: right; color:${color}; font-weight:800;">${porcentaje(value)}%</td>
+            <td style="padding: 12px 20px;">${label}</td>
+            <td style="padding: 12px 20px; text-align: right; color:${color}; font-weight:800;">${money(value)}</td>
+            <td style="padding: 12px 20px; text-align: right; color:${color}; font-weight:800;">${porcentaje(value)}%</td>
         </tr>
     `;
 
+    // ============================================
+    // CONSTRUIR HTML
+    // ============================================
     let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
             <div>
@@ -784,95 +1048,11 @@ function renderResumen() {
                 </h2>
                 <p style="margin:6px 0 0 58px; color:#64748b;">Estado de resultados y análisis financiero</p>
             </div>
-
             <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; color:#334155; font-weight:700;">
                 <i class="fas fa-calendar-alt"></i> ${periodoTexto}
             </div>
         </div>
-    `;
 
-    // =========================
-    // DASHBOARD SUPERIOR
-    // =========================
-    html += `
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:26px;">
-            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #86efac;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:0.85rem; color:#15803d; font-weight:700;">Ingresos Totales</div>
-                        <div style="font-size:1.9rem; font-weight:900; color:#166534; margin-top:8px;">${money(totalVentas)}</div>
-                    </div>
-                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(34,197,94,0.15); display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-arrow-up" style="font-size:1.3rem; color:#16a34a;"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1px solid #fca5a5;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:0.85rem; color:#b91c1c; font-weight:700;">Gastos Totales</div>
-                        <div style="font-size:1.9rem; font-weight:900; color:#991b1b; margin-top:8px;">${money(totalGastos)}</div>
-                    </div>
-                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-arrow-down" style="font-size:1.3rem; color:#dc2626;"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1px solid #93c5fd;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:0.85rem; color:#1d4ed8; font-weight:700;">Utilidad Neta</div>
-                        <div style="font-size:1.9rem; font-weight:900; color:${utilidadNeta >= 0 ? '#1d4ed8' : '#b91c1c'}; margin-top:8px;">${money(utilidadNeta)}</div>
-                    </div>
-                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-coins" style="font-size:1.3rem; color:#2563eb;"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="border-radius:24px; padding:22px; background:linear-gradient(135deg,#faf5ff,#ede9fe); border:1px solid #c4b5fd;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:0.85rem; color:#7c3aed; font-weight:700;">Margen</div>
-                        <div style="font-size:1.9rem; font-weight:900; color:#6d28d9; margin-top:8px;">${margenUtilidad.toFixed(2)}%</div>
-                    </div>
-                    <div style="width:52px; height:52px; border-radius:18px; background:rgba(139,92,246,0.15); display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-percent" style="font-size:1.3rem; color:#7c3aed;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:28px;">
-            <div class="card" style="border-radius:18px; padding:18px; background:#fff7ed; border:1px solid #fdba74;">
-                <div style="font-size:0.82rem; color:#c2410c; font-weight:700;">Pago 10% Diario</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#9a3412; margin-top:6px;">${money(pago10PromedioDiario)}</div>
-            </div>
-            <div class="card" style="border-radius:18px; padding:18px; background:#fefce8; border:1px solid #fde047;">
-                <div style="font-size:0.82rem; color:#a16207; font-weight:700;">Servicios Totales</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#854d0e; margin-top:6px;">${money(serviciosCalc.total)}</div>
-            </div>
-            <div class="card" style="border-radius:18px; padding:18px; background:#fff1f2; border:1px solid #fda4af;">
-                <div style="font-size:0.82rem; color:#be123c; font-weight:700;">Gas Diario</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#9f1239; margin-top:6px;">${money(serviciosCalc.gasPromedioDiario)}</div>
-            </div>
-            <div class="card" style="border-radius:18px; padding:18px; background:#ecfdf5; border:1px solid #86efac;">
-                <div style="font-size:0.82rem; color:#15803d; font-weight:700;">Materia Prima</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#166534; margin-top:6px;">${money(costoMateriaPrima)}</div>
-            </div>
-            <div class="card" style="border-radius:18px; padding:18px; background:#eff6ff; border:1px solid #93c5fd;">
-                <div style="font-size:0.82rem; color:#1d4ed8; font-weight:700;">Comisiones</div>
-                <div style="font-size:1.35rem; font-weight:900; color:#1e40af; margin-top:6px;">${money(comisiones.total)}</div>
-            </div>
-        </div>
-    `;
-
-    // =========================
-    // TABLA PRINCIPAL
-    // =========================
-    html += `
         <div class="card" style="border-radius:28px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 16px 40px rgba(15,23,42,0.08);">
             <div style="padding:22px 24px; background:linear-gradient(135deg,#ffffff,#f8fafc); border-bottom:1px solid #e2e8f0;">
                 <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
@@ -894,6 +1074,7 @@ function renderResumen() {
                         </tr>
                     </thead>
 
+                    <!-- INGRESOS -->
                     <thead>
                         <tr style="background:#ecfdf5;">
                             <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #bbf7d0;">
@@ -904,13 +1085,14 @@ function renderResumen() {
                     <tbody>
                         ${fila('Ingreso x Venta (EFECTIVO)', ventaEfectivo)}
                         ${fila('Ingreso x Venta (BAC)', ventaBAC)}
-                        ${fila('Ingreso x Venta (UBER)', ventaUber)}
-                        ${fila('Ingreso x Venta (PEDIDOS YA)', ventaPedidosYa)}
+                        ${fila('Ingreso x venta (uber)', ventaUber)}
+                        ${fila('Ingreso x venta (pedidos ya)', ventaPedidosYa)}
                         ${fila('Ingreso x Venta (DIDI FOOD)', ventaDidi)}
                         ${fila('Ingreso x Venta (PERSONAL)', ventaPersonal)}
                         ${filaTotal('TOTAL GENERAL INGRESOS', totalVentas, '#f0fdf4', '#166534')}
                     </tbody>
 
+                    <!-- GASTOS OPERATIVOS -->
                     <thead>
                         <tr style="background:#fff7ed;">
                             <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #fdba74;">
@@ -919,26 +1101,11 @@ function renderResumen() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${fila('Gasto x Nómina - Planilla Base', gastosOperativos.planillaBase)}
-                        ${fila('Gasto x Nómina - Horas Extras', gastosOperativos.horasExtras)}
-                        ${fila('Gasto x Nómina - Horas Nocturnas', gastosOperativos.horasNocturnas)}
-                        ${fila('Gasto x Nómina - Horas Extra Nocturnas', gastosOperativos.extrasNocturnas)}
-                        ${fila('Gasto x CCSS (26.5%)', gastosOperativos.ccss)}
-                        ${fila('Cesantía (5.33%)', gastosOperativos.cesantia)}
-                        ${fila('Vacaciones (4.16%)', gastosOperativos.vacaciones)}
-                        ${fila('Aguinaldos (8.33%)', gastosOperativos.aguinaldos)}
-                        ${fila('Gasto x Pago 10%', gastosOperativos.pago10Diario)}
-                        ${fila('Gasto x Arrendamiento', gastosOperativos.arrendamiento)}
-                        ${fila('Gasto x Servicio Eléctrico', gastosOperativos.servicioElectrico)}
-                        ${fila('Gasto x Servicio Gas', gastosOperativos.servicioGas)}
-                        ${fila('Gasto x Servicio Agua', gastosOperativos.servicioAgua)}
-                        ${fila('GASTO x COMPRA PROVEEDORES', gastosOperativos.comprasProveedores)}
-                        ${fila('Gasto x Costo Diario (MATERIA PRIMA)', gastosOperativos.costoDiarioMateriaPrima)}
-                        ${fila('Gasto x Merma', gastosOperativos.mermas)}
-                        ${fila('Préstamos a Empleados', gastosOperativos.prestamosEmpleados)}
+                        ${gastosOperativos.map(item => fila(item.label, item.value)).join('')}
                         ${filaTotal('TOTAL GASTOS OPERATIVOS', totalGastosOperativos, '#fff7ed', '#c2410c')}
                     </tbody>
 
+                    <!-- GASTOS ADMINISTRATIVOS & LOGÍSTICA -->
                     <thead>
                         <tr style="background:#eff6ff;">
                             <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #93c5fd;">
@@ -947,33 +1114,11 @@ function renderResumen() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${fila('GASTO x SOFTWARE SECSA', gastosAdminLogistica.secsa)}
-                        ${fila('GASTO x SOFT-RESTAURANT', gastosAdminLogistica.softRestaurant)}
-                        ${fila('INTERNET', gastosAdminLogistica.internetKolbi)}
-                        ${fila('TELEVISIÓN', gastosAdminLogistica.televisionKolbi)}
-                        ${fila('Gasto x Servicio ADT', gastosAdminLogistica.adt)}
-                        ${fila('Gasto x Servicio Fumigación', gastosAdminLogistica.fumigacion)}
-                        ${fila('Gasto x Póliza RT', gastosAdminLogistica.polizaRT)}
-                        ${fila('GASTO x DEPRECIACION ACTIVOS', gastosAdminLogistica.depreciacionActivos)}
-                        ${fila('GASTO x PATENTE COMERCIAL', gastosAdminLogistica.patenteComercial)}
-                        ${fila('GASTO x PATENTE LICORES', gastosAdminLogistica.patenteLicores)}
-                        ${fila('BASURA MUNICIPAL', gastosAdminLogistica.basuraMunicipal)}
-                        ${fila('INTERESES x MORA PATENTE', gastosAdminLogistica.interesesMoraPatente)}
-                        ${fila('CERTIFICACION DE GAS', gastosAdminLogistica.certificacionGas)}
-                        ${fila('CERTIFICACION ELECTRICA', gastosAdminLogistica.certificacionElectrica)}
-                        ${fila('GASTO x RENOVACIÓN MINISTERIO DE SALUD', gastosAdminLogistica.renovacionMinisterioSalud)}
-                        ${fila('ASESORIA LEGAL RH', gastosAdminLogistica.asesoriaLegalRH)}
-                        ${fila('Honorarios Contabilidad', gastosAdminLogistica.honorariosContabilidad)}
-                        ${fila('SERV. PROF PUBLICIDAD', gastosAdminLogistica.publicidad)}
-                        ${fila('OTROS SERVICIOS PROFESIONALES', gastosAdminLogistica.otrosServiciosProfesionales)}
-                        ${fila('GASTO x PLANTA PRODUCCIÓN', gastosAdminLogistica.gastoPlantaProduccion)}
-                        ${fila('Gasto x Comisión Datafonos (BAC)', gastosAdminLogistica.comisionBAC)}
-                        ${fila('Gasto x Comisión (UBER)', gastosAdminLogistica.comisionUber)}
-                        ${fila('Gasto x Comisión (PEDIDOS YA)', gastosAdminLogistica.comisionPedidosYa)}
-                        ${fila('Gasto x Comisión (DIDI FOOD)', gastosAdminLogistica.comisionDidi)}
+                        ${gastosAdminLogistica.map(item => fila(item.label, item.value)).join('')}
                         ${filaTotal('TOTAL GASTOS ADMINISTRATIVOS & LOGÍSTICA', totalGastosAdminLogistica, '#eff6ff', '#1d4ed8')}
                     </tbody>
 
+                    <!-- IMPUESTOS Y RETENCIONES -->
                     <thead>
                         <tr style="background:#fef2f2;">
                             <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #fca5a5;">
@@ -983,14 +1128,89 @@ function renderResumen() {
                     </thead>
                     <tbody>
                         ${filaTotal('TOTAL GENERAL GASTOS', totalGastos, '#fef2f2', '#b91c1c')}
-                        ${fila('Utilidad Antes de Impuestos', utilidadAntesImpuestos)}
-                        ${fila('IVA (Impuesto Valor Agregado)', iva)}
-                        ${fila('Retención de tarjeta (5.31%) - imp venta', retencionTarjetaVenta)}
-                        ${fila('Utilidad antes del impuesto de renta', utilidadAntesRenta)}
-                        ${fila('Impuesto de Renta (30%)', impuestoRenta)}
-                        ${fila('Retención de tarjeta (1.71%) - imp renta', retencionTarjetaRenta)}
+                        
+                        <tr style="border-top:2px solid #e2e8f0;">
+                            <td style="padding:12px 20px; font-weight:700;">Utilidad Antes de Impuestos a la Utilidad</td>
+                            <td style="padding:12px 20px; text-align:right; font-weight:700; color:${utilidadAntesImpuestos >= 0 ? '#166534' : '#b91c1c'};">
+                                ${money(utilidadAntesImpuestos)}
+                            </td>
+                            <td style="padding:12px 20px; text-align:right; color:#64748b;">
+                                ${porcentaje(utilidadAntesImpuestos)}%
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td style="padding:8px 20px 8px 40px; font-size:0.9rem; color:#64748b;">
+                                <i class="fas fa-minus" style="color:#dc2626; margin-right:8px;"></i> IVA (Impuesto Valor Agregado)
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                -${money(iva)}
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                ${porcentaje(iva)}%
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td style="padding:8px 20px 8px 40px; font-size:0.9rem; color:#64748b;">
+                                <i class="fas fa-minus" style="color:#dc2626; margin-right:8px;"></i> Retención de tarjeta (5.31%)
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                -${money(retencionTarjetaVenta)}
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                ${porcentaje(retencionTarjetaVenta)}%
+                            </td>
+                        </tr>
+                        
+                        <tr style="background:#fefce8; border-top:1px solid #fde047;">
+                            <td style="padding:12px 20px; font-weight:700;">Utilidad Antes de Renta</td>
+                            <td style="padding:12px 20px; text-align:right; font-weight:700; color:${utilidadAntesRenta >= 0 ? '#854d0e' : '#b91c1c'};">
+                                ${money(utilidadAntesRenta)}
+                            </td>
+                            <td style="padding:12px 20px; text-align:right; color:#854d0e;">
+                                ${porcentaje(utilidadAntesRenta)}%
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td style="padding:8px 20px 8px 40px; font-size:0.9rem; color:#64748b;">
+                                <i class="fas fa-minus" style="color:#dc2626; margin-right:8px;"></i> 
+                                Impuesto de Renta (30%) ${impuestoRenta === 0 ? '<span style="color:#64748b; font-size:0.8rem;"></span>' : ''}
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                ${impuestoRenta > 0 ? `-${money(impuestoRenta)}` : '₡0'}
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                ${impuestoRenta > 0 ? porcentaje(impuestoRenta) + '%' : '0%'}
+                            </td>
+                        </tr>
+
+                        <tr style="background:#fefce8; border-top:1px solid #fde047;">
+                            <td style="padding:12px 20px; font-weight:700;">Utilidad o pérdida después de Impuesto de Renta</td>
+                            <td style="padding:12px 20px; text-align:right; font-weight:700; color:${(utilidadAntesRenta - impuestoRenta) >= 0 ? '#854d0e' : '#b91c1c'};">
+                                ${money(utilidadAntesRenta - impuestoRenta)}
+                            </td>
+                            <td style="padding:12px 20px; text-align:right; color:#854d0e;">
+                                ${porcentaje(utilidadAntesRenta - impuestoRenta)}%
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="padding:8px 20px 8px 40px; font-size:0.9rem; color:#64748b;">
+                                <i class="fas fa-minus" style="color:#dc2626; margin-right:8px;"></i> 
+                                Retención de tarjeta (1.71%)
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                -${money(retencionTarjetaRenta)}
+                            </td>
+                            <td style="padding:8px 20px; text-align:right; font-size:0.9rem; color:#64748b;">
+                                ${porcentaje(retencionTarjetaRenta)}%
+                            </td>
+                        </tr>
                     </tbody>
 
+                    <!-- RESULTADO FINAL -->
                     <thead>
                         <tr style="background:#f0fdf4;">
                             <th colspan="3" style="padding:15px 20px; text-align:left; font-size:1rem; border-bottom:2px solid #86efac;">
@@ -999,15 +1219,27 @@ function renderResumen() {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr style="background:#f0fdf4;">
-                            <td style="padding:18px 20px; font-weight:900; font-size:1.08rem;">UTILIDAD O PÉRDIDA NETA</td>
-                            <td style="padding:18px 20px; text-align:right; font-weight:900; font-size:1.08rem; color:${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">${money(utilidadNeta)}</td>
-                            <td style="padding:18px 20px; text-align:right; font-weight:900; font-size:1.08rem; color:${utilidadNeta >= 0 ? '#166534' : '#b91c1c'};">${margenUtilidad.toFixed(2)}%</td>
+                        <tr style="background:${esUtilidad ? '#f0fdf4' : '#fef2f2'}; border-top:3px solid ${esUtilidad ? '#86efac' : '#fca5a5'};">
+                            <td style="padding:18px 20px; font-weight:900; font-size:1.1rem;">
+                                ${tipoResultado} NETA ${esUtilidad ? '💰' : '⚠️'}
+                            </td>
+                            <td style="padding:18px 20px; text-align:right; font-weight:900; font-size:1.1rem; color:${esUtilidad ? '#166534' : '#b91c1c'};">
+                                ${money(utilidadNeta)}
+                            </td>
+                            <td style="padding:18px 20px; text-align:right; font-weight:700; font-size:1.1rem; color:${esUtilidad ? '#166534' : '#b91c1c'};">
+                                ${porcentaje(utilidadNeta)}%
+                            </td>
                         </tr>
                         <tr>
-                            <td style="padding:12px 20px;">Margen de Utilidad</td>
-                            <td style="padding:12px 20px; text-align:right; font-weight:700;">${margenUtilidad.toFixed(2)}%</td>
-                            <td style="padding:12px 20px; text-align:right; color:#64748b;">sobre ingresos</td>
+                            <td style="padding:12px 20px; color:#64748b; font-size:0.9rem;">
+                                <i class="fas fa-info-circle" style="margin-right:8px;"></i> Margen de Utilidad (sobre ingresos)
+                            </td>
+                            <td style="padding:12px 20px; text-align:right; font-weight:600; color:#64748b;">
+                                ${margenUtilidad.toFixed(2)}%
+                            </td>
+                            <td style="padding:12px 20px; text-align:right; color:#94a3b8; font-size:0.8rem;">
+                                antes de impuestos
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -1026,49 +1258,44 @@ function renderResumen() {
 // ============================================
 // OBTENER COSTOS DE PLANTA PARA RESUMEN
 // ============================================
+
 function getCostosPlantaParaResumen(localNombre) {
-    // Si no hay datos de costos, devolver 0
     if (!window.costosData) return { electricidad: 0, agua: 0, adt: 0, total: 0 };
     
     const costosData = window.costosData;
     const periodo = obtenerPeriodoActual();
     const dias = periodo.dias;
     
-    // Obtener porcentajes de distribución
     const { porcentajes } = obtenerPorcentajesPorLocal(periodo);
     const pct = porcentajes[localNombre] || 0;
     
-    // Obtener costos mensuales de planta
     let electricidadMensual = 0;
     let aguaMensual = 0;
     let adtMensual = 0;
     
-    // Buscar en la estructura de costosData
     Object.keys(costosData).forEach(categoriaFirebase => {
         const subCategorias = costosData[categoriaFirebase];
         
         Object.keys(subCategorias).forEach(subCategoria => {
             if (subCategoria === 'planta') {
                 const costosArray = subCategorias[subCategoria];
-                if (Array.isArray(costosArray)) {
-                    costosArray.forEach(costo => {
-                        const concepto = (costo.concepto || '').toLowerCase();
-                        const monto = costo.monto || 0;
-                        
-                        if (concepto.includes('electricidad')) {
-                            electricidadMensual += monto;
-                        } else if (concepto.includes('agua')) {
-                            aguaMensual += monto;
-                        } else if (concepto.includes('adt') || concepto.includes('alarma')) {
-                            adtMensual += monto;
-                        }
-                    });
-                }
+                if (!Array.isArray(costosArray)) return;
+                costosArray.forEach(costo => {
+                    const concepto = (costo.concepto || '').toLowerCase();
+                    const monto = costo.monto || 0;
+                    
+                    if (concepto.includes('electricidad')) {
+                        electricidadMensual += monto;
+                    } else if (concepto.includes('agua')) {
+                        aguaMensual += monto;
+                    } else if (concepto.includes('adt') || concepto.includes('alarma')) {
+                        adtMensual += monto;
+                    }
+                });
             }
         });
     });
     
-    // Calcular valor diario según el período y aplicar porcentaje del local
     const electricidadDiaria = dias > 0 ? (electricidadMensual / dias) * pct : 0;
     const aguaDiaria = dias > 0 ? (aguaMensual / dias) * pct : 0;
     const adtDiaria = dias > 0 ? (adtMensual / dias) * pct : 0;
@@ -1082,8 +1309,166 @@ function getCostosPlantaParaResumen(localNombre) {
 }
 
 // ============================================
+// OBTENER COSTOS DE LOGÍSTICA POR LOCAL
+// ============================================
+
+function getCostosLogisticaPorLocal(localNombre, costosFijos, periodo) {
+    if (!costosFijos || !localNombre) {
+        return { planta: 0, oficinas: 0, transporte: 0, planilla: 0, total: 0 };
+    }
+
+    let porcentajeLocal = 0;
+    
+    const porcentajesManuales = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
+    if (Object.keys(porcentajesManuales).length > 0) {
+        porcentajeLocal = (porcentajesManuales[localNombre] || 0) / 100;
+    } else {
+        try {
+            const { porcentajes } = window.obtenerPorcentajesPorLocal(periodo);
+            porcentajeLocal = porcentajes[localNombre] || 0;
+        } catch(e) {
+            console.warn('Error obteniendo porcentaje de logística:', e);
+            const localesCount = AppState?.locales?.length || 1;
+            porcentajeLocal = 1 / localesCount;
+        }
+    }
+
+    const dias = periodo?.dias || 30;
+
+    const planta = (costosFijos.totalPlanta || 0) / dias * porcentajeLocal;
+    const oficinas = (costosFijos.totalOficinas || 0) / dias * porcentajeLocal;
+    const transporte = (costosFijos.totalTransporte || 0) / dias * porcentajeLocal;
+    const planilla = (costosFijos.totalPlanillaLogistica || 0) / dias * porcentajeLocal;
+
+    console.log(`📊 Costos Logística para ${localNombre}:`, {
+        porcentaje: porcentajeLocal * 100 + '%',
+        planta: planta,
+        oficinas: oficinas,
+        transporte: transporte,
+        planilla: planilla,
+        total: planta + oficinas + transporte + planilla
+    });
+
+    return {
+        planta,
+        oficinas,
+        transporte,
+        planilla,
+        total: planta + oficinas + transporte + planilla
+    };
+}
+
+// ============================================
+// OBTENER PORCENTAJE DEL LOCAL
+// ============================================
+
+function obtenerPorcentajeLocal(localNombre) {
+    if (!localNombre) return 0;
+    
+    const porcentajesManuales = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
+    if (Object.keys(porcentajesManuales).length > 0) {
+        return (porcentajesManuales[localNombre] || 0) / 100;
+    }
+    
+    try {
+        const periodo = {
+            tipo: 'mes',
+            dias: 30,
+            valor: new Date().toISOString().substring(0, 7)
+        };
+        if (typeof window.obtenerPorcentajesPorLocal === 'function') {
+            const { porcentajes } = window.obtenerPorcentajesPorLocal(periodo);
+            return porcentajes[localNombre] || 0;
+        }
+    } catch(e) {
+        console.warn('Error obteniendo porcentaje de logística:', e);
+    }
+    
+    const localesCount = AppState?.locales?.length || 1;
+    return 1 / localesCount;
+}
+
+// ============================================
+// OBTENER VALOR DE COSTO SEGÚN PERÍODO
+// ============================================
+
+function getValorSegunPeriodo(valorMensual, filtroTiempo, diasPeriodo) {
+    if (!valorMensual) return 0;
+    
+    if (filtroTiempo === 'mes' || filtroTiempo === 'todos') {
+        return valorMensual;
+    }
+    
+    const dias = diasPeriodo || 30;
+    return valorMensual / dias;
+}
+
+// ============================================
+// OBTENER PERÍODO ACTUAL
+// ============================================
+
+function obtenerPeriodoActual() {
+    const filtroTiempo = AppState?.filtros?.tiempo || 'todos';
+    const fechaPersonalizada = AppState?.filtros?.fechaPersonalizada;
+    const fechaInicio = AppState?.filtros?.fechaInicio;
+    const fechaFin = AppState?.filtros?.fechaFin;
+    
+    const hoy = new Date();
+    let dias = 30;
+    let valor = hoy.toISOString().substring(0, 7);
+    
+    if (filtroTiempo === 'mes') {
+        const fechaBase = fechaPersonalizada ? parseFechaDDMMYYYY(fechaPersonalizada) : hoy;
+        dias = getDiasDelMes(fechaBase);
+        valor = fechaBase.toISOString().substring(0, 7);
+    } else if (filtroTiempo === 'rango' && fechaInicio && fechaFin) {
+        const inicio = new Date(fechaInicio + 'T12:00:00');
+        const fin = new Date(fechaFin + 'T12:00:00');
+        const diffTime = Math.abs(fin - inicio);
+        dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        valor = `${fechaInicio}_${fechaFin}`;
+    } else if (filtroTiempo === 'ayer') {
+        dias = 1;
+        const ayer = new Date(hoy);
+        ayer.setDate(ayer.getDate() - 1);
+        valor = ayer.toISOString().substring(0, 7);
+    } else if (filtroTiempo === 'personalizado') {
+        dias = 1;
+        valor = fechaPersonalizada || hoy.toISOString().substring(0, 7);
+    }
+    
+    return { tipo: filtroTiempo, dias, valor };
+}
+
+// ============================================
+// OBTENER PORCENTAJES POR LOCAL
+// ============================================
+
+function obtenerPorcentajesPorLocal(periodo) {
+    const locales = AppState?.locales || [];
+    const resultados = {};
+    let total = 0;
+    
+    locales.forEach(local => {
+        const pct = obtenerPorcentajeLocal(local.nombre);
+        resultados[local.nombre] = pct;
+        total += pct;
+    });
+    
+    // Normalizar para que sumen 1
+    if (total > 0) {
+        Object.keys(resultados).forEach(key => {
+            resultados[key] = resultados[key] / total;
+        });
+    }
+    
+    return { porcentajes: resultados, total: total };
+}
+
+// ============================================
 // INICIALIZAR
 // ============================================
+
 function initResumen() {
     console.log('🚀 Inicializando módulo de Resumen...');
     setTimeout(() => {
@@ -1098,8 +1483,14 @@ function initResumen() {
 // ============================================
 // EXPORTAR
 // ============================================
+
 window.initResumen = initResumen;
 window.renderResumen = renderResumen;
 window.getCostosPlantaParaResumen = getCostosPlantaParaResumen;
+window.getCostosLogisticaPorLocal = getCostosLogisticaPorLocal;
+window.obtenerPorcentajeLocal = obtenerPorcentajeLocal;
+window.getValorSegunPeriodo = getValorSegunPeriodo;
+window.obtenerServiciosData = obtenerServiciosData;
+window.calcularServicios = calcularServicios;
 
-console.log('✅ resumen.js cargado - Versión corregida');
+console.log('✅ resumen.js');
