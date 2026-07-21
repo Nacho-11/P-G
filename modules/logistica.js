@@ -1,5 +1,4 @@
-// modules/logistica.js - VERSIÓN CORREGIDA CON CÁLCULO POR MES
-
+// modules/logistica.js - VERSIÓN CORREGIDA CON FIREBASE
 console.log('🚚 Cargando módulo de Logística...');
 
 function formatearFechaCR(fechaStr) {
@@ -66,7 +65,7 @@ function initLogistica() {
 }
 
 // ============================================
-// CARGAR FACTURACIÓN DE BODEGAS (SOLO LECTURA)
+// CARGAR FACTURACIÓN DE BODEGAS
 // ============================================
 function cargarFacturacionBodegas() {
     console.log('📥 Cargando facturación de bodegas...');
@@ -82,7 +81,6 @@ function cargarFacturacionBodegas() {
                     ...data[key] 
                 });
             });
-            
             facturacionBodegas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
         }
         
@@ -95,7 +93,7 @@ function cargarFacturacionBodegas() {
 }
 
 // ============================================
-// OBTENER COSTOS FIJOS DESDE COSTOSDATA (MENSUALES)
+// OBTENER COSTOS FIJOS DESDE COSTOSDATA
 // ============================================
 function obtenerCostosLogistica() {
     const costosData = window.costosData || {};
@@ -106,16 +104,11 @@ function obtenerCostosLogistica() {
         planilla: { mensual: 0, diario: 0, items: [] }
     };
     
-    console.log('📊 costosData recibido:', costosData);
-    
     Object.keys(costosData).forEach(categoriaFirebase => {
         const subCategorias = costosData[categoriaFirebase];
-        
         Object.keys(subCategorias).forEach(subCategoria => {
             const costosArray = subCategorias[subCategoria];
             if (!Array.isArray(costosArray)) return;
-            
-            console.log(`📂 Categoría: ${categoriaFirebase}/${subCategoria} - ${costosArray.length} costos`);
             
             costosArray.forEach(costo => {
                 const monto = costo.monto || 0;
@@ -137,31 +130,52 @@ function obtenerCostosLogistica() {
         });
     });
     
-    console.log('📊 Costos mensuales calculados:', {
-        planta: resultado.planta.mensual,
-        oficinas: resultado.oficinas.mensual,
-        transporte: resultado.transporte.mensual,
-        planilla: resultado.planilla.mensual
-    });
-    
     return resultado;
 }
 
 // ============================================
-// OBTENER PORCENTAJES (MANUALES O DESDE FACTURACIÓN)
+// OBTENER PORCENTAJES (DESDE FIREBASE)
 // ============================================
-function obtenerPorcentajesPorLocal(periodo) {
-    const porcentajesManuales = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
-    
-    if (Object.keys(porcentajesManuales).length > 0) {
-        console.log('📊 Usando porcentajes manuales:', porcentajesManuales);
-        const porcentajes = {};
-        Object.keys(porcentajesManuales).forEach(local => {
-            porcentajes[local] = porcentajesManuales[local] / 100;
-        });
-        return { porcentajes, totalFacturacion: 0, facturacionPeriodo: [], esManual: true };
+async function obtenerPorcentajesPorLocal(periodo) {
+    // Intentar cargar desde Firebase
+    let porcentajesFirebase = null;
+    try {
+        const snapshot = await firebase.database().ref('configuracion/logistica/porcentajes').once('value');
+        porcentajesFirebase = snapshot.val();
+        if (porcentajesFirebase && Object.keys(porcentajesFirebase).length > 0) {
+            console.log('📊 Porcentajes cargados desde Firebase:', porcentajesFirebase);
+            localStorage.setItem('porcentajesLogistica', JSON.stringify(porcentajesFirebase));
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudieron cargar porcentajes desde Firebase:', error);
     }
-    
+
+    // Si no hay en Firebase, buscar en localStorage
+    let porcentajesManuales = null;
+    if (!porcentajesFirebase || Object.keys(porcentajesFirebase).length === 0) {
+        porcentajesManuales = JSON.parse(localStorage.getItem('porcentajesLogistica')) || {};
+        if (Object.keys(porcentajesManuales).length > 0) {
+            console.log('📊 Usando porcentajes desde localStorage:', porcentajesManuales);
+        }
+    }
+
+    const porcentajesFuente = porcentajesFirebase || porcentajesManuales || {};
+
+    // Si hay porcentajes guardados, usarlos
+    if (Object.keys(porcentajesFuente).length > 0) {
+        const porcentajes = {};
+        Object.keys(porcentajesFuente).forEach(local => {
+            porcentajes[local] = porcentajesFuente[local] / 100;
+        });
+        return { 
+            porcentajes, 
+            totalFacturacion: 0, 
+            facturacionPeriodo: [], 
+            esManual: true 
+        };
+    }
+
+    // Si no hay porcentajes, calcular desde facturación
     console.log('📊 Calculando porcentajes desde facturación para período:', periodo);
     const porcentajes = {};
     let totalFacturacion = 0;
@@ -190,13 +204,9 @@ function obtenerPorcentajesPorLocal(periodo) {
         return false;
     });
     
-    console.log(`📊 Facturas filtradas para período: ${facturacionPeriodo.length}`);
-    
     facturacionPeriodo.forEach(f => {
         totalFacturacion += f.monto || 0;
     });
-    
-    console.log(`📊 Total facturación período: ₡${totalFacturacion.toLocaleString()}`);
     
     if (totalFacturacion === 0) {
         const localesCount = AppState?.locales?.length || 1;
@@ -214,10 +224,6 @@ function obtenerPorcentajesPorLocal(periodo) {
             .reduce((sum, f) => sum + (f.monto || 0), 0);
         
         porcentajes[local.nombre] = totalFacturacion > 0 ? montoLocal / totalFacturacion : 0;
-        
-        if (montoLocal > 0) {
-            console.log(`   📍 ${local.nombre}: ₡${montoLocal.toLocaleString()} (${(porcentajes[local.nombre] * 100).toFixed(2)}%)`);
-        }
     });
     
     return { porcentajes, totalFacturacion, facturacionPeriodo, esManual: false };
@@ -265,7 +271,6 @@ function obtenerPeriodoActual() {
                 periodo.dias = diffDays;
                 periodo.mesReferencia = null;
                 periodo.anioReferencia = null;
-                console.log(`📅 Rango de fechas: ${periodo.nombre}, días: ${periodo.dias}`);
             } else {
                 periodo.tipo = 'mes';
                 periodo.valor = hoy.toLocaleDateString('en-CA').substring(0, 7);
@@ -290,7 +295,6 @@ function obtenerPeriodoActual() {
             periodo.dias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
             periodo.mesReferencia = hoy.getMonth() + 1;
             periodo.anioReferencia = hoy.getFullYear();
-            console.log(`📅 Mes actual: ${periodo.nombre}, días: ${periodo.dias}`);
             break;
             
         case 'anio':
@@ -432,7 +436,6 @@ function configurarPorcentajesLogistica() {
 
                     <input type="number"
                         min="0"
-                        max="100"
                         value="${valor}"
                         data-local="${local.nombre}"
                         style="
@@ -475,9 +478,9 @@ function configurarPorcentajesLogistica() {
 }
 
 // ============================================
-// RENDERIZAR VISTA PRINCIPAL
+// RENDERIZAR VISTA PRINCIPAL (CORREGIDA)
 // ============================================
-function renderLogistica() {
+async function renderLogistica() {
     console.log('📊 Renderizando Logística...');
     
     const logisticaContent = document.getElementById('logisticaContent');
@@ -485,17 +488,11 @@ function renderLogistica() {
     
     const filtroLocal = AppState?.filtros?.local || 'Todos';
     const periodo = obtenerPeriodoActual();
+    const costosData = window.costosData || {};
     
     console.log(`📅 Período: ${periodo.nombre}, Días: ${periodo.dias}`);
     
     const costosMensuales = obtenerCostosLogistica();
-    
-    console.log('📊 COSTOS MENSUALES:', {
-        planta: costosMensuales.planta.mensual,
-        oficinas: costosMensuales.oficinas.mensual,
-        transporte: costosMensuales.transporte.mensual,
-        planilla: costosMensuales.planilla.mensual
-    });
     
     const costosDiarios = {
         planta: periodo.dias > 0 ? costosMensuales.planta.mensual / periodo.dias : 0,
@@ -510,27 +507,89 @@ function renderLogistica() {
         ) / periodo.dias : 0
     };
     
-    console.log('📊 COSTOS DIARIOS CALCULADOS:', {
-        dias: periodo.dias,
-        planta: costosDiarios.planta,
-        oficinas: costosDiarios.oficinas,
-        transporte: costosDiarios.transporte,
-        planilla: costosDiarios.planilla
+    const { porcentajes, totalFacturacion, facturacionPeriodo, esManual } = await obtenerPorcentajesPorLocal(periodo);
+    
+    // ✅ OBTENER LOCALES QUE TIENEN COSTOS REGISTRADOS
+    const localesConCostos = new Set();
+    Object.keys(costosData).forEach(categoriaFirebase => {
+        const subCategorias = costosData[categoriaFirebase];
+        Object.keys(subCategorias).forEach(subCategoria => {
+            const costosArray = subCategorias[subCategoria];
+            if (!Array.isArray(costosArray)) return;
+            costosArray.forEach(costo => {
+                if (costo.local) {
+                    localesConCostos.add(costo.local);
+                }
+            });
+        });
     });
     
-    const { porcentajes, totalFacturacion, facturacionPeriodo, esManual } = obtenerPorcentajesPorLocal(periodo);
+    console.log('📍 Locales con costos registrados:', Array.from(localesConCostos));
     
     const puedeVerLocal = (local) => {
         if (window.esGerencia && window.esGerencia()) return true;
         return AppState?.usuario?.local === local;
     };
     
+    // ✅ Filtrar locales: solo los que tienen costos Y están permitidos
     const localesAMostrar = filtroLocal === 'Todos'
-        ? AppState?.locales?.filter(l => puedeVerLocal(l.nombre)) || []
-        : AppState?.locales?.filter(l => l.nombre === filtroLocal && puedeVerLocal(l.nombre)) || [];
+        ? AppState?.locales?.filter(l => 
+            localesConCostos.has(l.nombre) && puedeVerLocal(l.nombre)
+          ) || []
+        : AppState?.locales?.filter(l => 
+            l.nombre === filtroLocal && 
+            localesConCostos.has(l.nombre) && 
+            puedeVerLocal(l.nombre)
+          ) || [];
     
+    // Si no hay locales con costos y está en "Todos"
+    if (localesAMostrar.length === 0 && filtroLocal === 'Todos') {
+        logisticaContent.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2><i class="fas fa-truck" style="color: #f59e0b;"></i> Logística - Distribución de Costos</h2>
+                <div style="display: flex; gap: 10px;">
+                    ${window.esGerencia ? `<button class="btn btn-outline" onclick="window.configurarPorcentajesLogistica()">
+                        <i class="fas fa-percent"></i> Configurar %
+                    </button>` : ''}
+                </div>
+            </div>
+            <div class="card" style="padding: 60px 30px; text-align: center;">
+                <i class="fas fa-box-open" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+                <h3 style="color: #334155; margin-bottom: 10px;">No hay costos registrados</h3>
+                <p style="color: #64748b;">Registre costos fijos para comenzar a ver la distribución logística.</p>
+                <button class="btn btn-primary" onclick="cambiarModulo('costos')" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Ir a Costos Fijos
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // Si se seleccionó un local específico y no tiene costos
+    if (filtroLocal !== 'Todos' && localesAMostrar.length === 0) {
+        logisticaContent.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2><i class="fas fa-truck" style="color: #f59e0b;"></i> Logística - Distribución de Costos</h2>
+                <div style="display: flex; gap: 10px;">
+                    ${window.esGerencia ? `<button class="btn btn-outline" onclick="window.configurarPorcentajesLogistica()">
+                        <i class="fas fa-percent"></i> Configurar %
+                    </button>` : ''}
+                </div>
+            </div>
+            <div class="card" style="padding: 60px 30px; text-align: center;">
+                <i class="fas fa-store" style="font-size: 4rem; color: #9ca3af; margin-bottom: 20px;"></i>
+                <h3 style="color: #334155; margin-bottom: 10px;">Sin costos para ${filtroLocal}</h3>
+                <p style="color: #64748b;">Este local no tiene costos fijos registrados.</p>
+                <button class="btn btn-primary" onclick="cambiarModulo('costos')" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Ir a Costos Fijos
+                </button>
+            </div>
+        `;
+        return;
+    }
+
     // ============================================
-    // ✅ CORREGIDO: Declarar TODAS las variables
+    // CÁLCULO DE DISTRIBUCIÓN
     // ============================================
     let totalPlanta = 0, totalOficinas = 0, totalTransporte = 0, totalPlanilla = 0, totalGeneral = 0;
     const distribucionPorLocal = [];
@@ -669,7 +728,7 @@ function renderLogistica() {
                 </div>
             </div>
             
-            <!-- Planilla (NUEVO) -->
+            <!-- Planilla -->
             <div style="background: linear-gradient(135deg, ${CATEGORIAS_LOGISTICA.planilla.color}, ${CATEGORIAS_LOGISTICA.planilla.color}dd); border-radius: 16px; padding: 20px; color: white;">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                     <div style="background: rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -770,9 +829,9 @@ function renderLogistica() {
 }
 
 // ============================================
-// GUARDAR PORCENTAJES MANUALES
+// GUARDAR PORCENTAJES EN FIREBASE
 // ============================================
-function guardarPorcentajesLogistica() {
+async function guardarPorcentajesLogistica() {
     try {
         const modal = document.getElementById('configurarPorcentajesModal');
         if (!modal) return;
@@ -783,34 +842,42 @@ function guardarPorcentajesLogistica() {
         inputs.forEach(input => {
             const local = input.dataset.local;
             let valor = parseFloat(input.value) || 0;
-
             if (valor < 0) valor = 0;
-
             porcentajes[local] = valor;
         });
 
+        console.log('📊 Porcentajes asignados:', porcentajes);
+
+        const usuario = firebase.auth().currentUser;
+        if (!usuario) {
+            alert('❌ Debes iniciar sesión para guardar');
+            return;
+        }
+
+        // Guardar en Firebase
+        await firebase.database().ref(`configuracion/logistica/porcentajes`).set(porcentajes);
         localStorage.setItem('porcentajesLogistica', JSON.stringify(porcentajes));
 
         modal.remove();
         const overlay = document.getElementById('modalOverlay');
         if (overlay) overlay.classList.remove('active');
 
-        renderLogistica();
+        await renderLogistica();
+        mostrarToast('success', '✅ Porcentajes guardados en la nube');
 
-        alert('✅ Porcentajes guardados correctamente');
     } catch (error) {
-        console.error('❌ Error al guardar porcentajes de logística:', error);
-        alert('Error al guardar los porcentajes');
+        console.error('❌ Error al guardar porcentajes:', error);
+        mostrarToast('error', '❌ Error al guardar: ' + error.message);
     }
 }
 
 // ============================================
 // OBTENER GASTO DE PLANTA PRODUCCIÓN PARA RESUMEN
 // ============================================
-function getPlantaProduccionParaResumen(localNombre) {
+async function getPlantaProduccionParaResumen(localNombre) {
     const periodo = obtenerPeriodoActual();
     const costosMensuales = obtenerCostosLogistica();
-    const { porcentajes } = obtenerPorcentajesPorLocal(periodo);
+    const { porcentajes } = await obtenerPorcentajesPorLocal(periodo);
     
     const pct = porcentajes[localNombre] || 0;
     const dias = periodo.dias || 30;
@@ -829,5 +896,6 @@ window.renderLogistica = renderLogistica;
 window.configurarPorcentajesLogistica = configurarPorcentajesLogistica;
 window.guardarPorcentajesLogistica = guardarPorcentajesLogistica;
 window.getPlantaProduccionParaResumen = getPlantaProduccionParaResumen;
+window.obtenerPorcentajesPorLocal = obtenerPorcentajesPorLocal;
 
-console.log('✅ logistica.js cargado - Con cálculo por días del mes');
+console.log('✅ logistica.js cargado - Con Firebase');

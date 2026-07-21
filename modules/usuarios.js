@@ -50,21 +50,71 @@ function cargarTodosLosUsuarios() {
 }
 
 // ============================================
-// RENDERIZAR TABLA DE USUARIOS (CORREGIDA)
+// RENDERIZAR TABLA DE USUARIOS
 // ============================================
 function renderTablaUsuarios(usuarios) {
     console.log('📊 Renderizando tabla de usuarios');
     
+    // 👇 Verificar si es superadmin (usando la función de app.js)
+    const esSuper = window.esSuperAdmin && window.esSuperAdmin();
+    const accesoActivo = AppState.accesoGlobal !== false;
+    
     const html = `
         <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <h2><i class="fas fa-users-cog"></i> Gestión de Usuarios</h2>
-            <button class="btn btn-success" onclick="mostrarModalNuevoUsuario()">
-                <i class="fas fa-user-plus"></i> Nuevo Usuario
-            </button>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                ${esSuper ? `
+                    <button id="btnControlAcceso" 
+                            onclick="window.toggleAccesoGlobal()"
+                            style="background: ${accesoActivo ? '#10b981' : '#ef4444'}; 
+                                   color: white; 
+                                   border: none; 
+                                   padding: 10px 20px; 
+                                   border-radius: 12px; 
+                                   font-weight: 700; 
+                                   cursor: pointer;
+                                   display: flex;
+                                   align-items: center;
+                                   gap: 8px;
+                                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                                   transition: all 0.2s;">
+                        <i class="fas ${accesoActivo ? 'fa-unlock' : 'fa-lock'}"></i>
+                        ${accesoActivo ? '🔓 Acceso Activo' : '🔒 Acceso Bloqueado'}
+                    </button>
+                ` : ''}
+                <button class="btn btn-success" onclick="mostrarModalNuevoUsuario()">
+                    <i class="fas fa-user-plus"></i> Nuevo Usuario
+                </button>
+            </div>
         </div>
         
+        ${esSuper ? `
+            <div style="background: ${accesoActivo ? '#ecfdf5' : '#fef2f2'}; 
+                        border: 1px solid ${accesoActivo ? '#bbf7d0' : '#fecaca'};
+                        border-radius: 12px; 
+                        padding: 12px 16px; 
+                        margin-bottom: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;">
+                <i class="fas ${accesoActivo ? 'fa-check-circle' : 'fa-exclamation-triangle'}" 
+                   style="color: ${accesoActivo ? '#16a34a' : '#dc2626'}; font-size: 1.2rem;"></i>
+                <span style="color: ${accesoActivo ? '#065f46' : '#991b1b'};">
+                    <strong>${accesoActivo ? '✅ ACCESO ACTIVO' : '🚫 ACCESO BLOQUEADO'}</strong>
+                    ${accesoActivo ? 
+                        'Los usuarios pueden iniciar sesión normalmente.' : 
+                        '⚠️ Solo el Superadmin puede acceder.'}
+                </span>
+            </div>
+        ` : `
+            <div style="background: #f1f5f9; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; color: #64748b; font-size: 0.9rem;">
+                <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                Solo el Superadmin puede controlar el acceso al sistema.
+            </div>
+        `}
+        
         <!-- Resumen rápido -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
             <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
                 <div style="color: #64748b; font-size: 0.8rem;">TOTAL USUARIOS</div>
                 <div style="font-size: 2rem; font-weight: 700;">${usuarios.length}</div>
@@ -77,6 +127,10 @@ function renderTablaUsuarios(usuarios) {
                 <div style="color: #64748b; font-size: 0.8rem;">INACTIVOS</div>
                 <div style="font-size: 2rem; font-weight: 700;">${usuarios.filter(u => u.activo === false).length}</div>
             </div>
+            <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem;">SUPERADMIN</div>
+                <div style="font-size: 2rem; font-weight: 700;">${usuarios.filter(u => u.superAdmin === true).length}</div>
+            </div>
         </div>
         
         <div class="card">
@@ -87,6 +141,7 @@ function renderTablaUsuarios(usuarios) {
                             <th>Nombre</th>
                             <th>Email</th>
                             <th>Local</th>
+                            <th>Rol</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
@@ -94,7 +149,9 @@ function renderTablaUsuarios(usuarios) {
                     <tbody>
                         ${usuarios.length > 0 ? usuarios.map(u => `
                             <tr>
-                                <td><strong>${u.nombre || u.email.split('@')[0]}</strong></td>
+                                <td><strong>${u.nombre || u.email.split('@')[0]}</strong>
+                                    ${u.superAdmin ? ' 👑' : ''}
+                                </td>
                                 <td>${u.email}</td>
                                 <td>
                                     ${u.local ? 
@@ -105,29 +162,202 @@ function renderTablaUsuarios(usuarios) {
                                     }
                                 </td>
                                 <td>
+                                    <span class="badge ${u.superAdmin ? 'badge-warning' : (u.rol === 'gerencia' ? 'badge-primary' : 'badge-secondary')}">
+                                        ${u.superAdmin ? 'Superadmin 👑' : (u.rol === 'gerencia' ? 'Gerencia' : 'Usuario')}
+                                    </span>
+                                </td>
+                                <td>
                                     <span class="badge ${u.activo !== false ? 'badge-success' : 'badge-danger'}">
                                         ${u.activo !== false ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </td>
                                 <td>
-                                    <div style="display: flex; gap: 5px;">
+                                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                         <button class="btn btn-sm btn-outline" onclick="editarUsuario('${u.uid}')" title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </button>
+                                        ${esSuper ? `
+                                            <button class="btn btn-sm ${u.superAdmin ? 'btn-warning' : 'btn-success'}" 
+                                                    onclick="${u.superAdmin ? `quitarSuperAdmin('${u.uid}')` : `asignarSuperAdmin('${u.uid}')`}" 
+                                                    title="${u.superAdmin ? 'Quitar Superadmin' : 'Asignar Superadmin'}">
+                                                <i class="fas ${u.superAdmin ? 'fa-crown' : 'fa-user-shield'}"></i>
+                                            </button>
+                                        ` : ''}
                                         <button class="btn btn-sm ${u.activo !== false ? 'btn-warning' : 'btn-success'}" 
                                                 onclick="toggleActivoUsuario('${u.uid}', ${u.activo !== false})" 
                                                 title="${u.activo !== false ? 'Desactivar' : 'Activar'}">
                                             <i class="fas ${u.activo !== false ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-danger" onclick="eliminarUsuario('${u.uid}')" title="Eliminar">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        ${esSuper ? `
+                                            <button class="btn btn-sm btn-danger" onclick="eliminarUsuario('${u.uid}')" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        ` : ''}
                                     </div>
                                 </td>
                             </tr>
                         `).join('') : `
                             <tr>
-                                <td colspan="5" style="text-align: center; padding: 40px;">
+                                <td colspan="6" style="text-align: center; padding: 40px;">
+                                    <i class="fas fa-users" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
+                                    No hay usuarios registrados
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('usuariosContent').innerHTML = html;
+}function renderTablaUsuarios(usuarios) {
+    console.log('📊 Renderizando tabla de usuarios');
+    
+    // 👇 Verificar si es superadmin (usando la función de app.js)
+    const esSuper = window.esSuperAdmin && window.esSuperAdmin();
+    const accesoActivo = AppState.accesoGlobal !== false;
+    
+    const html = `
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <h2><i class="fas fa-users-cog"></i> Gestión de Usuarios</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                ${esSuper ? `
+                    <button id="btnControlAcceso" 
+                            onclick="window.toggleAccesoGlobal()"
+                            style="background: ${accesoActivo ? '#10b981' : '#ef4444'}; 
+                                   color: white; 
+                                   border: none; 
+                                   padding: 10px 20px; 
+                                   border-radius: 12px; 
+                                   font-weight: 700; 
+                                   cursor: pointer;
+                                   display: flex;
+                                   align-items: center;
+                                   gap: 8px;
+                                   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                                   transition: all 0.2s;">
+                        <i class="fas ${accesoActivo ? 'fa-unlock' : 'fa-lock'}"></i>
+                        ${accesoActivo ? '🔓 Acceso Activo' : '🔒 Acceso Bloqueado'}
+                    </button>
+                ` : ''}
+                <button class="btn btn-success" onclick="mostrarModalNuevoUsuario()">
+                    <i class="fas fa-user-plus"></i> Nuevo Usuario
+                </button>
+            </div>
+        </div>
+        
+        ${esSuper ? `
+            <div style="background: ${accesoActivo ? '#ecfdf5' : '#fef2f2'}; 
+                        border: 1px solid ${accesoActivo ? '#bbf7d0' : '#fecaca'};
+                        border-radius: 12px; 
+                        padding: 12px 16px; 
+                        margin-bottom: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;">
+                <i class="fas ${accesoActivo ? 'fa-check-circle' : 'fa-exclamation-triangle'}" 
+                   style="color: ${accesoActivo ? '#16a34a' : '#dc2626'}; font-size: 1.2rem;"></i>
+                <span style="color: ${accesoActivo ? '#065f46' : '#991b1b'};">
+                    <strong>${accesoActivo ? '✅ ACCESO ACTIVO' : '🚫 ACCESO BLOQUEADO'}</strong>
+                    ${accesoActivo ? 
+                        'Los usuarios pueden iniciar sesión normalmente.' : 
+                        '⚠️ Solo el Superadmin puede acceder.'}
+                </span>
+            </div>
+        ` : `
+            <div style="background: #f1f5f9; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; color: #64748b; font-size: 0.9rem;">
+                <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                Solo el Superadmin puede controlar el acceso al sistema.
+            </div>
+        `}
+        
+        <!-- Resumen rápido -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+            <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem;">TOTAL USUARIOS</div>
+                <div style="font-size: 2rem; font-weight: 700;">${usuarios.length}</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem;">ACTIVOS</div>
+                <div style="font-size: 2rem; font-weight: 700;">${usuarios.filter(u => u.activo !== false).length}</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem;">INACTIVOS</div>
+                <div style="font-size: 2rem; font-weight: 700;">${usuarios.filter(u => u.activo === false).length}</div>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem;">SUPERADMIN</div>
+                <div style="font-size: 2rem; font-weight: 700;">${usuarios.filter(u => u.superAdmin === true).length}</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Local</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${usuarios.length > 0 ? usuarios.map(u => `
+                            <tr>
+                                <td><strong>${u.nombre || u.email.split('@')[0]}</strong>
+                                    ${u.superAdmin ? ' 👑' : ''}
+                                </td>
+                                <td>${u.email}</td>
+                                <td>
+                                    ${u.local ? 
+                                        `<span style="display: flex; align-items: center; gap: 5px;">
+                                            <i class="fas fa-store" style="color: #2563eb;"></i> ${u.local}
+                                        </span>` : 
+                                        '<span style="color: #94a3b8;">—</span>'
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge ${u.superAdmin ? 'badge-warning' : (u.rol === 'gerencia' ? 'badge-primary' : 'badge-secondary')}">
+                                        ${u.superAdmin ? 'Superadmin 👑' : (u.rol === 'gerencia' ? 'Gerencia' : 'Usuario')}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge ${u.activo !== false ? 'badge-success' : 'badge-danger'}">
+                                        ${u.activo !== false ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                        <button class="btn btn-sm btn-outline" onclick="editarUsuario('${u.uid}')" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        ${esSuper ? `
+                                            <button class="btn btn-sm ${u.superAdmin ? 'btn-warning' : 'btn-success'}" 
+                                                    onclick="${u.superAdmin ? `quitarSuperAdmin('${u.uid}')` : `asignarSuperAdmin('${u.uid}')`}" 
+                                                    title="${u.superAdmin ? 'Quitar Superadmin' : 'Asignar Superadmin'}">
+                                                <i class="fas ${u.superAdmin ? 'fa-crown' : 'fa-user-shield'}"></i>
+                                            </button>
+                                        ` : ''}
+                                        <button class="btn btn-sm ${u.activo !== false ? 'btn-warning' : 'btn-success'}" 
+                                                onclick="toggleActivoUsuario('${u.uid}', ${u.activo !== false})" 
+                                                title="${u.activo !== false ? 'Desactivar' : 'Activar'}">
+                                            <i class="fas ${u.activo !== false ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                                        </button>
+                                        ${esSuper ? `
+                                            <button class="btn btn-sm btn-danger" onclick="eliminarUsuario('${u.uid}')" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('') : `
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 40px;">
                                     <i class="fas fa-users" style="font-size: 3rem; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
                                     No hay usuarios registrados
                                 </td>
@@ -608,6 +838,74 @@ function mostrarToast(tipo, mensaje) {
 }
 
 // ============================================
+// FUNCIONES DE SUPERADMIN
+// ============================================
+
+async function asignarSuperAdmin(uid) {
+    if (!window.esSuperAdmin || !window.esSuperAdmin()) {
+        mostrarToast('error', '❌ Solo el Superadmin puede asignar este rol');
+        return;
+    }
+    
+    if (!confirm('¿Estás seguro de asignar rol SUPERADMIN a este usuario?')) return;
+    
+    try {
+        // Verificar que el usuario existe
+        const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
+        if (!snapshot.exists()) {
+            mostrarToast('error', '❌ El usuario no existe en la base de datos');
+            return;
+        }
+        
+        // Intentar actualizar
+        await firebase.database().ref(`usuarios/${uid}`).update({
+            superAdmin: true,
+            rol: 'gerencia',
+            ultimaModificacion: new Date().toISOString()
+        });
+        mostrarToast('success', '✅ Usuario promovido a SUPERADMIN');
+        
+        // Recargar la tabla
+        setTimeout(() => cargarTodosLosUsuarios(), 500);
+        
+    } catch (error) {
+        console.error('Error al asignar Superadmin:', error);
+        
+        if (error.code === 'PERMISSION_DENIED') {
+            mostrarToast('error', '❌ No tienes permisos. Verifica las reglas de Firebase.');
+            mostrarToast('info', '💡 Ve a Firebase Console > Realtime Database > Reglas y actualiza las reglas.');
+        } else {
+            mostrarToast('error', 'Error al asignar Superadmin: ' + error.message);
+        }
+    }
+}
+
+async function quitarSuperAdmin(uid) {
+    if (!window.esSuperAdmin || !window.esSuperAdmin()) {
+        mostrarToast('error', '❌ Solo el Superadmin puede quitar este rol');
+        return;
+    }
+    
+    if (uid === firebase.auth().currentUser?.uid) {
+        alert('⚠️ No puedes quitarte el rol de Superadmin a ti mismo');
+        return;
+    }
+    
+    if (!confirm('¿Estás seguro de quitar el rol SUPERADMIN a este usuario?')) return;
+    
+    try {
+        await firebase.database().ref(`usuarios/${uid}`).update({
+            superAdmin: false,
+            ultimaModificacion: new Date().toISOString()
+        });
+        mostrarToast('success', '✅ Rol SUPERADMIN removido');
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarToast('error', 'Error al quitar Superadmin: ' + error.message);
+    }
+}
+
+// ============================================
 // INICIALIZAR MÓDULO DE USUARIOS
 // ============================================
 function initUsuarios() {
@@ -625,3 +923,5 @@ window.actualizarUsuario = actualizarUsuario;
 window.eliminarUsuario = eliminarUsuario;
 window.toggleActivoUsuario = toggleActivoUsuario;
 window.initUsuarios = initUsuarios;
+window.asignarSuperAdmin = asignarSuperAdmin;
+window.quitarSuperAdmin = quitarSuperAdmin;

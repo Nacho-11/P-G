@@ -29,6 +29,9 @@ function initAuth() {
 // ============================================
 // CARGAR DATOS DEL USUARIO
 // ============================================
+// ============================================
+// CARGAR DATOS DEL USUARIO (COMPLETA)
+// ============================================
 async function cargarDatosUsuario(uid) {
     try {
         console.log('🔍 Buscando usuario con UID:', uid);
@@ -37,12 +40,25 @@ async function cargarDatosUsuario(uid) {
             throw new Error('Firebase Database no está disponible');
         }
         
+        // 👇 1. Cargar configuración de acceso global
+        const configSnapshot = await firebase.database().ref('configuracion/accesoGlobal').once('value');
+        const accesoGlobal = configSnapshot.val();
+        
+        if (accesoGlobal !== null) {
+            AppState.accesoGlobal = accesoGlobal;
+        } else {
+            AppState.accesoGlobal = true;
+            await firebase.database().ref('configuracion/accesoGlobal').set(true);
+        }
+        
+        console.log(`🔐 Estado de acceso: ${AppState.accesoGlobal ? 'ACTIVO' : 'BLOQUEADO'}`);
+        
+        // 👇 2. Cargar datos del usuario
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
         let userData = snapshot.val();
         
         console.log('📁 Datos encontrados:', userData);
         
-        // SI NO HAY DATOS, CREAR PERFIL
         if (!userData) {
             console.log('⚠️ Usuario sin perfil. Creando...');
             const user = firebase.auth().currentUser;
@@ -52,8 +68,6 @@ async function cargarDatosUsuario(uid) {
             }
             
             const email = user.email || '';
-            
-            // DETECTAR SI ES GERENCIA POR EL CORREO
             const esCorreoGerencia = email.includes('gerencia') || email === 'ig_cal94@hotmail.com';
             
             userData = {
@@ -69,23 +83,64 @@ async function cargarDatosUsuario(uid) {
             console.log('✅ Perfil creado con rol:', userData.rol);
         }
         
-        // Configurar AppState
+        // 👇 3. Configurar AppState
         AppState.usuario = {
             uid: uid,
             email: userData.email || firebase.auth().currentUser?.email || '',
             rol: userData.rol || 'usuario',
             nombre: userData.nombre || userData.email?.split('@')[0] || 'Usuario',
-            local: userData.local || null
+            local: userData.local || null,
+            activo: userData.activo !== false,
+            superAdmin: userData.superAdmin === true
         };
         
         localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
         console.log('👤 Usuario configurado:', AppState.usuario);
         
-        // Actualizar UI
+        // 👇 4. VERIFICAR ACCESO
+        const esSuper = window.esSuperAdmin && window.esSuperAdmin();
+        const accesoActivo = AppState.accesoGlobal !== false;
+        
+        if (!esSuper && !accesoActivo) {
+            console.log('🚫 Acceso bloqueado para usuario no superadmin');
+            
+            const btn = document.getElementById('loginButton');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+            }
+            
+            mostrarLoginConMensaje('🚫 Acceso bloqueado por el administrador');
+            await firebase.auth().signOut();
+            return false;
+        }
+        
+        // 👇 5. Verificar si el usuario está activo
+        if (AppState.usuario.activo === false) {
+            console.log('🚫 Usuario desactivado');
+            
+            const btn = document.getElementById('loginButton');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+            }
+            
+            mostrarLoginConMensaje('🚫 Tu cuenta ha sido desactivada');
+            await firebase.auth().signOut();
+            return false;
+        }
+        
+        // 👇 6. Actualizar UI
         actualizarUIUsuario();
         configurarPermisos();
         
-        // Inicializar filtros
+        if (window.esSuperAdmin && window.esSuperAdmin()) {
+            if (typeof window.actualizarUIAcceso === 'function') {
+                setTimeout(window.actualizarUIAcceso, 300);
+            }
+        }
+        
+        // 👇 7. Inicializar filtros
         if (typeof cargarLocalesEnFiltro === 'function') {
             cargarLocalesEnFiltro();
         }
@@ -93,7 +148,7 @@ async function cargarDatosUsuario(uid) {
             window.inicializarFiltros();
         }
         
-        // Inicializar módulos
+        // 👇 8. Inicializar módulos
         console.log('🚀 Inicializando módulos...');
         if (typeof initVentas === 'function') setTimeout(() => initVentas(), 100);
         if (typeof initCostos === 'function') setTimeout(() => initCostos(), 200);
@@ -109,7 +164,7 @@ async function cargarDatosUsuario(uid) {
         if (typeof initResumen === 'function') setTimeout(() => initResumen(), 1200);
         if (typeof initPago10 === 'function') setTimeout(() => initPago10(), 1300);
 
-        // Mostrar APP
+        // 👇 9. Mostrar APP
         const mainContent = document.querySelector('.main-content');
         const sidebar = document.querySelector('.sidebar');
         const menuToggle = document.getElementById('menuToggle');
@@ -136,7 +191,7 @@ async function cargarDatosUsuario(uid) {
             setTimeout(initSidebar, 200);
         }
         
-        // Ocultar login
+        // 👇 10. Ocultar login
         const modal = document.getElementById('loginModal');
         const overlay = document.getElementById('modalOverlay');
 
@@ -149,7 +204,6 @@ async function cargarDatosUsuario(uid) {
             overlay.classList.remove('active');
         }
 
-        // 👇 NUEVO (IMPORTANTE)
         const loginScreen = document.getElementById('loginScreen');
         if (loginScreen) {
             loginScreen.style.display = 'none';
@@ -174,10 +228,27 @@ async function cargarDatosUsuario(uid) {
         const btn = document.getElementById('loginButton');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = 'Ingresar';
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
         }
         
         return false;
+    }
+}
+
+function mostrarLoginConMensaje(mensaje) {
+    mostrarLogin();
+    const errorDiv = document.getElementById('loginError');
+    if (errorDiv) {
+        errorDiv.innerHTML = mensaje;
+        errorDiv.style.color = '#ef4444';
+        errorDiv.style.display = 'block';
+    }
+    
+    // 🔧 RESTAURAR EL BOTÓN
+    const btn = document.getElementById('loginButton');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
     }
 }
 
@@ -226,6 +297,13 @@ function mostrarLogin() {
             errorDiv.innerHTML = '';
             errorDiv.style.display = 'none';
         }
+        
+        // 🔧 RESTAURAR EL BOTÓN SIEMPRE AL MOSTRAR LOGIN
+        const btn = document.getElementById('loginButton');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+        }
     }
 
     const loginScreen = document.getElementById('loginScreen');
@@ -246,6 +324,13 @@ async function procesarLogin() {
         if (errorDiv) {
             errorDiv.innerHTML = 'Complete todos los campos';
             errorDiv.style.display = 'block';
+        }
+        
+        // 🔧 RESTAURAR EL BOTÓN
+        const btn = document.getElementById('loginButton');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
         }
         return;
     }
@@ -285,10 +370,11 @@ async function procesarLogin() {
             errorDiv.style.display = 'block';
         }
         
+        // 🔧 RESTAURAR EL BOTÓN EN CASO DE ERROR
         const btn = document.getElementById('loginButton');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = 'Ingresar';
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
         }
     }
 }
@@ -320,6 +406,20 @@ async function logout() {
         if (mainContent) mainContent.style.display = 'none';
         if (sidebar) sidebar.style.display = 'none';
         
+        // 🔧 RESTAURAR EL BOTÓN ANTES DE CERRAR SESIÓN
+        const btn = document.getElementById('loginButton');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+        }
+        
+        // Limpiar mensaje de error
+        const errorDiv = document.getElementById('loginError');
+        if (errorDiv) {
+            errorDiv.innerHTML = '';
+            errorDiv.style.display = 'none';
+        }
+        
         await firebase.auth().signOut();
         
         mostrarLogin();
@@ -328,10 +428,17 @@ async function logout() {
         
     } catch (error) {
         console.error('Error en logout:', error);
+        
+        // 🔧 RESTAURAR EL BOTÓN EN CASO DE ERROR
+        const btn = document.getElementById('loginButton');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+        }
+        
         mostrarLogin();
     }
 }
-
 // ============================================
 // ACTUALIZAR UI
 // ============================================
@@ -506,3 +613,4 @@ window.procesarLogin = procesarLogin;
 window.logout = logout;
 window.actualizarUIUsuario = actualizarUIUsuario;
 window.configurarPermisos = configurarPermisos;
+window.mostrarLoginConMensaje = mostrarLoginConMensaje;

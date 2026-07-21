@@ -670,7 +670,161 @@ document.addEventListener('DOMContentLoaded', function () {
     initThemeToggle();
 });
 
-// Hacer funciones globales
+// ============================================
+// SISTEMA DE CONTROL DE ACCESO - SUPERADMIN
+// ============================================
+
+// Verificar si es SUPERADMIN
+function esSuperAdmin() {
+    return AppState.usuario?.superAdmin === true;
+}
+
+// Verificar si el acceso está permitido
+function accesoPermitido() {
+    // Superadmin siempre puede entrar
+    if (esSuperAdmin()) return true;
+    // Los demás solo si el acceso global está activo
+    return AppState.accesoGlobal !== false;
+}
+
+// Alternar acceso global (solo superadmin)
+async function toggleAccesoGlobal() {
+    if (!esSuperAdmin()) {
+        mostrarToast('error', '❌ Solo el Superadmin puede controlar el acceso');
+        return;
+    }
+    
+    const nuevoEstado = !AppState.accesoGlobal;
+    AppState.accesoGlobal = nuevoEstado;
+    
+    try {
+        // Guardar en Firebase
+        await firebase.database().ref('configuracion/accesoGlobal').set(nuevoEstado);
+        console.log(`🔐 Acceso global ${nuevoEstado ? 'ACTIVADO' : 'BLOQUEADO'}`);
+        
+        // Actualizar UI
+        actualizarUIAcceso();
+        
+        // Si se bloqueó, cerrar sesión de usuarios no superadmin
+        if (!nuevoEstado) {
+            const usuarioActual = firebase.auth().currentUser;
+            if (usuarioActual && !esSuperAdmin()) {
+                mostrarToast('warning', '🚫 Acceso bloqueado por el administrador');
+                setTimeout(async () => {
+                    await firebase.auth().signOut();
+                    AppState.usuario = null;
+                    localStorage.removeItem('parrillitaUser');
+                    mostrarLogin();
+                }, 2000);
+            }
+        }
+        
+        mostrarToast('success', `✅ Acceso ${nuevoEstado ? 'ACTIVADO' : 'BLOQUEADO'}`);
+        
+    } catch (error) {
+        console.error('Error al guardar estado de acceso:', error);
+        AppState.accesoGlobal = !nuevoEstado;
+        mostrarToast('error', '❌ Error al cambiar el estado de acceso');
+    }
+}
+
+// Actualizar UI del botón de acceso
+function actualizarUIAcceso() {
+    const btnAcceso = document.getElementById('btnControlAcceso');
+    if (!btnAcceso) return;
+    
+    const estado = AppState.accesoGlobal !== false;
+    btnAcceso.innerHTML = `
+        <i class="fas ${estado ? 'fa-unlock' : 'fa-lock'}"></i>
+        ${estado ? '🔓 Acceso Activo' : '🔒 Acceso Bloqueado'}
+    `;
+    btnAcceso.style.background = estado ? '#10b981' : '#ef4444';
+    btnAcceso.style.color = 'white';
+    btnAcceso.style.border = 'none';
+}
+
+// ============================================
+// SISTEMA DE CONTROL DE ACCESO - VERSIÓN SIMPLIFICADA
+// ============================================
+
+// Lista de Superadmins (verificados por email)
+const SUPERADMINS = ['ig_cal94@hotmail.com'];
+
+// Verificar si es SUPERADMIN (por email, más confiable)
+function esSuperAdmin() {
+    const email = AppState.usuario?.email?.toLowerCase();
+    return SUPERADMINS.includes(email);
+}
+
+// Verificar si el acceso está permitido
+function accesoPermitido() {
+    if (esSuperAdmin()) return true;
+    return AppState.accesoGlobal !== false;
+}
+
+// Alternar acceso global
+async function toggleAccesoGlobal() {
+    if (!esSuperAdmin()) {
+        mostrarToast('error', '❌ Solo el Superadmin puede controlar el acceso');
+        return;
+    }
+    
+    const nuevoEstado = !AppState.accesoGlobal;
+    AppState.accesoGlobal = nuevoEstado;
+    
+    try {
+        // Guardar en Firebase (nodo separado)
+        await firebase.database().ref('configuracion/accesoGlobal').set(nuevoEstado);
+        console.log(`🔐 Acceso global ${nuevoEstado ? 'ACTIVADO' : 'BLOQUEADO'}`);
+        
+        // Actualizar UI
+        actualizarUIAcceso();
+        
+        // Si se bloqueó, cerrar sesión de usuarios no superadmin
+        if (!nuevoEstado) {
+            const usuarioActual = firebase.auth().currentUser;
+            if (usuarioActual && !esSuperAdmin()) {
+                mostrarToast('warning', '🚫 Acceso bloqueado por el administrador');
+                setTimeout(async () => {
+                    await firebase.auth().signOut();
+                    AppState.usuario = null;
+                    localStorage.removeItem('parrillitaUser');
+                    mostrarLogin();
+                }, 2000);
+            }
+        }
+        
+        mostrarToast('success', `✅ Acceso ${nuevoEstado ? 'ACTIVADO' : 'BLOQUEADO'}`);
+        
+    } catch (error) {
+        console.error('Error al guardar estado de acceso:', error);
+        AppState.accesoGlobal = !nuevoEstado;
+        mostrarToast('error', '❌ Error al cambiar el estado de acceso');
+    }
+}
+
+// Actualizar UI del botón de acceso
+function actualizarUIAcceso() {
+    const btnAcceso = document.getElementById('btnControlAcceso');
+    if (!btnAcceso) return;
+    
+    const estado = AppState.accesoGlobal !== false;
+    btnAcceso.innerHTML = `
+        <i class="fas ${estado ? 'fa-unlock' : 'fa-lock'}"></i>
+        ${estado ? '🔓 Acceso Activo' : '🔒 Acceso Bloqueado'}
+    `;
+    btnAcceso.style.background = estado ? '#10b981' : '#ef4444';
+    btnAcceso.style.color = 'white';
+    btnAcceso.style.border = 'none';
+    btnAcceso.style.padding = '10px 20px';
+    btnAcceso.style.borderRadius = '12px';
+    btnAcceso.style.fontWeight = '700';
+    btnAcceso.style.cursor = 'pointer';
+    btnAcceso.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    btnAcceso.style.transition = 'all 0.2s';
+}
+
+// funciones globales
 window.esGerencia = esGerencia;
 window.getLocalesPermitidos = getLocalesPermitidos;
 window.puedeVerLocal = puedeVerLocal;
@@ -687,6 +841,14 @@ window.toggleSidebar = toggleSidebar;
 window.cambiarModulo = cambiarModulo;
 window.inicializarFiltros = inicializarFiltros;
 window.getThemeColors = getThemeColors;
+window.esSuperAdmin = esSuperAdmin;
+window.accesoPermitido = accesoPermitido;
+window.toggleAccesoGlobal = toggleAccesoGlobal;
+window.actualizarUIAcceso = actualizarUIAcceso;
+window.esSuperAdmin = esSuperAdmin;
+window.accesoPermitido = accesoPermitido;
+window.toggleAccesoGlobal = toggleAccesoGlobal;
+window.actualizarUIAcceso = actualizarUIAcceso;
 
 // Referencias a funciones de módulos
 window.renderDashboard = window.renderDashboard || null;
@@ -722,4 +884,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }, 100);
+
+    firebase.database().ref('configuracion/accesoGlobal').on('value', (snapshot) => {
+        const valor = snapshot.val();
+        if (valor !== null) {
+            AppState.accesoGlobal = valor;
+            console.log(`🔐 Estado de acceso: ${valor ? 'ACTIVO' : 'BLOQUEADO'}`);
+            // Si el módulo de usuarios está visible, actualizar la UI
+            if (document.getElementById('usuarios').classList.contains('active')) {
+                renderUsuarios();
+            }
+        }
+    });
+
 });

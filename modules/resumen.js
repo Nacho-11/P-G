@@ -146,9 +146,8 @@ function obtenerServiciosData() {
 // ============================================
 
 function calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin) {
-    let totalPlanilla = 0;
-    let totalSalarioBase = 0;
-    let totalHorasExtras = 0;
+    let totalOrdinarias = 0;
+    let totalExtras = 0;
     let totalNocturnas = 0;
     let totalExtrasNocturnas = 0;
     
@@ -156,121 +155,65 @@ function calcularPlanilla(planillaData, filtroLocal, filtroTiempo, ayerStr, mesA
         return { salarioBase: 0, horasExtras: 0, nocturnas: 0, extrasNocturnas: 0, total: 0 };
     }
     
-    if (filtroTiempo === 'todos') {
-        if (window.costosData) {
-            let totalPlanillaMensual = 0;
-            const costosData = window.costosData;
-            
-            Object.keys(costosData).forEach(categoriaFirebase => {
-                const subCategorias = costosData[categoriaFirebase];
-                Object.keys(subCategorias).forEach(subCategoria => {
-                    if (subCategoria === 'planilla' || subCategoria === 'planillaLogistica') {
-                        const costosArray = subCategorias[subCategoria];
-                        if (!Array.isArray(costosArray)) return;
-                        costosArray.forEach(costo => {
-                            const concepto = (costo.concepto || '').toLowerCase();
-                            const monto = costo.monto || 0;
-                            if (concepto.includes('planilla') || 
-                                concepto.includes('salario') || 
-                                concepto.includes('logística') ||
-                                concepto.includes('bodega')) {
-                                totalPlanillaMensual += monto;
-                            }
-                        });
-                    }
-                });
-            });
-            
-            if (totalPlanillaMensual > 0) {
-                console.log(`📊 Usando valor mensual de costos fijos para planilla (todos): ₡${totalPlanillaMensual.toLocaleString()}`);
-                return {
-                    salarioBase: totalPlanillaMensual,
-                    horasExtras: 0,
-                    nocturnas: 0,
-                    extrasNocturnas: 0,
-                    total: totalPlanillaMensual
-                };
-            }
-        }
-        
-        Object.keys(planillaData).forEach(local => {
-            if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
-            if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(local)) return;
-            
-            const empleados = planillaData[local] || [];
-            empleados.forEach(emp => {
-                const salarioMensual = emp.salario || 0;
-                totalPlanilla += salarioMensual;
-                totalSalarioBase += salarioMensual;
-            });
-        });
-        
-        return { 
-            salarioBase: totalSalarioBase, 
-            horasExtras: totalHorasExtras, 
-            nocturnas: totalNocturnas,
-            extrasNocturnas: totalExtrasNocturnas,
-            total: totalPlanilla 
-        };
-    }
+    const localesAFiltrar = filtroLocal === 'Todos' 
+        ? Object.keys(planillaData) 
+        : [filtroLocal];
     
-    Object.keys(planillaData).forEach(local => {
-        if (filtroLocal !== 'Todos' && local !== filtroLocal) return;
+    localesAFiltrar.forEach(local => {
+        if (!planillaData[local]) return;
         if (typeof window.puedeVerLocal === 'function' && !window.puedeVerLocal(local)) return;
         
         const empleados = planillaData[local] || [];
         
         empleados.forEach(emp => {
-            if (!emp.horas) return;
-            
+            // NO FILTRAR POR ACTIVO - igual que planilla.js
             const salarioMensual = emp.salario || 0;
-            const valorHoraDiurna = salarioMensual / 240;
+            const valorHora = salarioMensual / 240;
+            const esAñosLocos = local.includes('Los Años Locos');
             const valorHoraNocturna = salarioMensual / 180;
             const horasJornada = 8;
-            const esAñosLocos = local.includes('Los Años Locos');
             
-            Object.keys(emp.horas).forEach(fechaStr => {
-                const fecha = fechaStr.split('T')[0];
-                
-                if (!filtrarPorFecha({ fecha }, filtroTiempo, ayerStr, mesActual, anioActual, fechaPersonalizada, fechaInicio, fechaFin)) return;
-                
-                const horas = emp.horas[fechaStr];
-                const horasNormales = Math.min(horas.ordinarias || 0, horasJornada);
-                const horasExtrasDia = (horas.ordinarias || 0) - horasNormales;
-                
-                let pagoDia = 0;
-                let salarioBaseDia = 0;
-                let horasExtrasDiaPago = 0;
-                let nocturnasDia = 0;
-                let extrasNocturnasDia = 0;
-                
-                if (esAñosLocos) {
-                    salarioBaseDia = (horasNormales + (horas.nocturnas || 0)) * valorHoraNocturna;
-                    horasExtrasDiaPago = (horasExtrasDia + (horas.extras || 0) + (horas.extrasNocturnas || 0)) * valorHoraNocturna * 1.5;
-                    pagoDia = salarioBaseDia + horasExtrasDiaPago;
-                } else {
-                    salarioBaseDia = horasNormales * valorHoraDiurna;
-                    horasExtrasDiaPago = (horasExtrasDia + (horas.extras || 0)) * valorHoraDiurna * 1.5;
-                    nocturnasDia = (horas.nocturnas || 0) * valorHoraNocturna;
-                    extrasNocturnasDia = (horas.extrasNocturnas || 0) * valorHoraNocturna * 1.5;
-                    pagoDia = salarioBaseDia + horasExtrasDiaPago + nocturnasDia + extrasNocturnasDia;
-                }
-                
-                totalPlanilla += pagoDia;
-                totalSalarioBase += salarioBaseDia;
-                totalHorasExtras += horasExtrasDiaPago;
-                totalNocturnas += nocturnasDia;
-                totalExtrasNocturnas += extrasNocturnasDia;
-            });
+            // Si tiene horas registradas
+            if (emp.horas && Object.keys(emp.horas).length > 0) {
+                Object.keys(emp.horas).forEach(fechaStr => {
+                    const horas = emp.horas[fechaStr];
+                    const horasOrdinariasDia = Math.min(horas.ordinarias || 0, horasJornada);
+                    
+                    // 🔥 PLANILLA BASE: TODAS las horas ordinarias de TODOS los días (SIN FILTRAR)
+                    if (esAñosLocos) {
+                        totalOrdinarias += horasOrdinariasDia * valorHoraNocturna;
+                    } else {
+                        totalOrdinarias += horasOrdinariasDia * valorHora;
+                    }
+                    
+                    // 🔥 HORAS EXTRAS: TODAS las horas extras de TODOS los días (SIN FILTRAR)
+                    // El módulo Planilla muestra todas las horas extras del mes, sin importar el filtro
+                    const horasExtrasDia = Math.max(0, (horas.ordinarias || 0) - horasJornada);
+                    const horasExtrasAdicionales = horas.extras || 0;
+                    
+                    if (esAñosLocos) {
+                        totalExtras += (horasExtrasDia + horasExtrasAdicionales + (horas.extrasNocturnas || 0)) * valorHoraNocturna * 1.5;
+                    } else {
+                        totalExtras += (horasExtrasDia + horasExtrasAdicionales) * valorHora * 1.5;
+                        totalNocturnas += (horas.nocturnas || 0) * valorHoraNocturna;
+                        totalExtrasNocturnas += (horas.extrasNocturnas || 0) * valorHoraNocturna * 1.5;
+                    }
+                });
+            } else {
+                // Si no tiene horas, usar salario mensual
+                totalOrdinarias += salarioMensual;
+            }
         });
     });
     
+    const totalGeneral = totalOrdinarias + totalExtras + totalNocturnas + totalExtrasNocturnas;
+    
     return { 
-        salarioBase: totalSalarioBase, 
-        horasExtras: totalHorasExtras, 
+        salarioBase: totalOrdinarias,
+        horasExtras: totalExtras,
         nocturnas: totalNocturnas,
         extrasNocturnas: totalExtrasNocturnas,
-        total: totalPlanilla 
+        total: totalGeneral 
     };
 }
 
@@ -751,7 +694,7 @@ function calcularMermas(mermasFiltradas) {
 // RENDERIZAR RESUMEN (VERSIÓN CORREGIDA)
 // ============================================
 
-function renderResumen() {
+async function renderResumen() {
     console.log('📊 Renderizando Resumen Financiero...');
     
     const resumenContent = document.getElementById('resumenContent');
@@ -969,19 +912,39 @@ function renderResumen() {
     // ============================================
     // GASTOS ADMINISTRATIVOS & LOGÍSTICA
     // ============================================
-    let porcentajeLocal = 1;
+        let porcentajeLocal = 1;
     if (filtroLocal !== 'Todos' && filtroLocal !== 'Todos los locales') {
-        porcentajeLocal = obtenerPorcentajeLocal(filtroLocal);
+        porcentajeLocal = await obtenerPorcentajeLocal(filtroLocal);
         console.log(`📊 Porcentaje para ${filtroLocal}: ${(porcentajeLocal * 100).toFixed(2)}%`);
     }
 
     const getValor = (valorMensual) => {
         if (!valorMensual) return 0;
-        if (filtroTiempo === 'mes' || filtroTiempo === 'todos' || filtroTiempo === 'rango') {
+        
+        // Si es "todos" o "mes", mostrar valor mensual
+        if (filtroTiempo === 'todos' || filtroTiempo === 'mes') {
             return valorMensual * porcentajeLocal;
         }
-        const dias = diasPeriodo || 30;
-        return (valorMensual / dias) * porcentajeLocal;
+        
+        let mesReferencia = new Date();
+        if (filtroTiempo === 'rango' && fechaInicio) {
+            mesReferencia = new Date(fechaInicio + 'T12:00:00');
+        } else if (filtroTiempo === 'ayer' && ayerStr) {
+            mesReferencia = new Date(ayerStr + 'T12:00:00');
+        } else if (filtroTiempo === 'personalizado' && fechaPersonalizada) {
+            mesReferencia = new Date(fechaPersonalizada + 'T12:00:00');
+        }
+        
+        // Calcular días del mes de referencia
+        const year = mesReferencia.getFullYear();
+        const month = mesReferencia.getMonth();
+        const diasDelMes = new Date(year, month + 1, 0).getDate();
+        
+        // Valor diario = mensual / días del mes
+        const valorDiario = valorMensual / diasDelMes;
+        
+        // Multiplicar por los días del período
+        return valorDiario * diasPeriodo * porcentajeLocal;
     };
 
     const gastosAdminLogistica = [
@@ -1111,8 +1074,72 @@ function renderResumen() {
                 </h2>
                 <p style="margin:6px 0 0 58px; color:#64748b;">Estado de resultados y análisis financiero</p>
             </div>
-            <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; color:#334155; font-weight:700;">
-                <i class="fas fa-calendar-alt"></i> ${periodoTexto}
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <div style="position:relative; display:inline-block;">
+                    <button onclick="toggleExportMenu()" 
+                            style="padding:12px 20px; 
+                                background:linear-gradient(135deg, #0f172a, #1e293b); 
+                                color:white; 
+                                border:none; 
+                                border-radius:14px; 
+                                font-weight:700; 
+                                cursor:pointer;
+                                display:flex;
+                                align-items:center;
+                                gap:10px;
+                                box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+                        <i class="fas fa-file-export"></i>
+                        Exportar
+                        <i class="fas fa-chevron-down" style="font-size:0.75rem;"></i>
+                    </button>
+                    <div id="exportMenu" 
+                        style="display:none; 
+                                position:absolute; 
+                                top:calc(100% + 8px); 
+                                right:0; 
+                                background:white; 
+                                border-radius:16px; 
+                                box-shadow:0 20px 40px rgba(0,0,0,0.18); 
+                                min-width:200px; 
+                                overflow:hidden; 
+                                z-index:100;
+                                border:1px solid #e2e8f0;">
+                        <button onclick="exportarResumen('excel')" 
+                                style="display:flex; 
+                                    align-items:center; 
+                                    gap:12px; 
+                                    width:100%; 
+                                    padding:14px 20px; 
+                                    border:none; 
+                                    background:transparent; 
+                                    cursor:pointer; 
+                                    font-size:0.95rem; 
+                                    font-weight:600; 
+                                    color:#0f172a;">
+                            <i class="fas fa-file-excel" style="color:#217346; font-size:1.2rem;"></i>
+                            Exportar a Excel
+                        </button>
+                        <div style="border-bottom:1px solid #e2e8f0;"></div>
+                        <button onclick="exportarResumen('pdf')" 
+                                style="display:flex; 
+                                    align-items:center; 
+                                    gap:12px; 
+                                    width:100%; 
+                                    padding:14px 20px; 
+                                    border:none; 
+                                    background:transparent; 
+                                    cursor:pointer; 
+                                    font-size:0.95rem; 
+                                    font-weight:600; 
+                                    color:#0f172a;">
+                            <i class="fas fa-file-pdf" style="color:#dc2626; font-size:1.2rem;"></i>
+                            Exportar a PDF
+                        </button>
+                    </div>
+                </div>
+                <div style="padding:12px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; color:#334155; font-weight:700;">
+                    <i class="fas fa-calendar-alt"></i> ${periodoTexto}
+                </div>
             </div>
         </div>
 
@@ -1392,7 +1419,7 @@ function getCostosPlantaParaResumen(localNombre) {
 // OBTENER COSTOS DE LOGÍSTICA POR LOCAL
 // ============================================
 
-function getCostosLogisticaPorLocal(localNombre, costosFijos, periodo) {
+async function getCostosLogisticaPorLocal(localNombre, costosFijos, periodo) {
     if (!costosFijos || !localNombre) {
         return { planta: 0, oficinas: 0, transporte: 0, planilla: 0, total: 0 };
     }
@@ -1404,7 +1431,7 @@ function getCostosLogisticaPorLocal(localNombre, costosFijos, periodo) {
         porcentajeLocal = (porcentajesManuales[localNombre] || 0) / 100;
     } else {
         try {
-            const { porcentajes } = window.obtenerPorcentajesPorLocal(periodo);
+            const { porcentajes } = await window.obtenerPorcentajesPorLocal(periodo);
             porcentajeLocal = porcentajes[localNombre] || 0;
         } catch(e) {
             console.warn('Error obteniendo porcentaje de logística:', e);
@@ -1490,7 +1517,7 @@ function obtenerPeriodoActual() {
     return { tipo: filtroTiempo, dias, valor };
 }
 
-function obtenerPorcentajeLocal(localNombre) {
+async function obtenerPorcentajeLocal(localNombre) {
     if (!localNombre) return 0;
 
     const periodo = obtenerPeriodoActual();
@@ -1500,9 +1527,319 @@ function obtenerPorcentajeLocal(localNombre) {
         return 0;
     }
 
-    const { porcentajes } = window.obtenerPorcentajesPorLocal(periodo);
+    try {
+        const { porcentajes } = await window.obtenerPorcentajesPorLocal(periodo);
+        return porcentajes[localNombre] || 0;
+    } catch (error) {
+        console.warn('Error obteniendo porcentaje local:', error);
+        return 0;
+    }
+}
 
-    return porcentajes[localNombre] || 0;
+// ============================================
+// FUNCIONES DE EXPORTACIÓN
+// ============================================
+
+function toggleExportMenu() {
+    const menu = document.getElementById('exportMenu');
+    if (menu) {
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+}
+
+// Cerrar menú al hacer clic fuera
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('exportMenu');
+    if (menu && !e.target.closest('#exportMenu') && !e.target.closest('button[onclick="toggleExportMenu()"]')) {
+        menu.style.display = 'none';
+    }
+});
+
+// Función principal de exportación
+function exportarResumen(formato) {
+    const menu = document.getElementById('exportMenu');
+    if (menu) menu.style.display = 'none';
+    
+    if (formato === 'excel') {
+        exportarExcel();
+    } else if (formato === 'pdf') {
+        exportarPDFDirecto();
+    }
+}
+
+// ============================================
+// EXPORTAR A EXCEL
+// ============================================
+function exportarExcel() {
+    try {
+        const content = document.getElementById('resumenContent');
+        if (!content) {
+            mostrarToast('error', '❌ No hay datos para exportar');
+            return;
+        }
+        
+        const table = content.querySelector('.table-container table');
+        if (!table) {
+            mostrarToast('error', '❌ No se encontró la tabla de datos');
+            return;
+        }
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(table);
+        ws['!cols'] = [{ wch: 50 }, { wch: 20 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+        
+        const nombre = `Resumen_Financiero_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, nombre);
+        mostrarToast('success', `✅ Excel exportado: ${nombre}`);
+        
+    } catch (error) {
+        console.error(error);
+        mostrarToast('error', '❌ Error al exportar Excel: ' + error.message);
+    }
+}
+
+// ============================================
+// EXPORTAR A PDF DIRECTO
+// ============================================
+function exportarPDFDirecto() {
+    try {
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            mostrarToast('error', '❌ Librería PDF no disponible');
+            return;
+        }
+        
+        mostrarToast('info', '⏳ Generando PDF...');
+        
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        // Obtener datos de la tabla
+        const content = document.getElementById('resumenContent');
+        const table = content.querySelector('.table-container table');
+        
+        if (!table) {
+            mostrarToast('error', '❌ No se encontró la tabla');
+            return;
+        }
+        
+        // Obtener filtros actuales
+        const filtroLocal = document.getElementById('filtroLocal');
+        const nombreLocal = filtroLocal ? filtroLocal.options[filtroLocal.selectedIndex]?.text || 'Todos los locales' : 'Todos los locales';
+        
+        const filtroTiempo = document.getElementById('filtroTiempo');
+        const nombreTiempo = filtroTiempo ? filtroTiempo.options[filtroTiempo.selectedIndex]?.text || 'Todo' : 'Todo';
+        
+        // Extraer datos de la tabla
+        const datos = [];
+        const filas = table.querySelectorAll('tbody tr');
+        
+        filas.forEach(row => {
+            const celdas = row.querySelectorAll('td');
+            if (celdas.length >= 2) {
+                let concepto = celdas[0]?.textContent?.trim() || '';
+                let monto = celdas[1]?.textContent?.trim() || '';
+                let porcentaje = celdas[2]?.textContent?.trim() || '';
+                
+                // Limpiar monto: eliminar cualquier símbolo y dejar solo números
+                monto = monto.replace(/[^0-9,.]/g, '').trim();
+                porcentaje = porcentaje.replace('%', '').trim();
+                
+                // Identificar si es título o total
+                const esTitulo = concepto.includes('INGRESOS') || 
+                               concepto.includes('GASTOS OPERATIVOS') || 
+                               concepto.includes('GASTOS ADMINISTRATIVOS') ||
+                               concepto.includes('IMPUESTOS') ||
+                               concepto.includes('RESULTADO FINAL');
+                
+                const esTotal = concepto.includes('TOTAL') || 
+                               concepto.includes('UTILIDAD') || 
+                               concepto.includes('PÉRDIDA') ||
+                               concepto.includes('RESULTADO FINAL');
+                
+                // Detectar si es la fila del margen de utilidad
+                const esMargen = concepto.includes('Margen de Utilidad');
+                
+                datos.push({
+                    concepto,
+                    monto: monto || '0',
+                    porcentaje: porcentaje || '0',
+                    esTitulo,
+                    esTotal,
+                    esMargen
+                });
+            }
+        });
+        
+        // Configurar página
+        const margin = 15;
+        const pageWidth = 210;
+        const maxWidth = pageWidth - (margin * 2);
+        
+        // ============================================
+        // ENCABEZADO
+        // ============================================
+        let y = 25;
+        
+        // Título
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(15, 23, 42);
+        pdf.text('RESUMEN FINANCIERO', pageWidth / 2, y, { align: 'center' });
+        y += 7;
+        
+        // Línea
+        pdf.setDrawColor(37, 99, 235);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        
+        // Información en una línea
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 116, 139);
+        const infoTexto = `${new Date().toLocaleDateString('es-CR')}  |  ${nombreLocal}  |  ${nombreTiempo}`;
+        pdf.text(infoTexto, pageWidth / 2, y, { align: 'center' });
+        y += 8;
+        
+        // ============================================
+        // TABLA
+        // ============================================
+        let pageNumber = 1;
+        
+        function dibujarEncabezadosTabla() {
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFillColor(15, 23, 42);
+            pdf.rect(margin, y, maxWidth, 6, 'F');
+            pdf.text('CONCEPTO', margin + 3, y + 4.5);
+            pdf.text('MONTO', margin + 140, y + 4.5);
+            pdf.text('%', margin + 185, y + 4.5);
+            y += 8;
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(15, 23, 42);
+        }
+        
+        function nuevaPagina() {
+            pdf.addPage();
+            pageNumber++;
+            y = 20;
+            pdf.setFontSize(8);
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(`Resumen Financiero - Pág. ${pageNumber}`, margin, y);
+            y += 6;
+            dibujarEncabezadosTabla();
+        }
+        
+        // Dibujar encabezados en primera página
+        dibujarEncabezadosTabla();
+        
+        // Recorrer datos
+        datos.forEach((item) => {
+            if (y > 275) {
+                nuevaPagina();
+            }
+            
+            let fontStyle = 'normal';
+            let fontSize = 8;
+            let textColor = [15, 23, 42];
+            let fillColor = null;
+            
+            // Si es la fila del margen de utilidad, formatear como porcentaje
+            if (item.esMargen) {
+                fontStyle = 'normal';
+                fontSize = 8;
+                textColor = [100, 116, 139];
+                // El porcentaje ya viene en el campo porcentaje, lo usamos directamente
+            }
+            
+            if (item.esTitulo) {
+                fontStyle = 'bold';
+                fontSize = 9;
+                textColor = [37, 99, 235];
+                pdf.setDrawColor(200, 200, 200);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, y - 1, pageWidth - margin, y - 1);
+            }
+            
+            if (item.esTotal) {
+                fontStyle = 'bold';
+                fontSize = 9;
+                textColor = [0, 0, 0];
+                fillColor = [241, 245, 249];
+                pdf.setDrawColor(15, 23, 42);
+                pdf.setLineWidth(0.3);
+                pdf.line(margin, y - 1, pageWidth - margin, y - 1);
+            }
+            
+            if (item.concepto.includes('UTILIDAD NETA') || item.concepto.includes('PÉRDIDA NETA')) {
+                const montoNum = parseFloat(item.monto.replace(/\./g, '').replace(',', '.'));
+                const esUtilidad = montoNum >= 0;
+                textColor = esUtilidad ? [22, 163, 74] : [220, 38, 38];
+                fontStyle = 'bold';
+                fontSize = 10;
+                fillColor = esUtilidad ? [236, 253, 245] : [254, 242, 242];
+            }
+            
+            pdf.setFontSize(fontSize);
+            pdf.setFont('helvetica', fontStyle);
+            pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+            
+            if (fillColor) {
+                pdf.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+                pdf.rect(margin, y - 3, maxWidth, 6.5, 'F');
+            }
+            
+            // Concepto
+            let concepto = item.concepto;
+            if (concepto.length > 50) {
+                concepto = concepto.substring(0, 47) + '...';
+            }
+            pdf.text(concepto, margin + 3, y + 4);
+            
+            // Monto - solo el número con separadores
+            const montoLimpio = item.monto.replace(/[^0-9,.]/g, '');
+            const montoNumero = parseFloat(montoLimpio.replace(/\./g, '').replace(',', '.'));
+            let montoTexto;
+            if (isNaN(montoNumero) || montoNumero === 0) {
+                montoTexto = '0';
+            } else {
+                montoTexto = Math.round(montoNumero).toLocaleString('es-CR');
+            }
+            pdf.text(montoTexto, margin + 138, y + 4, { align: 'right' });
+            
+            // Porcentaje - CORREGIDO: para el margen de utilidad mostramos el porcentaje correctamente
+            let pctTexto = '';
+            if (item.esMargen) {
+                // Si es margen de utilidad, mostramos el porcentaje que viene de la tabla
+                pctTexto = item.porcentaje ? `${item.porcentaje}%` : '';
+            } else {
+                pctTexto = item.porcentaje ? `${item.porcentaje}%` : '';
+            }
+            pdf.text(pctTexto, margin + 183, y + 4, { align: 'right' });
+            
+            y += 7;
+        });
+        
+        // Footer
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(7);
+            pdf.setTextColor(150, 150, 150);
+            pdf.setFont('helvetica', 'italic');
+            pdf.text(`Generado desde Perdidas y Ganancias`, margin, 285);
+            pdf.text(`Página ${i} de ${totalPages}`, pageWidth - margin, 285, { align: 'right' });
+        }
+        
+        pdf.save(`Resumen_Financiero_${new Date().toISOString().slice(0,10)}.pdf`);
+        mostrarToast('success', `✅ PDF exportado correctamente (${totalPages} páginas)`);
+        
+    } catch (error) {
+        console.error('Error exportando PDF:', error);
+        mostrarToast('error', '❌ Error al exportar PDF: ' + error.message);
+    }
 }
 
 // ============================================

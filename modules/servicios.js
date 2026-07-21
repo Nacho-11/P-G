@@ -265,7 +265,7 @@ function renderServicios() {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-chart-bar" style="color: #2563eb;"></i>
-                    Consumo diario de Agua y Electricidad
+                    💧⚡Consumo diario de Agua y Electricidad
                 </h3>
                 <div style="display: flex; gap: 15px; font-size: 0.8rem;">
                     <span><span style="display: inline-block; width: 12px; height: 12px; background: #2563eb; border-radius: 2px; margin-right: 5px;"></span> Agua (M³)</span>
@@ -1096,7 +1096,7 @@ function renderGraficoServicios() {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Consumo diario de Agua por operación',
+                        text: '💧Consumo diario de Agua por operación',
                         font: { size: 14, weight: 'bold' }
                     },
                     legend: {
@@ -1158,7 +1158,7 @@ function renderGraficoServicios() {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Consumo diario de Electricidad por operación',
+                        text: '⚡Consumo diario de Electricidad por operación',
                         font: { size: 14, weight: 'bold' }
                     },
                     legend: {
