@@ -269,30 +269,38 @@ function obtenerFactorPeriodoCostos(filtroTiempo, fechaPersonalizada, fechaInici
 
 function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersonalizada, fechaInicio, fechaFin) {
     const resultado = {
+        // Restaurante
         alquilerLocal: 0, secsa: 0, softRestaurant: 0, internetKolbi: 0, televisionKolbi: 0,
         adt: 0, fumigacion: 0, polizaRT: 0, depreciacionActivos: 0, patenteComercial: 0,
         patenteLicores: 0, basuraMunicipal: 0, interesesMoraPatente: 0, certificacionGas: 0,
         certificacionElectrica: 0, renovacionMinisterioSalud: 0, asesoriaLegalRH: 0,
         honorariosContabilidad: 0, publicidad: 0, otrosServiciosProfesionales: 0,
+        // Planta
         electricidadPlanta: 0, aguaPlanta: 0, adtPlanta: 0, fumigacionPlanta: 0,
         softwareSecsaPlanta: 0, ivaHaciendaPlanta: 0, asesoriaLegalPlanta: 0,
+        // Oficinas
         electricidadOficinas: 0, aguaOficinas: 0, internetOficinas: 0,
         telefonoCelulares: 0, adtOficinas: 0, mantenimientoPapeleria: 0,
         softwareHosting: 0,
+        // Transporte
         combustible: 0, electricidadBodegas: 0, aguaBodegas: 0, alquilerTaller: 0,
         gpsNavsat: 0, marchamos: 0, dekra: 0, mantenimientoVehiculos: 0,
+        // Planilla Logística
         planillaBodega: 0, alexDuque: 0, polizaRTBodega: 0,
         ccssBodegaOficinas: 0, planillaOficinas: 0,
+        // Totales
         iva: 0,
-        impuestoRenta: 0,
         totalRestaurante: 0,
         totalPlanta: 0,
         totalOficinas: 0,
         totalTransporte: 0,
-        totalPlanillaLogistica: 0
+        totalPlanillaLogistica: 0,
+        // Totales generales
+        totalCostosFijos: 0
     };
 
     if (!costosData || Object.keys(costosData).length === 0) {
+        console.warn('⚠️ No hay datos de costos disponibles');
         return resultado;
     }
 
@@ -303,6 +311,9 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
         fechaFin
     );
 
+    console.log(`📊 Factor de período para costos: ${factorPeriodo}`);
+    console.log('📊 costosData recibido:', costosData);
+
     const idsProcesados = new Set();
 
     Object.keys(costosData).forEach(categoriaFirebase => {
@@ -311,6 +322,8 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
         Object.keys(subCategorias).forEach(subCategoria => {
             const costosArray = subCategorias[subCategoria];
             if (!Array.isArray(costosArray)) return;
+
+            console.log(`📊 Procesando ${categoriaFirebase}/${subCategoria}: ${costosArray.length} costos`);
 
             costosArray.forEach(costo => {
                 if (costo.id && idsProcesados.has(costo.id)) return;
@@ -327,21 +340,168 @@ function calcularCostosFijos(costosData, filtroLocal, filtroTiempo, fechaPersona
 
                 if (montoMensual === 0) return;
 
-                // ... resto del código de clasificación de costos ...
+                console.log(`  📍 ${localDelCosto} - ${costo.concepto}: ₡${montoMensual} → ₡${montoAplicable}`);
+
+                // ============================================
+                // CLASIFICACIÓN DE COSTOS - RESTAURANTE
+                // ============================================
                 if (subCategoria === 'restaurante') {
+                    const conceptoLower = concepto.toLowerCase();
+                    
+                    if (conceptoLower.includes('alquiler') && !conceptoLower.includes('iva')) {
+                        resultado.alquilerLocal += montoAplicable;
+                    } else if (conceptoLower.includes('secsa')) {
+                        resultado.secsa += montoAplicable;
+                    } else if (conceptoLower.includes('soft restaurant') || conceptoLower.includes('soft-restaurant')) {
+                        resultado.softRestaurant += montoAplicable;
+                    } else if (conceptoLower.includes('internet') && !conceptoLower.includes('iva')) {
+                        resultado.internetKolbi += montoAplicable;
+                    } else if ((conceptoLower.includes('television') || conceptoLower.includes('tv')) && !conceptoLower.includes('iva')) {
+                        resultado.televisionKolbi += montoAplicable;
+                    } else if ((conceptoLower.includes('adt') || conceptoLower.includes('alarma')) && !conceptoLower.includes('iva')) {
+                        resultado.adt += montoAplicable;
+                    } else if (conceptoLower.includes('fumigacion') && !conceptoLower.includes('iva')) {
+                        resultado.fumigacion += montoAplicable;
+                    } else if ((conceptoLower.includes('poliza') || conceptoLower.includes('póliza') || conceptoLower.includes('rt')) && !conceptoLower.includes('iva')) {
+                        resultado.polizaRT += montoAplicable;
+                    } else if (conceptoLower.includes('depreciacion') && !conceptoLower.includes('iva')) {
+                        resultado.depreciacionActivos += montoAplicable;
+                    } else if (conceptoLower.includes('patente comercial')) {
+                        resultado.patenteComercial += montoAplicable;
+                    } else if (conceptoLower.includes('patente licores')) {
+                        resultado.patenteLicores += montoAplicable;
+                    } else if (conceptoLower.includes('basura') && !conceptoLower.includes('iva')) {
+                        resultado.basuraMunicipal += montoAplicable;
+                    } else if ((conceptoLower.includes('interes') || conceptoLower.includes('mora')) && !conceptoLower.includes('iva')) {
+                        resultado.interesesMoraPatente += montoAplicable;
+                    } else if ((conceptoLower.includes('certificacion gas') || conceptoLower.includes('certificación gas')) && !conceptoLower.includes('iva')) {
+                        resultado.certificacionGas += montoAplicable;
+                    } else if ((conceptoLower.includes('certificacion electrica') || conceptoLower.includes('certificación eléctrica')) && !conceptoLower.includes('iva')) {
+                        resultado.certificacionElectrica += montoAplicable;
+                    } else if ((conceptoLower.includes('renovacion') || conceptoLower.includes('ministerio') || conceptoLower.includes('renovación')) && !conceptoLower.includes('iva')) {
+                        resultado.renovacionMinisterioSalud += montoAplicable;
+                    } else if (conceptoLower.includes('asesoria legal') || conceptoLower.includes('asesoría legal')) {
+                        resultado.asesoriaLegalRH += montoAplicable;
+                    } else if (conceptoLower.includes('honorarios contabilidad') && !conceptoLower.includes('iva')) {
+                        resultado.honorariosContabilidad += montoAplicable;
+                    } else if (conceptoLower.includes('publicidad') && !conceptoLower.includes('iva')) {
+                        resultado.publicidad += montoAplicable;
+                    } else if ((conceptoLower.includes('otros servicios') || conceptoLower.includes('otros servicios profesionales')) && !conceptoLower.includes('iva')) {
+                        resultado.otrosServiciosProfesionales += montoAplicable;
+                    } else if (conceptoLower.includes('hacienda') && conceptoLower.includes('iva')) {
+                        resultado.iva += montoAplicable;
+                    } else if (conceptoLower.includes('iva') && !conceptoLower.includes('renta')) {
+                        resultado.iva += montoAplicable;
+                    }
+                    
                     resultado.totalRestaurante += montoAplicable;
+                    
+                // ============================================
+                // CLASIFICACIÓN DE COSTOS - PLANTA
+                // ============================================
                 } else if (subCategoria === 'planta') {
+                    const conceptoLower = concepto.toLowerCase();
+                    
+                    if (conceptoLower.includes('electricidad')) {
+                        resultado.electricidadPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('agua')) {
+                        resultado.aguaPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('adt') || conceptoLower.includes('alarma')) {
+                        resultado.adtPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('fumigacion')) {
+                        resultado.fumigacionPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('software secsa')) {
+                        resultado.softwareSecsaPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('iva')) {
+                        resultado.ivaHaciendaPlanta += montoAplicable;
+                    } else if (conceptoLower.includes('asesoria legal')) {
+                        resultado.asesoriaLegalPlanta += montoAplicable;
+                    }
                     resultado.totalPlanta += montoAplicable;
+                    
+                // ============================================
+                // CLASIFICACIÓN DE COSTOS - OFICINAS
+                // ============================================
                 } else if (subCategoria === 'oficinas') {
+                    const conceptoLower = concepto.toLowerCase();
+                    
+                    if (conceptoLower.includes('electricidad')) {
+                        resultado.electricidadOficinas += montoAplicable;
+                    } else if (conceptoLower.includes('agua')) {
+                        resultado.aguaOficinas += montoAplicable;
+                    } else if (conceptoLower.includes('internet')) {
+                        resultado.internetOficinas += montoAplicable;
+                    } else if (conceptoLower.includes('telefono') || conceptoLower.includes('celular')) {
+                        resultado.telefonoCelulares += montoAplicable;
+                    } else if (conceptoLower.includes('adt')) {
+                        resultado.adtOficinas += montoAplicable;
+                    } else if (conceptoLower.includes('software') || conceptoLower.includes('hosting') || conceptoLower.includes('office')) {
+                        resultado.softwareHosting += montoAplicable;
+                    } else if (conceptoLower.includes('mantenimiento') || conceptoLower.includes('papeleria')) {
+                        resultado.mantenimientoPapeleria += montoAplicable;
+                    }
                     resultado.totalOficinas += montoAplicable;
+                    
+                // ============================================
+                // CLASIFICACIÓN DE COSTOS - TRANSPORTE
+                // ============================================
                 } else if (subCategoria === 'transporte') {
+                    const conceptoLower = concepto.toLowerCase();
+                    
+                    if (conceptoLower.includes('combustible')) {
+                        resultado.combustible += montoAplicable;
+                    } else if (conceptoLower.includes('electricidad')) {
+                        resultado.electricidadBodegas += montoAplicable;
+                    } else if (conceptoLower.includes('agua')) {
+                        resultado.aguaBodegas += montoAplicable;
+                    } else if (conceptoLower.includes('alquiler')) {
+                        resultado.alquilerTaller += montoAplicable;
+                    } else if (conceptoLower.includes('gps')) {
+                        resultado.gpsNavsat += montoAplicable;
+                    } else if (conceptoLower.includes('marchamo')) {
+                        resultado.marchamos += montoAplicable;
+                    } else if (conceptoLower.includes('dekra')) {
+                        resultado.dekra += montoAplicable;
+                    } else if (conceptoLower.includes('mantenimiento') && !conceptoLower.includes('papeleria')) {
+                        resultado.mantenimientoVehiculos += montoAplicable;
+                    }
                     resultado.totalTransporte += montoAplicable;
+                    
+                // ============================================
+                // CLASIFICACIÓN DE COSTOS - PLANILLA LOGÍSTICA
+                // ============================================
                 } else if (subCategoria === 'planilla') {
+                    const conceptoLower = concepto.toLowerCase();
+                    
+                    if (conceptoLower.includes('planilla bodega')) {
+                        resultado.planillaBodega += montoAplicable;
+                    } else if (conceptoLower.includes('alex duque')) {
+                        resultado.alexDuque += montoAplicable;
+                    } else if (conceptoLower.includes('poliza rt')) {
+                        resultado.polizaRTBodega += montoAplicable;
+                    } else if (conceptoLower.includes('ccss')) {
+                        resultado.ccssBodegaOficinas += montoAplicable;
+                    } else if (conceptoLower.includes('planilla oficinas')) {
+                        resultado.planillaOficinas += montoAplicable;
+                    }
                     resultado.totalPlanillaLogistica += montoAplicable;
                 }
             });
         });
     });
+
+    // Calcular total general
+    resultado.totalCostosFijos = resultado.totalRestaurante + resultado.totalPlanta + 
+                                 resultado.totalOficinas + resultado.totalTransporte + 
+                                 resultado.totalPlanillaLogistica;
+
+    console.log('📊 RESULTADO COSTOS FIJOS:');
+    console.log(`  Total Restaurante: ₡${resultado.totalRestaurante.toFixed(2)}`);
+    console.log(`  Total Planta: ₡${resultado.totalPlanta.toFixed(2)}`);
+    console.log(`  Total Oficinas: ₡${resultado.totalOficinas.toFixed(2)}`);
+    console.log(`  Total Transporte: ₡${resultado.totalTransporte.toFixed(2)}`);
+    console.log(`  Total Planilla Logística: ₡${resultado.totalPlanillaLogistica.toFixed(2)}`);
+    console.log(`  TOTAL GENERAL: ₡${resultado.totalCostosFijos.toFixed(2)}`);
 
     return resultado;
 }
