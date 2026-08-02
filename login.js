@@ -29,9 +29,6 @@ function initAuth() {
 // ============================================
 // CARGAR DATOS DEL USUARIO
 // ============================================
-// ============================================
-// CARGAR DATOS DEL USUARIO (COMPLETA)
-// ============================================
 async function cargarDatosUsuario(uid) {
     try {
         console.log('🔍 Buscando usuario con UID:', uid);
@@ -40,20 +37,66 @@ async function cargarDatosUsuario(uid) {
             throw new Error('Firebase Database no está disponible');
         }
         
-        // 👇 1. Cargar configuración de acceso global
-        const configSnapshot = await firebase.database().ref('configuracion/accesoGlobal').once('value');
-        const accesoGlobal = configSnapshot.val();
-        
-        if (accesoGlobal !== null) {
-            AppState.accesoGlobal = accesoGlobal;
-        } else {
-            AppState.accesoGlobal = true;
-            await firebase.database().ref('configuracion/accesoGlobal').set(true);
+        // ============================================
+        // 1. ASEGURAR QUE AppState EXISTE
+        // ============================================
+        if (typeof AppState === 'undefined') {
+            window.AppState = {
+                usuario: null,
+                locales: [],
+                filtros: { local: 'Todos', tiempo: 'todos' },
+                accesoGlobal: true,
+                data: {}
+            };
         }
         
-        console.log(`🔐 Estado de acceso: ${AppState.accesoGlobal ? 'ACTIVO' : 'BLOQUEADO'}`);
+        // ============================================
+        // 2. CONFIGURAR LOCALES (SIEMPRE DISPONIBLES)
+        // ============================================
+        if (!AppState.locales || AppState.locales.length === 0) {
+            AppState.locales = [
+                { nombre: 'Parrillita Alajuela' },
+                { nombre: 'Parrillita Garita' },
+                { nombre: 'Parrillita Pirro' },
+                { nombre: 'Parrillita Sabana' },
+                { nombre: 'Parrillita San Joaquin' },
+                { nombre: 'Parrillita San Pedro' },
+                { nombre: 'Los Años Locos Heredia' },
+                { nombre: 'Los Años Locos San Joaquin' },
+                { nombre: 'Parrillita Empanadazo' }
+            ];
+        }
         
-        // 👇 2. Cargar datos del usuario
+        // ============================================
+        // 3. CARGAR CONFIGURACIÓN DE ACCESO
+        // ============================================
+        let accesoGlobal = true;
+        try {
+            const configSnapshot = await firebase.database().ref('configuration/accesoGlobal').once('value');
+            const configData = configSnapshot.val();
+            
+            if (configData && typeof configData === 'object') {
+                // Si es objeto, extraer el estado
+                accesoGlobal = configData.sistemaActivo !== false;
+            } else if (configData !== null) {
+                accesoGlobal = configData;
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar configuración, usando valor por defecto:', error);
+            accesoGlobal = true;
+        }
+        
+        AppState.accesoGlobal = accesoGlobal;
+        console.log(`🔐 Estado de acceso: ${accesoGlobal ? 'ACTIVO' : 'BLOQUEADO'}`);
+        
+        // ============================================
+        // 4. CARGAR DATOS DEL USUARIO
+        // ============================================
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            throw new Error('No hay usuario autenticado');
+        }
+        
         const snapshot = await firebase.database().ref(`usuarios/${uid}`).once('value');
         let userData = snapshot.val();
         
@@ -61,21 +104,17 @@ async function cargarDatosUsuario(uid) {
         
         if (!userData) {
             console.log('⚠️ Usuario sin perfil. Creando...');
-            const user = firebase.auth().currentUser;
-            
-            if (!user) {
-                throw new Error('No hay usuario autenticado');
-            }
             
             const email = user.email || '';
-            const esCorreoGerencia = email.includes('gerencia') || email === 'ig_cal94@hotmail.com';
+            const esSuperAdmin = email === 'ig_cal94@hotmail.com' || email === 'ig_ca194@hotmail.com';
             
             userData = {
                 email: email,
                 nombre: email.split('@')[0] || 'Usuario',
-                rol: esCorreoGerencia ? "gerencia" : "usuario",
-                local: esCorreoGerencia ? null : "Parrillita Alajuela",
+                rol: esSuperAdmin ? "gerencia" : "usuario",
+                local: esSuperAdmin ? null : "Parrillita Alajuela",
                 activo: true,
+                superAdmin: esSuperAdmin,
                 fechaCreacion: new Date().toISOString()
             };
             
@@ -83,10 +122,12 @@ async function cargarDatosUsuario(uid) {
             console.log('✅ Perfil creado con rol:', userData.rol);
         }
         
-        // 👇 3. Configurar AppState
+        // ============================================
+        // 5. CONFIGURAR AppState.usuario
+        // ============================================
         AppState.usuario = {
             uid: uid,
-            email: userData.email || firebase.auth().currentUser?.email || '',
+            email: userData.email || user.email || '',
             rol: userData.rol || 'usuario',
             nombre: userData.nombre || userData.email?.split('@')[0] || 'Usuario',
             local: userData.local || null,
@@ -96,75 +137,81 @@ async function cargarDatosUsuario(uid) {
         
         localStorage.setItem('parrillitaUser', JSON.stringify(AppState.usuario));
         console.log('👤 Usuario configurado:', AppState.usuario);
+
+        if (typeof initInactividad === 'function') {
+            setTimeout(initInactividad, 1000);
+        }
         
-        // 👇 4. VERIFICAR ACCESO
-        const esSuper = window.esSuperAdmin && window.esSuperAdmin();
-        const accesoActivo = AppState.accesoGlobal !== false;
+        // ============================================
+        // 6. VERIFICAR ACCESO Y ESTADO ACTIVO
+        // ============================================
+        const esSuper = AppState.usuario.superAdmin === true;
         
-        if (!esSuper && !accesoActivo) {
+        if (!esSuper && !accesoGlobal) {
             console.log('🚫 Acceso bloqueado para usuario no superadmin');
-            
-            const btn = document.getElementById('loginButton');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
-            }
-            
             mostrarLoginConMensaje('🚫 Acceso bloqueado por el administrador');
             await firebase.auth().signOut();
             return false;
         }
         
-        // 👇 5. Verificar si el usuario está activo
         if (AppState.usuario.activo === false) {
             console.log('🚫 Usuario desactivado');
-            
-            const btn = document.getElementById('loginButton');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
-            }
-            
             mostrarLoginConMensaje('🚫 Tu cuenta ha sido desactivada');
             await firebase.auth().signOut();
             return false;
         }
         
-        // 👇 6. Actualizar UI
+        // ============================================
+        // 7. ACTUALIZAR UI
+        // ============================================
         actualizarUIUsuario();
         configurarPermisos();
         
-        if (window.esSuperAdmin && window.esSuperAdmin()) {
-            if (typeof window.actualizarUIAcceso === 'function') {
-                setTimeout(window.actualizarUIAcceso, 300);
-            }
-        }
-        
-        // 👇 7. Inicializar filtros
-        if (typeof cargarLocalesEnFiltro === 'function') {
-            cargarLocalesEnFiltro();
-        }
-        if (typeof window.inicializarFiltros === 'function') {
-            window.inicializarFiltros();
-        }
-        
-        // 👇 8. Inicializar módulos
+        // ============================================
+        // 8. INICIALIZAR MÓDULOS (CON VERIFICACIÓN)
+        // ============================================
         console.log('🚀 Inicializando módulos...');
-        if (typeof initVentas === 'function') setTimeout(() => initVentas(), 100);
-        if (typeof initCostos === 'function') setTimeout(() => initCostos(), 200);
-        if (typeof initDashboardListeners === 'function') setTimeout(() => initDashboardListeners(), 300);
-        if (typeof initPlanilla === 'function') setTimeout(() => initPlanilla(), 400);
-        if (typeof initServicios === 'function') setTimeout(() => initServicios(), 500);
-        if (typeof initMerma === 'function') setTimeout(() => initMerma(), 600);
-        if (typeof initLogistica === 'function') setTimeout(() => initLogistica(), 700);
-        if (typeof initFacturacion === 'function') setTimeout(() => initFacturacion(), 800);
-        if (typeof initSidebar === 'function') setTimeout(() => initSidebar(), 900);
-        if (typeof initPrestamo === 'function') setTimeout(() => initPrestamo(), 1000);
-        if (typeof initCompras === 'function') setTimeout(() => initCompras(), 1100);
-        if (typeof initResumen === 'function') setTimeout(() => initResumen(), 1200);
-        if (typeof initPago10 === 'function') setTimeout(() => initPago10(), 1300);
 
-        // 👇 9. Mostrar APP
+        // Esperar un poco para que todos los scripts se carguen
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Lista de módulos a inicializar (con verificación de existencia)
+        const modulos = [
+            { name: 'initVentas', fn: typeof initVentas !== 'undefined' ? initVentas : null },
+            { name: 'initCostos', fn: typeof initCostos !== 'undefined' ? initCostos : null },
+            { name: 'initPlanilla', fn: typeof initPlanilla !== 'undefined' ? initPlanilla : null },
+            { name: 'initServicios', fn: typeof initServicios !== 'undefined' ? initServicios : null },
+            { name: 'initMerma', fn: typeof initMerma !== 'undefined' ? initMerma : null },
+            { name: 'initLogistica', fn: typeof initLogistica !== 'undefined' ? initLogistica : null },
+            { name: 'initFacturacion', fn: typeof initFacturacion !== 'undefined' ? initFacturacion : null },
+            { name: 'initPrestamo', fn: typeof initPrestamo !== 'undefined' ? initPrestamo : null },
+            { name: 'initCompras', fn: typeof initCompras !== 'undefined' ? initCompras : null },
+            { name: 'initPago10', fn: typeof initPago10 !== 'undefined' ? initPago10 : null },
+            { name: 'initResumen', fn: typeof initResumen !== 'undefined' ? initResumen : null },
+            { name: 'initSidebar', fn: typeof initSidebar !== 'undefined' ? initSidebar : null },
+            { name: 'initDashboardListeners', fn: typeof initDashboardListeners !== 'undefined' ? initDashboardListeners : null }
+        ];
+
+        // Inicializar cada módulo con un timeout
+        modulos.forEach((modulo, index) => {
+            const delay = 200 * (index + 1);
+            setTimeout(() => {
+                try {
+                    if (modulo.fn && typeof modulo.fn === 'function') {
+                        console.log(`📦 Inicializando ${modulo.name}...`);
+                        modulo.fn();
+                    } else {
+                        console.log(`⚠️ ${modulo.name} no está disponible (se cargará después)`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Error en ${modulo.name}:`, error);
+                }
+            }, delay);
+        });
+        
+        // ============================================
+        // 9. MOSTRAR APP Y OCULTAR LOGIN
+        // ============================================
         const mainContent = document.querySelector('.main-content');
         const sidebar = document.querySelector('.sidebar');
         const menuToggle = document.getElementById('menuToggle');
@@ -187,13 +234,10 @@ async function cargarDatosUsuario(uid) {
             menuToggle.style.opacity = '1';
         }
         
-        if (typeof initSidebar === 'function') {
-            setTimeout(initSidebar, 200);
-        }
-        
-        // 👇 10. Ocultar login
+        // Ocultar login
         const modal = document.getElementById('loginModal');
         const overlay = document.getElementById('modalOverlay');
+        const loginScreen = document.getElementById('loginScreen');
 
         if (modal) {
             modal.style.display = 'none';
@@ -203,21 +247,15 @@ async function cargarDatosUsuario(uid) {
             overlay.style.display = 'none';
             overlay.classList.remove('active');
         }
-
-        const loginScreen = document.getElementById('loginScreen');
         if (loginScreen) {
             loginScreen.style.display = 'none';
-        }
-        
-        if (typeof cambiarModulo === 'function') {
-            setTimeout(() => cambiarModulo('dashboard'), 500);
         }
         
         console.log('🎉 Bienvenido', AppState.usuario.nombre);
         return true;
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error en cargarDatosUsuario:', error);
         
         const errorDiv = document.getElementById('loginError');
         if (errorDiv) {
